@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
   } else {
     run = atoi(argv[1]);
   if (argc==3) baseDir += argv[2];
-  else  baseDir +=  basename;
+  else  baseDir +=  whereIsMyTOFdata;
   }
 
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);

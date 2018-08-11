@@ -20,6 +20,6 @@ const int tdc2pmt[10] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
 
 const double clockTicksNs=0.025;
 
-const std::string basename="/unix/dune/hptpctof/";
+const std::string whereIsMyTOFdata="/unix/dune/hptpctof/";
 
 #endif //DSTOFCONVENTIONS_H
