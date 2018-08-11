@@ -94,8 +94,13 @@ int main(int argc, char *argv[]){
 
       tofTree1->GetEntry(ientry);
 
-      if (tof->channel==15) continue;
-
+      if (tof->channel==15){
+	continue;
+      }
+      if (tof->channel==14){
+	continue;
+      }
+      
       pmtSide   = tdcpmtmap[tof->channel-1];
       barNumber = tdcbarmap[tof->channel-1];
 
@@ -104,7 +109,7 @@ int main(int argc, char *argv[]){
     
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
-      //    cout << pmtSide << " " << barNumber << endl;
+      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;    
     }
 
