@@ -58,11 +58,22 @@ int main(int argc, char *argv[]){
   int barNumber = 0;
   Double_t deltat = 0;
 
+  TFile *toftf = new TFile(filename[0].c_str(), "read");
+  TTree *toftemp = (TTree*)toftf->Get("tofTree");
+  toftemp->SetName("tofTree1");
+  RawDsTofHeader *temptof = NULL;
+  toftemp->SetBranchAddress("tof",       &temptof       );
+  toftemp->GetEntry(0);
+  UInt_t firstTime = temptof->unixTime;
+  toftemp->GetEntry(toftemp->GetEntries()-1);
+  UInt_t lastTime = temptof->unixTime;
+  delete temptof;
+  toftf->Close();
+
   TH2D* mapHits = new TH2D("mapHits", "", 2, -0.5, 1.5, 10, 0.5, 10.5);
+  TH2D* mapHitsTime = new TH2D("mapHitsTime", "", 100, firstTime, lastTime, 20, 1.5, 21.5);
   TH2D* mapTimeDifference = new TH2D("mapTimeDifference", "", 100, -20, +20, 10, 0.5, 10.5);
 
-
-  
   for (int itdc=0; itdc<2; itdc++){  
   
     TFile *tofFile1 = new TFile(filename[itdc].c_str(), "read");
@@ -106,7 +117,8 @@ int main(int argc, char *argv[]){
 
       if (pmtSide==0) deltat = tof->fakeTimeNs - lastFakeTimeNs[1][barNumber-1];
       else deltat = lastFakeTimeNs[0][barNumber-1] - tof->fakeTimeNs;
-    
+
+      mapHitsTime->Fill(tof->unixTime, barNumber*2+pmtSide);
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
       //      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
@@ -132,9 +144,28 @@ int main(int argc, char *argv[]){
   c2->Print(Form("%s/Run%d_coincidenceMap.png", dirname.c_str(), run));
   c2->Print(Form("%s/Run%d_coincidenceMap.pdf", dirname.c_str(), run));
 
+  
+  TCanvas *c3 = new TCanvas("c3");
+  c3->SetLogz();
+  mapHitsTime->GetXaxis()->SetNdivisions(5);
+  mapHitsTime->GetXaxis()->SetTimeDisplay(1);
+  mapHitsTime->GetXaxis()->SetTimeFormat("%b-%d %H:%M");
+  mapHitsTime->GetXaxis()->SetTimeOffset(0,"utc");
+
+  string binlabels[20];
+  for (int i=0; i<10; i++){
+    mapHitsTime->GetYaxis()->SetBinLabel(2*i+1,Form("%dA", i+1));
+    mapHitsTime->GetYaxis()->SetBinLabel(2*i+2,Form("%dB", i+1));
+  }
+  mapHitsTime->SetTitle(Form("Run %d: hit time map;Unix time UTC;PMT", run));
+  mapHitsTime->Draw("colz");
+  c3->Print(Form("%s/Run%d_hitTimeMap.png", dirname.c_str(), run));
+  c3->Print(Form("%s/Run%d_hitTimeMap.pdf", dirname.c_str(), run));
+
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
   mapTimeDifference->Write();
+  mapHitsTime->Write();
   fout->Close();
 }
 
