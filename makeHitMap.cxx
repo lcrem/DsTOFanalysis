@@ -39,7 +39,7 @@ int main(int argc, char *argv[]){
 
   string filename[2];
   for (int itdc=0; itdc<2; itdc++){
-    filename[itdc] = Form("%s/DsTOFtree_tdc%d.root", dirname.c_str(), itdc+1);
+    filename[itdc] = Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1);
   }
   
   if (filename[0]=="nothing" || filename[1]=="nothing"){
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]){
     
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
-      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
+      //      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;    
     }
 

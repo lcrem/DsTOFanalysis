@@ -111,8 +111,8 @@ int main(int argc, char *argv[]){
 	oldticks=ticks1;
       }
 
-      cout << "Writing output " << Form("%s/DsTOFtree_tdc%d.root", dirname.c_str(), itdc+1) << endl;
-      TFile *fout = new TFile(Form("%s/DsTOFtree_tdc%d.root", dirname.c_str(), itdc+1), "recreate");
+      cout << "Writing output " << Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1) << endl;
+      TFile *fout = new TFile(Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1), "recreate");
       tofTree->Write("tofTree");
       fout->Close();
 
