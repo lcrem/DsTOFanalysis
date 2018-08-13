@@ -2,6 +2,7 @@
 
 #define parameters which are passed in.
 RUNNUMBER=$1
+LASTRUN=$[$RUNNUMBER -5]
 
 #define the template.
 cat  <<EOF
@@ -22,25 +23,47 @@ cat  <<EOF
 
   <div>
     <h1>High Pressure TPC Downstream TOF</h1>
-    <h2>Last run number is $RUNNUMBER</h2>
-    <img src="plots/Run${RUNNUMBER}_hitMap.png" style="float: left;
+    <h2>Last rootified run is $RUNNUMBER. Data shouldn't be older than 1.5 hours!</h2>
+
+</div>
+EOF
+
+for ((run=$RUNNUMBER;run>LASTRUN;run-=1)) ; do 
+    cat  <<EOF
+<div>
+    <h2>Plots for run $run</h2>
+    <img src="plots/Run${run}_hitMap.png" style="float: left;
+							width: 47%;
+							margin-right:
+							1%;
+							margin-bottom:
+							0.5em;">
+    <img src="plots/Run${run}_hitTimeMap.png" style="float: left;
 							width: 47%;
 							margin-right:
 							1%;
 							margin-bottom:
 							0.5em;">
 
-    <img src="plots/Run${RUNNUMBER}_coincidenceMap.png" style="float: left;
+    <img src="plots/Run${run}_coincidenceMap.png" style="float: left;
 							width: 47%;
 							margin-right:
 							1%;
 							margin-bottom:
 							0.5em;">
 
-
+    <img src="plots/Run${run}_hitBeamSpillMap.png" style="float: left;
+							width: 47%;
+							margin-right:
+							1%;
+  							margin-bottom:
+						0.5em;">
   </div>
+EOF
+done
 
-
+cat  <<EOF
+  </div>
 </body>
 </html>
 EOF
