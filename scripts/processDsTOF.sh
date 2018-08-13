@@ -7,25 +7,15 @@ cd /home/lindac/DUNE/TOF/DsTOFanalysis/build/
 export DATADIR=/unix/dune/hptpctof/
 export htmlPageDir=/home/lindac/public_html/dstof/
 
-TOTAL=0
-for dir in `ls $DATADIR`; 
-do
- TOTAL=$[$TOTAL +1]
-done
-
-echo "Total number of dirs is " $TOTAL
-
+LASTRUN=`ls -t /unix/dune/hptpctof/run*/raw* | head -n 1`
+LASTRUN=${LASTRUN#*run}
+LASTRUN=${LASTRUN%/raw*}
+echo $LASTRUN
 
 COUNTER=0
-for dir in `ls -rt $DATADIR`; 
+for dir in `ls $DATADIR`; 
 do
     echo $dir
-    COUNTER=$[$COUNTER +1]
-    if [ $COUNTER -ge $TOTAL ]; then
-	echo "Skipping the last dir"
-	continue
-    fi
-
 
     if [[ $dir =~ [0-9] ]]; then
 	runNumber=$(echo $dir | sed 's/[^0-9]*//g')
@@ -35,6 +25,10 @@ do
     fi
 
     if [ "$runNumber" -lt 20 ]; then
+	continue
+    fi
+
+    if [ "$runNumber" == $LASTRUN ]; then
 	continue
     fi
     
@@ -90,7 +84,7 @@ do
     
 done
 
-echo "Last rootified run number is " $runNumber
+echo "Last rootified run number is " $[$LASTRUN -1 ]
 
-/home/lindac/DUNE/TOF/DsTOFanalysis/scripts/templateHtml.sh $runNumber > $htmlPageDir/dstofSummary.html
+/home/lindac/DUNE/TOF/DsTOFanalysis/scripts/templateHtml.sh $[$LASTRUN -1 ] > $htmlPageDir/dstofSummary.html
 
