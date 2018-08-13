@@ -17,7 +17,7 @@ echo "Total number of dirs is " $TOTAL
 
 
 COUNTER=0
-for dir in `ls $DATADIR`; 
+for dir in `ls -rt $DATADIR`; 
 do
     echo $dir
     COUNTER=$[$COUNTER +1]
