@@ -178,7 +178,7 @@ int main(int argc, char *argv[]){
   mapHitsTime->GetXaxis()->SetNdivisions(5);
   mapHitsTime->GetXaxis()->SetTimeDisplay(1);
   mapHitsTime->GetXaxis()->SetTimeFormat("%b-%d %H:%M");
-  mapHitsTime->GetXaxis()->SetTimeOffset(0,"utc");
+  mapHitsTime->GetXaxis()->SetTimeOffset(0,"gmt");
   for (int i=0; i<10; i++){
     mapHitsTime->GetYaxis()->SetBinLabel(2*i+1,Form("%dA", i+1));
     mapHitsTime->GetYaxis()->SetBinLabel(2*i+2,Form("%dB", i+1));
