@@ -15,8 +15,8 @@ const std::string tdc2[10] = {"05B", "05A", "04B", "04A", "03B", "03A", "02B", "
 const int tdc1bar[10] = {10, 10, 9, 9, 8, 8, 7, 7, 6, 6 }; // channels from 1 to 1
 const int tdc2bar[10] = { 5,  5, 4, 4, 3, 3, 2, 2, 1, 1 };
 
-const int tdc1pmt[10] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1}; // 0 is PMT A and 1 is PMT B
-const int tdc2pmt[10] = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1}; 
+const int tdc1pmt[10] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0}; // 0 is PMT A and 1 is PMT B
+const int tdc2pmt[10] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0}; 
 
 const double clockTicksNs=0.025;
 
