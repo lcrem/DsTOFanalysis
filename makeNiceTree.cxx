@@ -89,6 +89,7 @@ int main(int argc, char *argv[]){
     
 	if (channel1!=0){
 	  if (channel1==15) beamSpill1 = ticks1;
+	  if (channel1==13) usTof = ticks1;
 	  triggerTimeNs1 = ticks1*clockTicksNs;
 	  fakeTimeNs1    = ( countClock1*TMath::Power(2, 21) +ticks1)*clockTicksNs;
 	  // cout << run << " " << channel1 << endl;

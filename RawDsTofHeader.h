@@ -22,12 +22,13 @@ class RawDsTofHeader : public TObject
   Int_t channel; 
   Int_t ticks; 
   Int_t clockCounter; 
-  Int_t beamSpill; 
+  Int_t beamSpill;
+  Int_t usTof;
   UInt_t unixTime; 
   Double_t triggerTimeNs; 
   Double_t fakeTimeNs; 
 
-  ClassDef(RawDsTofHeader, 1); 
+  ClassDef(RawDsTofHeader, 2); 
 
 }; 
 
