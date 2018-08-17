@@ -63,6 +63,7 @@ int main(int argc, char *argv[]){
     Int_t countClock1=0;
     Int_t beamSpill1;
     Int_t unixTime1;
+    Int_t usTof1;
     Double_t triggerTimeNs1;
     Double_t fakeTimeNs1;
     Int_t oldticks=0;
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]){
     
 	if (channel1!=0){
 	  if (channel1==15) beamSpill1 = ticks1;
-	  if (channel1==13) usTof = ticks1;
+	  if (channel1==13) usTof1 = ticks1;
 	  triggerTimeNs1 = ticks1*clockTicksNs;
 	  fakeTimeNs1    = ( countClock1*TMath::Power(2, 21) +ticks1)*clockTicksNs;
 	  // cout << run << " " << channel1 << endl;
@@ -104,6 +105,7 @@ int main(int argc, char *argv[]){
 	  tof->ticks=ticks1; 
 	  tof->clockCounter=countClock1; 
 	  tof->beamSpill=beamSpill1; 
+	  tof->usTof=usTof1; 
 	  tof->unixTime=unixTime1; 
 	  tof->triggerTimeNs=triggerTimeNs1; 
 	  tof->fakeTimeNs=fakeTimeNs1; 
