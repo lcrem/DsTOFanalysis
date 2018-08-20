@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
   }
 
   string line;
-  double coincidenceWindow = 20;
+  Double_t coincidenceWindow = 20.;
 
   Double_t lastFakeTimeNs[2][10]; // last fake time ns 0,1 are for PMT A and B, and 0-10 are the bar number
   UInt_t lastUnixTime[2][10];   
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]){
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
 
-      if (deltat<TMath::Abs(coincidenceWindow)){
+      if (TMath::Abs(deltat)<coincidenceWindow){
 	if(tofCoin)
 	  delete tofCoin;
 
