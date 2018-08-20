@@ -28,6 +28,18 @@ do
 	continue
     fi
 
+    if [ "$runNumber" == 128 ]; then
+	continue
+    fi
+
+    if [ "$runNumber" == 129 ]; then
+	continue
+    fi
+
+    if [ "$runNumber" == 130 ]; then
+	continue
+    fi
+
     if [ "$runNumber" == $LASTRUN ]; then
 	continue
     fi
@@ -75,10 +87,14 @@ do
     
     echo "Producing map tree!"
     ./makeHitMap $runNumber
-    cp $DATADIR/run$runNumber/Run${runNumber}_hitMap.png          $htmlPageDir/plots/
-    cp $DATADIR/run$runNumber/Run${runNumber}_hitTimeMap.png      $htmlPageDir/plots/
-    cp $DATADIR/run$runNumber/Run${runNumber}_hitBeamSpillMap.png $htmlPageDir/plots/
-    cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceMap.png  $htmlPageDir/plots/
+
+    cp $DATADIR/run$runNumber/Run${runNumber}_hitMap.png                 $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_hitTimeMap.png             $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_hitBeamSpillMap.png        $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceMap.png         $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_barEfficiency.png          $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpill.png     $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpillBar.png  $htmlPageDir/plots/
     
     
     
