@@ -17,18 +17,15 @@ class RawDsTofHeader : public TObject
   RawDsTofHeader();
   ~RawDsTofHeader(); 
   
-  Int_t run;
-  Int_t tdc; 
-  Int_t channel; 
+  Short_t run;
+  Short_t tdc; 
+  Short_t channel; 
   Int_t ticks; 
   Int_t clockCounter; 
-  Int_t beamSpill;
-  Int_t usTof;
   UInt_t unixTime; 
-  Double_t triggerTimeNs; 
   Double_t fakeTimeNs; 
 
-  ClassDef(RawDsTofHeader, 2); 
+  ClassDef(RawDsTofHeader, 3); 
 
 }; 
 

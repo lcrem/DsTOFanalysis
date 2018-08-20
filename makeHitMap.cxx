@@ -1,5 +1,6 @@
 #include "DsTOFConventions.h"
 #include "RawDsTofHeader.h"
+#include "RawDsTofCoincidence.h"
 
 #include "TFile.h"
 #include "TTree.h"
@@ -11,6 +12,7 @@
 #include "TMath.h"
 #include "TStyle.h"
 #include "TSystem.h"
+#include "TLegend.h"
 
 #include <iostream>
 #include <fstream>
@@ -20,6 +22,12 @@
 #include <unistd.h>
 
 using namespace std;
+
+Double_t allBeamSpillTimes[10000];
+Int_t countSpills=0;
+
+
+bool isInSpill( double timeA);
 
 int main(int argc, char *argv[]){
 
@@ -53,6 +61,7 @@ int main(int argc, char *argv[]){
   double coincidenceWindow = 20;
 
   Double_t lastFakeTimeNs[2][10]; // last fake time ns 0,1 are for PMT A and B, and 0-10 are the bar number
+  UInt_t lastUnixTime[2][10];   
   
   int pmtSide   = 0;
   int barNumber = 0;
@@ -60,6 +69,8 @@ int main(int argc, char *argv[]){
 
   double renorm=1;
   Double_t lastBeamSpillNs=0;
+  Double_t lastUsTofNs=0;
+  int countUsTof[2]={0,0};
   
   TFile *toftf = new TFile(filename[0].c_str(), "read");
   TTree *toftemp = (TTree*)toftf->Get("tofTree");
@@ -68,29 +79,54 @@ int main(int argc, char *argv[]){
   toftemp->SetBranchAddress("tof",       &temptof       );
   toftemp->GetEntry(0);
   UInt_t firstTime = temptof->unixTime;
+  for (int i=0; i<toftemp->GetEntries(); i++){
+    toftemp->GetEntry(i);
+    if (temptof->channel!=15) continue;
+    allBeamSpillTimes[countSpills]=temptof->fakeTimeNs;
+    countSpills++;
+  }
+  
   toftemp->GetEntry(toftemp->GetEntries()-1);
   UInt_t lastTime = temptof->unixTime;
   renorm = (lastTime-firstTime)*1./100.;
   delete temptof;
   toftf->Close();
 
+
+  
   TH2D* mapHits = new TH2D("mapHits", "", 2, -0.5, 1.5, 10, 0.5, 10.5);
   TH2D* mapHitsTime = new TH2D("mapHitsTime", "", 100, firstTime, lastTime, 20, 1.5, 21.5);
-  TH2D* mapTimeDifference = new TH2D("mapTimeDifference", "", 100, -20, +20, 10, 0.5, 10.5);
+  TH2D* mapTimeDifference = new TH2D("mapTimeDifference", "", 100, -coincidenceWindow, +coincidenceWindow, 10, 0.5, 10.5);
   TH2D* mapHitsBeamSpill = new TH2D("mapHitsBeamSpill", "", 100, 0, 20e9, 20, 1.5, 21.5);
+
+  TH2D* barEff = new TH2D("barEff", "", 1, 0.5, 1.5, 10, 0.5, 10.5);
+  TH1D* usTof  = new TH1D("usTof", "", 100, 0, 3e9);
+  TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 3e9);
+  TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 3e9, 10, 0.5, 10.5);
+
   
   for (int itdc=0; itdc<2; itdc++){  
-  
+
+    RawDsTofCoincidence *tofCoin = NULL;
+    TTree *tofCoinTree = new TTree("tofTree","HPTPC Time Of Flight");
+    tofCoinTree->SetDirectory(0);
+    tofCoinTree->Branch("tofCoin", &tofCoin);
+
+    
     TFile *tofFile1 = new TFile(filename[itdc].c_str(), "read");
     TTree *tofTree1 = (TTree*)tofFile1->Get("tofTree");
     tofTree1->SetName("tofTree1");
     RawDsTofHeader *tof = NULL;
     tofTree1->SetBranchAddress("tof",       &tof       );
 
+    
     memset(lastFakeTimeNs, 0, sizeof(lastFakeTimeNs));
+    memset(lastUnixTime, 0, sizeof(lastUnixTime));
     pmtSide=0;
     barNumber=0;
     deltat=0;
+    lastBeamSpillNs=0;
+    lastUsTofNs=0;
     cout << "Entries TDC " << itdc+1 << " " << tofTree1->GetEntries() << endl;
 
     double tdcpmtmap[10], tdcbarmap[10];
@@ -106,7 +142,7 @@ int main(int argc, char *argv[]){
       }
     }
 
-    lastBeamSpillNs=0;
+    
     for (int ientry=0; ientry< tofTree1->GetEntries(); ientry++){
 
       tofTree1->GetEntry(ientry);
@@ -115,7 +151,14 @@ int main(int argc, char *argv[]){
 	lastBeamSpillNs=tof->fakeTimeNs;
 	continue;
       }
-      if (tof->channel==14){
+
+      // 1Hz clock
+      if (tof->channel==14) continue;
+      
+      if (tof->channel==13){
+	lastUsTofNs=tof->fakeTimeNs;
+	usTof->Fill(lastUsTofNs-lastBeamSpillNs);
+	countUsTof[itdc]++;
 	continue;
       }
       
@@ -130,10 +173,53 @@ int main(int argc, char *argv[]){
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
       //      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
-      lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;    
+      lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
+      lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
+
+
+      if (deltat<TMath::Abs(coincidenceWindow)){
+	if(tofCoin)
+	  delete tofCoin;
+
+	tofCoin = new RawDsTofCoincidence();
+	tofCoin->run=tof->run;	  
+	tofCoin->tdc=(Short_t)itdc+1;
+	tofCoin->bar=(Short_t)barNumber;
+
+	if (pmtSide==0){
+	  tofCoin->fakeTimeNs[0] = tof->fakeTimeNs;
+	  tofCoin->fakeTimeNs[1] = lastFakeTimeNs[1][barNumber-1];
+	  tofCoin->unixTime[0]   = tof->unixTime;
+	  tofCoin->unixTime[1]   = lastUnixTime[1][barNumber-1];;
+	} else{
+	  tofCoin->fakeTimeNs[0] = lastFakeTimeNs[0][barNumber-1];
+	  tofCoin->fakeTimeNs[1] = tof->fakeTimeNs;
+	  tofCoin->unixTime[0]   = lastUnixTime[0][barNumber-1];;
+	  tofCoin->unixTime[1]   = tof->unixTime;
+	}
+	
+	tofCoin->inSpill = isInSpill(tof->fakeTimeNs);
+	tofCoin->lastBeamSignal = lastBeamSpillNs;
+	tofCoin->lastUsTofSignal = lastUsTofNs;
+	tofCoinTree->Fill();
+
+	if ( tofCoin->inSpill==true ){
+	  barEff->Fill(1, barNumber) ;
+	  coincidenceInSpill->Fill(tof->fakeTimeNs-tofCoin->lastBeamSignal);
+	  coincidenceInSpillBar->Fill(tof->fakeTimeNs-tofCoin->lastBeamSignal, barNumber);
+
+	}
+	
+      }
     }
 
     tofFile1->Close();
+
+    
+    cout << "Writing output " << Form("%s/DsTOFcoincidenceRun%d_tdc%d.root", dirname.c_str(), run, itdc+1) << endl;
+    TFile *fout = new TFile(Form("%s/DsTOFcoincidenceRun%d_tdc%d.root", dirname.c_str(), run, itdc+1), "recreate");
+    tofCoinTree->Write("tofCoinTree");
+    fout->Close();
   }
 
   gStyle->SetOptStat(0);
@@ -201,14 +287,82 @@ int main(int argc, char *argv[]){
   c4->Print(Form("%s/Run%d_hitBeamSpillMap.pdf", dirname.c_str(), run));
 
 
-  
+  TCanvas *c5 = new TCanvas("c5");
+  c5->SetRightMargin(0.18);
+  barEff->SetTitle(Form("Run %d: bar coincidence efficiency;;Bar;Efficiency", run));
+  barEff->SetMarkerSize(2.0);
+  double norm;
+  cout << "usTof hits : " << countUsTof[0] << " " << countUsTof[1] << endl;
+  for (int ibar=0; ibar<10; ibar++){
+    if (ibar<5) norm = 1./countUsTof[1];
+    else norm = 1./countUsTof[0];
+    barEff->SetBinContent(1, ibar+1, barEff->GetBinContent(1, ibar+1)*norm);
 
+  }
+  barEff->Draw("colz text");
+  c5->Print(Form("%s/Run%d_barEfficiency.png", dirname.c_str(), run));
+  c5->Print(Form("%s/Run%d_barEfficiency.pdf", dirname.c_str(), run));
+
+  TCanvas *c6 = new TCanvas("c6");
+  c6->SetRightMargin(0.18);
+  coincidenceInSpill->SetLineWidth(2);
+  coincidenceInSpill->SetLineColor(kBlue);
+  usTof->SetLineWidth(2);
+  usTof->SetLineColor(kRed);
+  coincidenceInSpill->Scale(1./3);
+  usTof->Scale(1./3);
+
+  double ymax=0;
+  if (usTof->GetMaximum()>ymax) ymax = usTof->GetMaximum();
+  if (coincidenceInSpill->GetMaximum()>ymax) ymax = coincidenceInSpill->GetMaximum();
+  coincidenceInSpill->SetMaximum(ymax*1.1);
+  TLegend *leg = new TLegend(0.6, 0.6, 0.89, 0.89);
+  leg->AddEntry(usTof, "Upstream TOF", "l");
+  leg->AddEntry( coincidenceInSpill, "Downstream TOF", "l");
+  coincidenceInSpill->SetTitle(Form("Run %d: bar coincidences in spill;Time from last beam spill [ns];Hz", run));
+  coincidenceInSpill->Draw("histo");
+  usTof->Draw("histo same");
+  leg->Draw();
+  c6->Print(Form("%s/Run%d_coincidenceInSpill.png", dirname.c_str(), run));
+  c6->Print(Form("%s/Run%d_coincidenceInSpill.pdf", dirname.c_str(), run));
+
+  TCanvas *c7 = new TCanvas("c7");
+  c7->SetRightMargin(0.18);
+  c7->SetLogz();
+  coincidenceInSpillBar->SetTitle(Form("Run %d: bar coincidences in spill;Time from last beam spill [ns];Bar;Hz", run));
+  coincidenceInSpillBar->Scale(1./3);
+  coincidenceInSpillBar->Draw("colz");
+  c7->Print(Form("%s/Run%d_coincidenceInSpillBar.png", dirname.c_str(), run));
+  c7->Print(Form("%s/Run%d_coincidenceInSpillBar.pdf", dirname.c_str(), run));
+  
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
   mapTimeDifference->Write();
   mapHitsTime->Write();
   mapHitsBeamSpill->Write();
+  barEff->Write();
+  coincidenceInSpill->Write();
+  coincidenceInSpillBar->Write();
   fout->Close();
 }
 
 
+
+bool isInSpill( double timeA){
+
+  bool inspill = false;
+
+  for (int i=0; i<countSpills-1; i++){
+    if (timeA>allBeamSpillTimes[i] && timeA<allBeamSpillTimes[i+1]){
+
+      if ((allBeamSpillTimes[i+1]-allBeamSpillTimes[i])<4e9) return true;
+      else return false;
+
+    }
+    
+  }
+  
+
+  return false;
+
+}

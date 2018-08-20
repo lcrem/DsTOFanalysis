@@ -89,9 +89,9 @@ int main(int argc, char *argv[]){
 
     
 	if (channel1!=0){
-	  if (channel1==15) beamSpill1 = ticks1;
-	  if (channel1==13) usTof1 = ticks1;
-	  triggerTimeNs1 = ticks1*clockTicksNs;
+	  // if (channel1==15) beamSpill1 = ticks1;
+	  // if (channel1==13) usTof1 = ticks1;
+	  // triggerTimeNs1 = ticks1*clockTicksNs;
 	  fakeTimeNs1    = ( countClock1*TMath::Power(2, 21) +ticks1)*clockTicksNs;
 	  // cout << run << " " << channel1 << endl;
 	  
@@ -99,15 +99,12 @@ int main(int argc, char *argv[]){
 	    delete tof;
 
 	  tof = new RawDsTofHeader();
-	  tof->run=run;	  
-	  tof->tdc=itdc+1; 
-	  tof->channel=channel1; 
+	  tof->run=(Short_t)run;	  
+	  tof->tdc=(Short_t)itdc+1; 
+	  tof->channel=(Short_t)channel1; 
 	  tof->ticks=ticks1; 
 	  tof->clockCounter=countClock1; 
-	  tof->beamSpill=beamSpill1; 
-	  tof->usTof=usTof1; 
 	  tof->unixTime=unixTime1; 
-	  tof->triggerTimeNs=triggerTimeNs1; 
 	  tof->fakeTimeNs=fakeTimeNs1; 
 	  tofTree->Fill();
 	}
