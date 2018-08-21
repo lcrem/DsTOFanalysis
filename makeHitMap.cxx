@@ -23,11 +23,11 @@
 
 using namespace std;
 
-Double_t allBeamSpillTimes[10000];
-Int_t countSpills=0;
+Double_t allBeamSpillTimes[2][2000];
+Int_t countSpills[2]={0,0};
 
 
-bool isInSpill( double timeA);
+bool isInSpill( double timeA, int itdc);
 
 int main(int argc, char *argv[]){
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
   }
 
   string line;
-  Double_t coincidenceWindow = 20.;
+  Double_t coincidenceWindow = 20;
 
   Double_t lastFakeTimeNs[2][10]; // last fake time ns 0,1 are for PMT A and B, and 0-10 are the bar number
   UInt_t lastUnixTime[2][10];   
@@ -68,30 +68,34 @@ int main(int argc, char *argv[]){
   Double_t deltat = 0;
 
   double renorm=1;
-  Double_t lastBeamSpillNs=0;
+  Double_t lastRawBeamSpillNs=0;
+  Double_t lastDelayedBeamSpillNs=0;
   Double_t lastUsTofNs=0;
   int countUsTof[2]={0,0};
   
-  TFile *toftf = new TFile(filename[0].c_str(), "read");
-  TTree *toftemp = (TTree*)toftf->Get("tofTree");
-  toftemp->SetName("tofTree1");
-  RawDsTofHeader *temptof = NULL;
-  toftemp->SetBranchAddress("tof",       &temptof       );
-  toftemp->GetEntry(0);
-  UInt_t firstTime = temptof->unixTime;
-  for (int i=0; i<toftemp->GetEntries(); i++){
-    toftemp->GetEntry(i);
-    if (temptof->channel!=15) continue;
-    allBeamSpillTimes[countSpills]=temptof->fakeTimeNs;
-    countSpills++;
+  UInt_t firstTime, lastTime;
+  for (int itdc=0; itdc<2; itdc++){
+    TFile *toftf = new TFile(filename[itdc].c_str(), "read");
+    TTree *toftemp = (TTree*)toftf->Get("tofTree");
+    toftemp->SetName("tofTree1");
+    RawDsTofHeader *temptof = NULL;
+    toftemp->SetBranchAddress("tof",       &temptof       );
+    toftemp->GetEntry(0);
+    firstTime = temptof->unixTime;
+    for (int i=0; i<toftemp->GetEntries(); i++){
+      toftemp->GetEntry(i);
+      if (temptof->channel!=15) continue;
+      allBeamSpillTimes[itdc][countSpills[itdc]]=temptof->fakeTimeNs;
+      countSpills[itdc]++;
+    }
+  
+    toftemp->GetEntry(toftemp->GetEntries()-1);
+    lastTime = temptof->unixTime;
+    renorm = (lastTime-firstTime)*1./100.;
+    delete temptof;
+    toftf->Close();
   }
   
-  toftemp->GetEntry(toftemp->GetEntries()-1);
-  UInt_t lastTime = temptof->unixTime;
-  renorm = (lastTime-firstTime)*1./100.;
-  delete temptof;
-  toftf->Close();
-
 
   
   TH2D* mapHits = new TH2D("mapHits", "", 2, -0.5, 1.5, 10, 0.5, 10.5);
@@ -100,9 +104,9 @@ int main(int argc, char *argv[]){
   TH2D* mapHitsBeamSpill = new TH2D("mapHitsBeamSpill", "", 100, 0, 20e9, 20, 1.5, 21.5);
 
   TH2D* barEff = new TH2D("barEff", "", 1, 0.5, 1.5, 10, 0.5, 10.5);
-  TH1D* usTof  = new TH1D("usTof", "", 100, 0, 3e9);
-  TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 3e9);
-  TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 3e9, 10, 0.5, 10.5);
+  TH1D* usTof  = new TH1D("usTof", "", 100, 0, 1e9);
+  TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 1e9);
+  TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 1e9, 10, 0.5, 10.5);
 
   
   for (int itdc=0; itdc<2; itdc++){  
@@ -125,7 +129,8 @@ int main(int argc, char *argv[]){
     pmtSide=0;
     barNumber=0;
     deltat=0;
-    lastBeamSpillNs=0;
+    lastRawBeamSpillNs=0;
+    lastDelayedBeamSpillNs=0;
     lastUsTofNs=0;
     cout << "Entries TDC " << itdc+1 << " " << tofTree1->GetEntries() << endl;
 
@@ -148,16 +153,18 @@ int main(int argc, char *argv[]){
       tofTree1->GetEntry(ientry);
 
       if (tof->channel==15){
-	lastBeamSpillNs=tof->fakeTimeNs;
+	lastRawBeamSpillNs=tof->fakeTimeNs;
 	continue;
       }
 
-      // 1Hz clock
-      if (tof->channel==14) continue;
+      if (tof->channel==14){
+	lastDelayedBeamSpillNs=tof->fakeTimeNs;
+	continue;
+      }
       
       if (tof->channel==13){
 	lastUsTofNs=tof->fakeTimeNs;
-	usTof->Fill(lastUsTofNs-lastBeamSpillNs);
+	usTof->Fill(lastUsTofNs-lastDelayedBeamSpillNs);
 	countUsTof[itdc]++;
 	continue;
       }
@@ -165,11 +172,13 @@ int main(int argc, char *argv[]){
       pmtSide   = tdcpmtmap[tof->channel-1];
       barNumber = tdcbarmap[tof->channel-1];
 
+      if (pmtSide==-1) continue;
+      
       if (pmtSide==0) deltat = tof->fakeTimeNs - lastFakeTimeNs[1][barNumber-1];
       else deltat = lastFakeTimeNs[0][barNumber-1] - tof->fakeTimeNs;
 
       mapHitsTime->Fill(tof->unixTime, barNumber*2+pmtSide, 1./renorm);
-      mapHitsBeamSpill->Fill(tof->fakeTimeNs-lastBeamSpillNs, barNumber*2+pmtSide, 1./renorm);
+      mapHitsBeamSpill->Fill(tof->fakeTimeNs-lastDelayedBeamSpillNs, barNumber*2+pmtSide, 1./renorm);
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
       //      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
@@ -198,18 +207,20 @@ int main(int argc, char *argv[]){
 	  tofCoin->unixTime[1]   = tof->unixTime;
 	}
 	
-	tofCoin->inSpill = isInSpill(tof->fakeTimeNs);
-	tofCoin->lastBeamSignal = lastBeamSpillNs;
+	//	tofCoin->inSpill = isInSpill(tof->fakeTimeNs, itdc);
+	tofCoin->inSpill = 0;
+	if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9))  ) tofCoin->inSpill=1;
+	tofCoin->lastRawBeamSignal = lastRawBeamSpillNs;
+	tofCoin->lastDelayedBeamSignal = lastDelayedBeamSpillNs;
 	tofCoin->lastUsTofSignal = lastUsTofNs;
 	tofCoinTree->Fill();
 
 	if ( tofCoin->inSpill==true ){
 	  barEff->Fill(1, barNumber) ;
-	  coincidenceInSpill->Fill(tof->fakeTimeNs-tofCoin->lastBeamSignal);
-	  coincidenceInSpillBar->Fill(tof->fakeTimeNs-tofCoin->lastBeamSignal, barNumber);
-
+	  coincidenceInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal);
+	  coincidenceInSpillBar->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber);
 	}
-	
+	lastFakeTimeNs[0][barNumber-1] = lastFakeTimeNs[1][barNumber-1] = 0;
       }
     }
 
@@ -309,8 +320,8 @@ int main(int argc, char *argv[]){
   coincidenceInSpill->SetLineColor(kBlue);
   usTof->SetLineWidth(2);
   usTof->SetLineColor(kRed);
-  coincidenceInSpill->Scale(1./3);
-  usTof->Scale(1./3);
+  coincidenceInSpill->Scale(1/renorm);
+  usTof->Scale(1/renorm);
 
   double ymax=0;
   if (usTof->GetMaximum()>ymax) ymax = usTof->GetMaximum();
@@ -321,6 +332,7 @@ int main(int argc, char *argv[]){
   leg->AddEntry( coincidenceInSpill, "Downstream TOF", "l");
   coincidenceInSpill->SetTitle(Form("Run %d: bar coincidences in spill;Time from last beam spill [ns];Hz", run));
   coincidenceInSpill->Draw("histo");
+  cout << "Total number of coincidences in spill " << coincidenceInSpill->Integral() << endl;
   usTof->Draw("histo same");
   leg->Draw();
   c6->Print(Form("%s/Run%d_coincidenceInSpill.png", dirname.c_str(), run));
@@ -330,7 +342,7 @@ int main(int argc, char *argv[]){
   c7->SetRightMargin(0.18);
   c7->SetLogz();
   coincidenceInSpillBar->SetTitle(Form("Run %d: bar coincidences in spill;Time from last beam spill [ns];Bar;Hz", run));
-  coincidenceInSpillBar->Scale(1./3);
+  coincidenceInSpillBar->Scale(1/renorm);
   coincidenceInSpillBar->Draw("colz");
   c7->Print(Form("%s/Run%d_coincidenceInSpillBar.png", dirname.c_str(), run));
   c7->Print(Form("%s/Run%d_coincidenceInSpillBar.pdf", dirname.c_str(), run));
@@ -348,14 +360,14 @@ int main(int argc, char *argv[]){
 
 
 
-bool isInSpill( double timeA){
+bool isInSpill( double timeA, int itdc){
 
   bool inspill = false;
 
-  for (int i=0; i<countSpills-1; i++){
-    if (timeA>allBeamSpillTimes[i] && timeA<allBeamSpillTimes[i+1]){
+  for (int i=0; i<countSpills[itdc]-1; i++){
+    if (timeA>allBeamSpillTimes[itdc][i] && timeA<allBeamSpillTimes[itdc][i+1]){
 
-      if ((allBeamSpillTimes[i+1]-allBeamSpillTimes[i])<4e9) return true;
+      if ((allBeamSpillTimes[itdc][i+1]-allBeamSpillTimes[itdc][i])<4e9) return true;
       else return false;
 
     }

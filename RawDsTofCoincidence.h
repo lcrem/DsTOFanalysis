@@ -23,10 +23,11 @@ class RawDsTofCoincidence : public TObject
   Bool_t inSpill;
   Double_t fakeTimeNs[2];
   UInt_t unixTime[2]; 
-  Double_t lastBeamSignal;
+  Double_t lastRawBeamSignal;
+  Double_t lastDelayedBeamSignal;
   Double_t lastUsTofSignal;
 
-  ClassDef(RawDsTofCoincidence, 1); 
+  ClassDef(RawDsTofCoincidence, 2); 
 
 }; 
 
