@@ -71,6 +71,7 @@ int main(int argc, char *argv[]){
   Double_t lastRawBeamSpillNs=0;
   Double_t lastDelayedBeamSpillNs=0;
   Double_t lastUsTofNs=0;
+  Double_t tempFakeTimeNs=0;
   int countUsTof[2]={0,0};
   
   UInt_t firstTime, lastTime;
@@ -108,6 +109,8 @@ int main(int argc, char *argv[]){
   TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 1e9);
   TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 1e9, 10, 0.5, 10.5);
 
+  TH1D* timeBetweenHits = new TH1D("timeBetweenHits", "", 100000, 0, 1e5);
+  
   
   for (int itdc=0; itdc<2; itdc++){  
 
@@ -185,7 +188,9 @@ int main(int argc, char *argv[]){
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
+      timeBetweenHits->Fill(tof->fakeTimeNs - tempFakeTimeNs);
 
+      tempFakeTimeNs = tof->fakeTimeNs;
       if (TMath::Abs(deltat)<coincidenceWindow){
 	if(tofCoin)
 	  delete tofCoin;
@@ -346,6 +351,14 @@ int main(int argc, char *argv[]){
   coincidenceInSpillBar->Draw("colz");
   c7->Print(Form("%s/Run%d_coincidenceInSpillBar.png", dirname.c_str(), run));
   c7->Print(Form("%s/Run%d_coincidenceInSpillBar.pdf", dirname.c_str(), run));
+
+  TCanvas *c8 = new TCanvas("c8");
+  c8->SetRightMargin(0.18);
+  timeBetweenHits->SetMaximum(300);
+  timeBetweenHits->Draw();
+  c8->Print(Form("%s/Run%d_timeBetweenHits.png", dirname.c_str(), run));
+  c8->Print(Form("%s/Run%d_timeBetweenHits.pdf", dirname.c_str(), run));
+
   
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
@@ -355,6 +368,7 @@ int main(int argc, char *argv[]){
   barEff->Write();
   coincidenceInSpill->Write();
   coincidenceInSpillBar->Write();
+  timeBetweenHits->Write();
   fout->Close();
 }
 

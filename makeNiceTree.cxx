@@ -85,10 +85,13 @@ int main(int argc, char *argv[]){
     
 	stringstream ss(line);
 	ss >> channel1 >> temp >> ticks1;
-	if (ticks1<oldticks) countClock1++;
 
-    
-	if (channel1!=0){
+	if (channel1==0){
+	  if (ticks1<oldticks)
+	    countClock1++;
+	  oldticks=ticks1;
+ 	} else {
+
 	  // if (channel1==15) beamSpill1 = ticks1;
 	  // if (channel1==13) usTof1 = ticks1;
 	  // triggerTimeNs1 = ticks1*clockTicksNs;
@@ -108,7 +111,6 @@ int main(int argc, char *argv[]){
 	  tof->fakeTimeNs=fakeTimeNs1; 
 	  tofTree->Fill();
 	}
-	oldticks=ticks1;
       }
 
       cout << "Writing output " << Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1) << endl;
