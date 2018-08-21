@@ -40,13 +40,13 @@ do
 	continue
     fi
 
+    chmod 777 $DATADIR/run$runNumber
+    chmod 777 $DATADIR/run$runNumber/*
+
     if [ "$runNumber" == $LASTRUN ]; then
 	continue
     fi
     
-
-    chmod 777 $DATADIR/run$runNumber
-    chmod 777 $DATADIR/run$runNumber/*
     hitmap=$DATADIR/run$runNumber/Run${runNumber}_histos.root
     niceTree=$DATADIR/run${runNumber}/DsTOFtreeRun${runNumber}_tdc2.root
 
