@@ -24,7 +24,7 @@ cat  <<EOF
   <div>
     <h1>High Pressure TPC Downstream TOF</h1>
     <h2>Last rootified run is $RUNNUMBER. Data shouldn't be older than 1.5 hours!</h2>
-
+    <a href="hvstatus.html">Click here to check HV status (updates every 15 mins)</a>
 </div>
 EOF
 
