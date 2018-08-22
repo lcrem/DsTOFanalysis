@@ -40,6 +40,10 @@ do
 	continue
     fi
 
+    if [ "$runNumber" == 145 ]; then
+	continue
+    fi
+
     chmod 777 $DATADIR/run$runNumber
     chmod 777 $DATADIR/run$runNumber/*
 
