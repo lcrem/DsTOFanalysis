@@ -109,8 +109,13 @@ int main(int argc, char *argv[]){
   TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 1e9);
   TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 1e9, 10, 0.5, 10.5);
 
-  TH1D* timeBetweenHits = new TH1D("timeBetweenHits", "", 100000, 0, 1e5);
-  
+  TH1D* timeBetweenHits = new TH1D("timeBetweenHits", "", 1000, 0, 1e4);
+  TH1D* tempHist[2][10];
+  for (int ip=0; ip<2; ip++){
+    for (int ibar=0; ibar<10; ibar++){
+      tempHist[ip][ibar]=new TH1D(Form("h_%d_%d", ip, ibar), "", 1000, 0, 1e4);
+    }
+  }
   
   for (int itdc=0; itdc<2; itdc++){  
 
@@ -185,10 +190,11 @@ int main(int argc, char *argv[]){
       mapHits->Fill(pmtSide, barNumber);
       mapTimeDifference->Fill(deltat, barNumber);
       //      cout << tof->channel << " " << pmtSide << " " << barNumber << endl;
+      timeBetweenHits->Fill(tof->fakeTimeNs - lastFakeTimeNs[pmtSide][barNumber-1]);
+      tempHist[pmtSide][barNumber-1]->Fill(tof->fakeTimeNs - lastFakeTimeNs[pmtSide][barNumber-1]);
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
-      timeBetweenHits->Fill(tof->fakeTimeNs - tempFakeTimeNs);
 
       tempFakeTimeNs = tof->fakeTimeNs;
       if (TMath::Abs(deltat)<coincidenceWindow){
@@ -369,6 +375,11 @@ int main(int argc, char *argv[]){
   coincidenceInSpill->Write();
   coincidenceInSpillBar->Write();
   timeBetweenHits->Write();
+  for (int ip=0; ip<2; ip++){
+    for (int ibar=0; ibar<10; ibar++){
+      tempHist[ip][ibar]->Write();
+    }
+  }
   fout->Close();
 }
 

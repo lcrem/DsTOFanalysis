@@ -38,7 +38,9 @@ message("HEADER_FILES is set to ${HEADER_FILES}" )
 message("SOURCE_FILES is set to ${SOURCE_FILES}" )
 
 #---Create  a main program using the library
-add_executable(makeNiceTree makeNiceTree.cxx)
+add_executable(makeNiceTree makeNiceTree.cxx) 
 target_link_libraries(makeNiceTree ${ROOT_LIBRARIES} dstof)
 add_executable(makeHitMap makeHitMap.cxx)
 target_link_libraries(makeHitMap ${ROOT_LIBRARIES} dstof)
+add_executable(makeDebugTree makeDebugTree.cxx) 
+target_link_libraries(makeDebugTree ${ROOT_LIBRARIES} dstof)
