@@ -18,7 +18,7 @@ const int tdc2bar[15] = { 5,  5, 4, 4, 3, 3, 2, 2, 1, 1, -1, -1, -1, -1, -1 };
 const int tdc1pmt[15] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, -1, -1, -1, -1, -1}; // 0 is PMT A and 1 is PMT B
 const int tdc2pmt[15] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, -1, -1, -1, -1, -1}; 
 
-const double clockTicksNs=0.025;
+const double clockTicksNs=0.025/1.024;
 
 const std::string whereIsMyTOFdata="/unix/dune/hptpctof/";
 

@@ -21,11 +21,11 @@ class RawDsTofHeader : public TObject
   Short_t tdc; 
   Short_t channel; 
   Int_t ticks; 
-  Int_t clockCounter; 
+  Int_t count25k; 
   UInt_t unixTime; 
   Double_t fakeTimeNs; 
 
-  ClassDef(RawDsTofHeader, 3); 
+  ClassDef(RawDsTofHeader, 5); 
 
 }; 
 

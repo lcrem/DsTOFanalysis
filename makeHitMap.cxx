@@ -72,6 +72,7 @@ int main(int argc, char *argv[]){
   Double_t lastDelayedBeamSpillNs=0;
   Double_t lastUsTofNs=0;
   Double_t tempFakeTimeNs=0;
+  Bool_t inSpill=false;
   int countUsTof[2]={0,0};
   
   UInt_t firstTime, lastTime;
@@ -103,6 +104,7 @@ int main(int argc, char *argv[]){
   TH2D* mapHitsTime = new TH2D("mapHitsTime", "", 100, firstTime, lastTime, 20, 1.5, 21.5);
   TH2D* mapTimeDifference = new TH2D("mapTimeDifference", "", 100, -coincidenceWindow, +coincidenceWindow, 10, 0.5, 10.5);
   TH2D* mapHitsBeamSpill = new TH2D("mapHitsBeamSpill", "", 100, 0, 20e9, 20, 1.5, 21.5);
+  TH2D* hitsInSpill = new TH2D("hitsInSpill", "", 100, 0, 1e9, 20, 1.5, 21.5);
 
   TH2D* barEff = new TH2D("barEff", "", 1, 0.5, 1.5, 10, 0.5, 10.5);
   TH1D* usTof  = new TH1D("usTof", "", 100, 0, 1e9);
@@ -195,6 +197,14 @@ int main(int argc, char *argv[]){
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
+      if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9))  ){
+	inSpill=true;
+	hitsInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber*2+pmtSide);
+      }else{
+	inSpill=false;
+      }
+      
+      
 
       tempFakeTimeNs = tof->fakeTimeNs;
       if (TMath::Abs(deltat)<coincidenceWindow){
@@ -219,8 +229,7 @@ int main(int argc, char *argv[]){
 	}
 	
 	//	tofCoin->inSpill = isInSpill(tof->fakeTimeNs, itdc);
-	tofCoin->inSpill = 0;
-	if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9))  ) tofCoin->inSpill=1;
+	tofCoin->inSpill = inSpill;
 	tofCoin->lastRawBeamSignal = lastRawBeamSpillNs;
 	tofCoin->lastDelayedBeamSignal = lastDelayedBeamSpillNs;
 	tofCoin->lastUsTofSignal = lastUsTofNs;
@@ -366,6 +375,19 @@ int main(int argc, char *argv[]){
   c8->Print(Form("%s/Run%d_timeBetweenHits.pdf", dirname.c_str(), run));
 
   
+  TCanvas *c9 = new TCanvas("c9");
+  c9->SetRightMargin(0.18);
+  c9->SetLogz();
+  hitsInSpill->SetTitle(Form("Run %d: hits in spill;Time from last beam spill [ns];PMT;Hz", run));
+  hitsInSpill->Scale(1/renorm);
+  for (int i=0; i<10; i++){
+    hitsInSpill->GetYaxis()->SetBinLabel(2*i+1,Form("%dA", i+1));
+    hitsInSpill->GetYaxis()->SetBinLabel(2*i+2,Form("%dB", i+1));
+  }
+  hitsInSpill->Draw("colz");
+  c9->Print(Form("%s/Run%d_hitsInSpillBar.png", dirname.c_str(), run));
+  c9->Print(Form("%s/Run%d_hitsInSpillBar.pdf", dirname.c_str(), run));
+  
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
   mapTimeDifference->Write();
@@ -374,12 +396,9 @@ int main(int argc, char *argv[]){
   barEff->Write();
   coincidenceInSpill->Write();
   coincidenceInSpillBar->Write();
+  hitsInSpill->Write();
   timeBetweenHits->Write();
-  for (int ip=0; ip<2; ip++){
-    for (int ibar=0; ibar<10; ibar++){
-      tempHist[ip][ibar]->Write();
-    }
-  }
+
   fout->Close();
 }
 
