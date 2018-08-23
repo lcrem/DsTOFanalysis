@@ -60,17 +60,21 @@ int main(int argc, char *argv[]){
 
     Int_t channel1;
     Int_t ticks1;
+    UInt_t unixTime1;
+    Double_t fakeTimeNs1;    
+    Double_t fakeTimeNs2;    
+    Double_t lastFakeTimeNs1;
     Int_t countClock1=0;
-    Int_t beamSpill1;
-    Int_t unixTime1;
-    Int_t usTof1;
-    Double_t triggerTimeNs1;
-    Double_t fakeTimeNs1;
-    Int_t oldticks=0;
+    Int_t count25k=0;
+    Int_t lastClockTdc=0;
+    Int_t tdcDiff;
     
     string temp;
     RawDsTofHeader *tof = NULL;
 
+    cout << "Writing output " << Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1) << endl;
+    TFile *fout = new TFile(Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1), "recreate");
+    TH1D *hClock = new TH1D("hClock", "", 100, -TMath::Power(2,21), TMath::Power(2,21));
     TTree *tofTree = new TTree("tofTree","HPTPC Time Of Flight");
     tofTree->Branch("tof", &tof);
   
@@ -86,16 +90,22 @@ int main(int argc, char *argv[]){
 	stringstream ss(line);
 	ss >> channel1 >> temp >> ticks1;
 
-	if (channel1==0){
-	  if (ticks1<oldticks)
-	    countClock1++;
-	  oldticks=ticks1;
- 	} else {
+	if(channel1==0) {
+	  count25k++;
+	  hClock->Fill(ticks1-lastClockTdc);
+	  if ((ticks1-lastClockTdc)<0) countClock1++;
+	  lastClockTdc=ticks1;
+	  fakeTimeNs1=count25k*40e3;
+	}  else {
 
-	  // if (channel1==15) beamSpill1 = ticks1;
-	  // if (channel1==13) usTof1 = ticks1;
-	  // triggerTimeNs1 = ticks1*clockTicksNs;
-	  fakeTimeNs1    = ( countClock1*TMath::Power(2, 21) +ticks1)*clockTicksNs;
+	  tdcDiff=ticks1-lastClockTdc;
+
+	  if(tdcDiff<-400000) tdcDiff+=TMath::Power(2,21);
+
+	  fakeTimeNs1 = count25k*40.e3  + tdcDiff*clockTicksNs;
+	  fakeTimeNs2    = ( countClock1*TMath::Power(2, 21) +ticks1)*clockTicksNs;
+	  //	  cout << fakeTimeNs1 << " " << fakeTimeNs2 << " " << fakeTimeNs1-fakeTimeNs2 << endl;
+	  
 	  // cout << run << " " << channel1 << endl;
 	  
 	  if(tof)
@@ -106,16 +116,15 @@ int main(int argc, char *argv[]){
 	  tof->tdc=(Short_t)itdc+1; 
 	  tof->channel=(Short_t)channel1; 
 	  tof->ticks=ticks1; 
-	  tof->clockCounter=countClock1; 
+	  tof->count25k=count25k; 
 	  tof->unixTime=unixTime1; 
 	  tof->fakeTimeNs=fakeTimeNs1; 
 	  tofTree->Fill();
 	}
       }
 
-      cout << "Writing output " << Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1) << endl;
-      TFile *fout = new TFile(Form("%s/DsTOFtreeRun%d_tdc%d.root", dirname.c_str(), run, itdc+1), "recreate");
       tofTree->Write("tofTree");
+      hClock->Write("hClock");
       fout->Close();
 
       f.close();
