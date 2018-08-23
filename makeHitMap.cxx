@@ -385,8 +385,8 @@ int main(int argc, char *argv[]){
     hitsInSpill->GetYaxis()->SetBinLabel(2*i+2,Form("%dB", i+1));
   }
   hitsInSpill->Draw("colz");
-  c9->Print(Form("%s/Run%d_coincidenceInSpillBar.png", dirname.c_str(), run));
-  c9->Print(Form("%s/Run%d_coincidenceInSpillBar.pdf", dirname.c_str(), run));
+  c9->Print(Form("%s/Run%d_hitsInSpillBar.png", dirname.c_str(), run));
+  c9->Print(Form("%s/Run%d_hitsInSpillBar.pdf", dirname.c_str(), run));
   
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
