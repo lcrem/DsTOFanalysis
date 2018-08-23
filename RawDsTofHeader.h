@@ -25,7 +25,7 @@ class RawDsTofHeader : public TObject
   UInt_t unixTime; 
   Double_t fakeTimeNs; 
 
-  ClassDef(RawDsTofHeader, 3); 
+  ClassDef(RawDsTofHeader, 4); 
 
 }; 
 
