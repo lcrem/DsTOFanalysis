@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
   TH2D* mapHitsTime = new TH2D("mapHitsTime", "", 100, firstTime, lastTime, 20, 1.5, 21.5);
   TH2D* mapTimeDifference = new TH2D("mapTimeDifference", "", 100, -coincidenceWindow, +coincidenceWindow, 10, 0.5, 10.5);
   TH2D* mapHitsBeamSpill = new TH2D("mapHitsBeamSpill", "", 100, 0, 20e9, 20, 1.5, 21.5);
-  TH2D* hitsInSpill = new TH2D("hitsInSpill", "", 100, 0, 1e9, 20, 0.5, 20.5);
+  TH2D* hitsInSpill = new TH2D("hitsInSpill", "", 100, 0, 1e9, 20, 1.5, 21.5);
 
   TH2D* barEff = new TH2D("barEff", "", 1, 0.5, 1.5, 10, 0.5, 10.5);
   TH1D* usTof  = new TH1D("usTof", "", 100, 0, 1e9);
