@@ -76,6 +76,12 @@ for ((run=$RUNNUMBER;run>LASTRUN;run-=1)) ; do
 							1%;
   							margin-bottom:
 						0.5em;">
+    <img src="plots/Run${run}_hitsInSpillBar.png" style="float: left;
+							width: 47%;
+							margin-right:
+							1%;
+  							margin-bottom:
+						0.5em;">
 
   </div>
 EOF
