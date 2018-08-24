@@ -74,6 +74,14 @@ int main(int argc, char *argv[]){
   Double_t tempFakeTimeNs=0;
   Bool_t inSpill=false;
   int countUsTof[2]={0,0};
+
+  Double_t usTofNs;
+  
+  TTree *usTofTree[2];
+  usTofTree[0]= new TTree ("usTofTree_0", "us TOF TDC 1");
+  usTofTree[1]= new TTree ("usTofTree_1", "us TOF TDC 2");
+  usTofTree[0]->Branch("usTofNs", &usTofNs, "usTofNs/D");
+  usTofTree[1]->Branch("usTofNs", &usTofNs, "usTofNs/D");
   
   UInt_t firstTime, lastTime;
   for (int itdc=0; itdc<2; itdc++){
@@ -86,9 +94,13 @@ int main(int argc, char *argv[]){
     firstTime = temptof->unixTime;
     for (int i=0; i<toftemp->GetEntries(); i++){
       toftemp->GetEntry(i);
-      if (temptof->channel!=15) continue;
-      allBeamSpillTimes[itdc][countSpills[itdc]]=temptof->fakeTimeNs;
-      countSpills[itdc]++;
+      if (temptof->channel==15){
+	allBeamSpillTimes[itdc][countSpills[itdc]]=temptof->fakeTimeNs;
+	countSpills[itdc]++;
+      }else if (temptof->channel==14){
+	usTofNs=temptof->fakeTimeNs;
+	usTofTree[itdc]->Fill();
+      }
     }
   
     toftemp->GetEntry(toftemp->GetEntries()-1);
@@ -97,8 +109,10 @@ int main(int argc, char *argv[]){
     delete temptof;
     toftf->Close();
   }
-  
 
+  usTofTree[0]->BuildIndex("usTofNs");
+  usTofTree[1]->BuildIndex("usTofNs");
+  cout << "Filled usTof Tree " << endl;
   
   TH2D* mapHits = new TH2D("mapHits", "", 2, -0.5, 1.5, 10, 0.5, 10.5);
   TH2D* mapHitsTime = new TH2D("mapHitsTime", "", 100, firstTime, lastTime, 20, 1.5, 21.5);
@@ -118,7 +132,8 @@ int main(int argc, char *argv[]){
       tempHist[ip][ibar]=new TH1D(Form("h_%d_%d", ip, ibar), "", 1000, 0, 1e4);
     }
   }
-  
+
+  int ustofentry=0;
   for (int itdc=0; itdc<2; itdc++){  
 
     RawDsTofCoincidence *tofCoin = NULL;
@@ -232,7 +247,15 @@ int main(int argc, char *argv[]){
 	tofCoin->inSpill = inSpill;
 	tofCoin->lastRawBeamSignal = lastRawBeamSpillNs;
 	tofCoin->lastDelayedBeamSignal = lastDelayedBeamSpillNs;
-	tofCoin->lastUsTofSignal = lastUsTofNs;
+	// tofCoin->usTofSignal = lastUsTofNs;
+	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
+	if (ustofentry==-1) {
+	  //	  cout << " WE HAVE A PROBLEM, US TOF ENTRY NOT FOUND " << endl;
+	  tofCoin->usTofSignal = -1;
+	} else {
+	  usTofTree[itdc]->GetEntry(ustofentry);
+	  tofCoin->usTofSignal = usTofNs;
+	}
 	tofCoinTree->Fill();
 
 	if ( tofCoin->inSpill==true ){
