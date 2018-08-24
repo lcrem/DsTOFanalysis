@@ -44,6 +44,14 @@ do
 	continue
     fi
 
+    if [ "$runNumber" == 724 ]; then
+	continue
+    fi
+
+    if [ "$runNumber" == 758 ]; then
+	continue
+    fi
+
     chmod 777 $DATADIR/run$runNumber
     chmod 777 $DATADIR/run$runNumber/*
 
@@ -99,6 +107,7 @@ do
     cp $DATADIR/run$runNumber/Run${runNumber}_barEfficiency.png          $htmlPageDir/plots/
     cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpill.png     $htmlPageDir/plots/
     cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpillBar.png  $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_hitsInSpillBar.png         $htmlPageDir/plots/
     
     
     

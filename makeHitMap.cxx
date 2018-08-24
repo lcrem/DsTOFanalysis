@@ -63,8 +63,8 @@ int main(int argc, char *argv[]){
   Double_t lastFakeTimeNs[2][10]; // last fake time ns 0,1 are for PMT A and B, and 0-10 are the bar number
   UInt_t lastUnixTime[2][10];   
   
-  int pmtSide   = 0;
-  int barNumber = 0;
+  Int_t pmtSide   = 0;
+  Int_t barNumber = 0;
   Double_t deltat = 0;
 
   double renorm=1;
@@ -160,6 +160,9 @@ int main(int argc, char *argv[]){
     cout << "Entries TDC " << itdc+1 << " " << tofTree1->GetEntries() << endl;
 
     double tdcpmtmap[10], tdcbarmap[10];
+    memset(tdcpmtmap, 0, sizeof(tdcpmtmap));
+    memset(tdcbarmap, 0, sizeof(tdcbarmap));
+
     if (itdc==0){
       for (int i=0; i<10; i++){
 	tdcpmtmap[i]=tdc1pmt[i];
@@ -197,8 +200,10 @@ int main(int argc, char *argv[]){
       pmtSide   = tdcpmtmap[tof->channel-1];
       barNumber = tdcbarmap[tof->channel-1];
 
-      if (pmtSide==-1) continue;
-      
+      if (pmtSide!=0 && pmtSide!=1) continue;
+      //      cout << ientry << " " << pmtSide << " " << barNumber << " " << tof->channel-1 << endl;
+      //      cout << tof->channel << " " << endl;
+
       if (pmtSide==0) deltat = tof->fakeTimeNs - lastFakeTimeNs[1][barNumber-1];
       else deltat = lastFakeTimeNs[0][barNumber-1] - tof->fakeTimeNs;
 

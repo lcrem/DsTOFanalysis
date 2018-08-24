@@ -45,4 +45,4 @@ cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceMap.png         $htmlPageDi
 cp $DATADIR/run$runNumber/Run${runNumber}_barEfficiency.png          $htmlPageDir/plots/
 cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpill.png     $htmlPageDir/plots/
 cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpillBar.png  $htmlPageDir/plots/
-
+cp $DATADIR/run$runNumber/Run${runNumber}_hitsInSpillBar.png         $htmlPageDir/plots/
