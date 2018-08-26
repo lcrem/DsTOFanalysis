@@ -26,7 +26,7 @@ using namespace std;
 Double_t allBeamSpillTimes[2][2000];
 Int_t countSpills[2]={0,0};
 
-// Cable delays for the ustof and dstof
+// Cable delays for the ustof and dstof in ns
 Double_t ustofDelay = 184.7;
 Double_t dstofDelay = 61.6;
 
@@ -45,7 +45,9 @@ int main(int argc, char *argv[]){
   if (argc==3) baseDir += argv[2];
   else  baseDir +=  whereIsMyTOFdata;
   }
-
+  run = 922;
+  baseDir = "/mnt/c/Users/jones/Documents/Work/HPTPC";
+  
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);
 
   string filename[2];
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]){
 	allBeamSpillTimes[itdc][countSpills[itdc]]=temptof->fakeTimeNs;
 	countSpills[itdc]++;
       }else if (temptof->channel==13){
-	usTofNs=temptof->fakeTimeNs;
+	usTofNs=temptof->fakeTimeNs - ustofDelay;
 	usTofTree[itdc]->Fill();
       }
     }
@@ -194,7 +196,7 @@ int main(int argc, char *argv[]){
       }
       
       if (tof->channel==13){
-	lastUsTofNs=tof->fakeTimeNs;
+	lastUsTofNs=tof->fakeTimeNs - ustofDelay;
 	usTof->Fill(lastUsTofNs-lastDelayedBeamSpillNs);
 	countUsTof[itdc]++;
 	continue;
@@ -240,13 +242,13 @@ int main(int argc, char *argv[]){
 	tofCoin->bar=(Short_t)barNumber;
 
 	if (pmtSide==0){
-	  tofCoin->fakeTimeNs[0] = tof->fakeTimeNs;
-	  tofCoin->fakeTimeNs[1] = lastFakeTimeNs[1][barNumber-1];
+	  tofCoin->fakeTimeNs[0] = tof->fakeTimeNs - dstofDelay;
+	  tofCoin->fakeTimeNs[1] = lastFakeTimeNs[1][barNumber-1] - dstofDelay;
 	  tofCoin->unixTime[0]   = tof->unixTime;
 	  tofCoin->unixTime[1]   = lastUnixTime[1][barNumber-1];;
 	} else{
-	  tofCoin->fakeTimeNs[0] = lastFakeTimeNs[0][barNumber-1];
-	  tofCoin->fakeTimeNs[1] = tof->fakeTimeNs;
+	  tofCoin->fakeTimeNs[0] = lastFakeTimeNs[0][barNumber-1] - dstofDelay;
+	  tofCoin->fakeTimeNs[1] = tof->fakeTimeNs - dstofDelay;
 	  tofCoin->unixTime[0]   = lastUnixTime[0][barNumber-1];;
 	  tofCoin->unixTime[1]   = tof->unixTime;
 	}
@@ -256,7 +258,7 @@ int main(int argc, char *argv[]){
 	tofCoin->lastRawBeamSignal = lastRawBeamSpillNs;
 	tofCoin->lastDelayedBeamSignal = lastDelayedBeamSpillNs;
 	// tofCoin->usTofSignal = lastUsTofNs;
-	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
+	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelay);
 	if (ustofentry==-1) {
 	  //	  cout << " WE HAVE A PROBLEM, US TOF ENTRY NOT FOUND " << endl;
 	  tofCoin->usTofSignal = -1;
