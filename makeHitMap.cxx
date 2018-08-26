@@ -26,6 +26,9 @@ using namespace std;
 Double_t allBeamSpillTimes[2][2000];
 Int_t countSpills[2]={0,0};
 
+// Cable delays for the ustof and dstof
+Double_t ustofDelay = 184.7;
+Double_t dstofDelay = 61.6;
 
 bool isInSpill( double timeA, int itdc);
 
@@ -97,7 +100,7 @@ int main(int argc, char *argv[]){
       if (temptof->channel==15){
 	allBeamSpillTimes[itdc][countSpills[itdc]]=temptof->fakeTimeNs;
 	countSpills[itdc]++;
-      }else if (temptof->channel==14){
+      }else if (temptof->channel==13){
 	usTofNs=temptof->fakeTimeNs;
 	usTofTree[itdc]->Fill();
       }
