@@ -42,11 +42,9 @@ int main(int argc, char *argv[]){
     return 1;
   } else {
     run = atoi(argv[1]);
-  if (argc==3) baseDir += argv[2];
-  else  baseDir +=  whereIsMyTOFdata;
+    if (argc==3) baseDir += argv[2];
+    else  baseDir +=  whereIsMyTOFdata;
   }
-  //run = 922;
-  //baseDir = "/mnt/c/Users/jones/Documents/Work/HPTPC";
   
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);
 
