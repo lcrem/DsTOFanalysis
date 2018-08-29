@@ -211,7 +211,9 @@ int main(int argc, char *argv[]){
       }
 
       if (tof->channel==14){
-	lastDelayedBeamSpillNs=tof->fakeTimeNs;
+	if ( tof->fakeTimeNs>(lastRawBeamSpillNs+900.98e6) &&  tof->fakeTimeNs<(lastRawBeamSpillNs+900.982e6)){ 	
+	  lastDelayedBeamSpillNs=tof->fakeTimeNs;
+	}
 	continue;
       }
       
@@ -242,9 +244,9 @@ int main(int argc, char *argv[]){
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
-      if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9))  ){
+      if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9)) && lastDelayedBeamSpillNs>0  ){
 	inSpill=true;
-	hitsInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber*2+pmtSide);
+	hitsInSpill->Fill(tof->fakeTimeNs-lastDelayedBeamSpillNs, barNumber*2+pmtSide);
 	// If in spill then record if in coincidence with ustof hit
 	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelay);
 	usTofTree[itdc]->GetEntry(ustofentry);
