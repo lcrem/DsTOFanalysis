@@ -45,8 +45,8 @@ int main(int argc, char *argv[]){
   if (argc==3) baseDir += argv[2];
   else  baseDir +=  whereIsMyTOFdata;
   }
-  run = 922;
-  baseDir = "/mnt/c/Users/jones/Documents/Work/HPTPC";
+  //run = 922;
+  //baseDir = "/mnt/c/Users/jones/Documents/Work/HPTPC";
   
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);
 
@@ -64,6 +64,7 @@ int main(int argc, char *argv[]){
 
   string line;
   Double_t coincidenceWindow = 20;
+  Double_t ustofWindow = 200;
 
   Double_t lastFakeTimeNs[2][10]; // last fake time ns 0,1 are for PMT A and B, and 0-10 are the bar number
   UInt_t lastUnixTime[2][10];   
@@ -79,6 +80,24 @@ int main(int argc, char *argv[]){
   Double_t tempFakeTimeNs=0;
   Bool_t inSpill=false;
   int countUsTof[2]={0,0};
+
+  // Used for calculating bar efficiencies
+  Double_t barHits[10];
+  Double_t pmtHits[10];
+  Double_t pmtHitsA[10];
+  Double_t pmtHitsB[10];
+  Double_t barEffArr[10];
+  Double_t barEffArrA[10];
+  Double_t barEffArrB[10];
+  for (size_t i=0; i<10; i++) {
+    barHits[i]=0.;
+    pmtHits[i]=0.;
+    barEffArr[i]=0.;
+    barEffArrA[i]=0.;
+    barEffArrB[i]=0.;
+    pmtHitsA[i]=0.;
+    pmtHitsB[i]=0.;
+  }
 
   Double_t usTofNs;
   
@@ -129,7 +148,7 @@ int main(int argc, char *argv[]){
   TH1D* usTof  = new TH1D("usTof", "", 100, 0, 1e9);
   TH1D* coincidenceInSpill = new TH1D("coincidenceInSpill", "", 100, 0, 1e9);
   TH2D* coincidenceInSpillBar = new TH2D("coincidenceInSpillBar", "", 100, 0, 1e9, 10, 0.5, 10.5);
-
+  TH2D* hEff = new TH2D("hEff", "", 2, 0.5, 2.5, 10, 0.5, 10.5);
   TH1D* timeBetweenHits = new TH1D("timeBetweenHits", "", 1000, 0, 1e4);
   TH1D* tempHist[2][10];
   for (int ip=0; ip<2; ip++){
@@ -225,12 +244,38 @@ int main(int argc, char *argv[]){
       if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9))  ){
 	inSpill=true;
 	hitsInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber*2+pmtSide);
+	// If in spill then record if in coincidence with ustof hit
+	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelay);
+	usTofTree[itdc]->GetEntry(ustofentry);
+	if(tof->fakeTimeNs - dstofDelay - usTofNs < ustofWindow) {
+	  if(itdc == 0 && tof->channel<11 && tof->channel!=0) {
+	    if(tof->channel % 2 ==1) { // PMT B
+	      pmtHits[((tof->channel + 1)/ -2) + 10]++;
+	      pmtHitsB[((tof->channel + 1)/ -2) + 10]++;
+	    }
+	    else { // PMT A
+	      pmtHits[((tof->channel) / -2) + 10]++;
+	      pmtHitsA[((tof->channel) / -2) + 10]++;
+	    }
+	  }
+	  else if(itdc == 1 && tof->channel<11 && tof->channel!=0) {
+	    if(tof->channel % 2 ==1) { // PMT B
+	      pmtHits[((tof->channel + 1)/ -2) + 5]++;
+	      pmtHitsB[((tof->channel + 1)/ -2) + 5]++;
+	    }
+	    else { // PMT A
+	      pmtHits[((tof->channel) / -2) + 5]++;
+	      pmtHitsA[((tof->channel) / -2) + 5]++;
+	    }
+	  }
+	}
       }else{
 	inSpill=false;
       }
       
       
-
+      // Check if pmt hits are coincident
+      // Start writing out to coincidence tree
       tempFakeTimeNs = tof->fakeTimeNs;
       if (TMath::Abs(deltat)<coincidenceWindow){
 	if(tofCoin)
@@ -272,6 +317,10 @@ int main(int argc, char *argv[]){
 	  barEff->Fill(1, barNumber) ;
 	  coincidenceInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal);
 	  coincidenceInSpillBar->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber);
+	  // In spill so record if we're within 200ns of last ustof
+	  if (min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - tofCoin->usTofSignal < ustofWindow) {
+	    barHits[tofCoin->bar-1]++;
+	  }
 	}
 	lastFakeTimeNs[0][barNumber-1] = lastFakeTimeNs[1][barNumber-1] = 0;
       }
@@ -420,6 +469,24 @@ int main(int argc, char *argv[]){
   hitsInSpill->Draw("colz");
   c9->Print(Form("%s/Run%d_hitsInSpillBar.png", dirname.c_str(), run));
   c9->Print(Form("%s/Run%d_hitsInSpillBar.pdf", dirname.c_str(), run));
+
+  TCanvas *c10 = new TCanvas("c10");
+  c10->SetRightMargin(0.18);
+  hEff->SetTitle(Form("Run %d: Ratio of bar hits with UsToF coincidences to PMT hits with coincidences; ; Bar", run));
+  hEff->GetXaxis()->SetBinLabel(1, "PMT A");
+  hEff->GetXaxis()->SetBinLabel(2, "PMT B");
+  hEff->SetMarkerSize(2.0);
+  for(size_t j=0; j<10; j++) {
+    //barEffArr[j] = barHits[j] / pmtHits[j];
+    barEffArrA[j] = barHits[j] / pmtHitsA[j];
+    barEffArrB[j] = barHits[j] / pmtHitsB[j];
+    //cout<<barHits[j]<<" "<<pmtHits[j]<<endl;
+    hEff->Fill(2, j+1, barEffArrA[j]);
+    hEff->Fill(1, j+1, barEffArrB[j]);
+  }
+  hEff->Draw("colz text");
+  c10->Print(Form("%s/Run%d_Efficiency.png", dirname.c_str(), run));
+  c10->Print(Form("%s/Run%d_Efficiency.pdf", dirname.c_str(), run));
   
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
