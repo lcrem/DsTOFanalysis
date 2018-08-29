@@ -18,7 +18,7 @@ niceTree=$DATADIR/run${runNumber}/DsTOFtreeRun${runNumber}_tdc2.root
 
 
 if [ -f $niceTree ]; then
-	echo "Nice trees exist!"    
+    echo "Nice trees exist!"    
 else 
     echo "Producing nice tree .."
     
@@ -46,3 +46,4 @@ cp $DATADIR/run$runNumber/Run${runNumber}_barEfficiency.png          $htmlPageDi
 cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpill.png     $htmlPageDir/plots/
 cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpillBar.png  $htmlPageDir/plots/
 cp $DATADIR/run$runNumber/Run${runNumber}_hitsInSpillBar.png         $htmlPageDir/plots/
+cp $DATADIR/run$runNumber/Run${runNumber}_Efficiency.png             $htmlPageDir/plots/
