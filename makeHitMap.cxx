@@ -151,6 +151,7 @@ int main(int argc, char *argv[]){
   TH2D* hEff = new TH2D("hEff", "", 2, 0.5, 2.5, 10, 0.5, 10.5);
   TH1D* timeBetweenHits = new TH1D("timeBetweenHits", "", 1000, 0, 1e4);
   TH1D* tempHist[2][10];
+  TH1D* hTof = new TH1D("hTof", "", 300, 0, 250);
   for (int ip=0; ip<2; ip++){
     for (int ibar=0; ibar<10; ibar++){
       tempHist[ip][ibar]=new TH1D(Form("h_%d_%d", ip, ibar), "", 1000, 0, 1e4);
@@ -317,6 +318,11 @@ int main(int argc, char *argv[]){
 	  barEff->Fill(1, barNumber) ;
 	  coincidenceInSpill->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal);
 	  coincidenceInSpillBar->Fill(tof->fakeTimeNs-tofCoin->lastDelayedBeamSignal, barNumber);
+	  // Adjust for if time taken to travel from particle interaction point
+	  double dstofHitT;
+	  dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
+	  hTof->Fill(dstofHitT - tofCoin->usTofSignal);
+	  
 	  // In spill so record if we're within 200ns of last ustof
 	  if (min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - tofCoin->usTofSignal < ustofWindow) {
 	    barHits[tofCoin->bar-1]++;
@@ -487,6 +493,15 @@ int main(int argc, char *argv[]){
   hEff->Draw("colz text");
   c10->Print(Form("%s/Run%d_Efficiency.png", dirname.c_str(), run));
   c10->Print(Form("%s/Run%d_Efficiency.pdf", dirname.c_str(), run));
+
+  TCanvas *c11 = new TCanvas("c11");
+  hTof->SetTitle(Form("Run %d: Time of flight, DsToF - UsToF; DsToF - UsToF / ns; Events", run));
+  hTof->SetLineColor(kRed);
+  hTof->SetFillColor(kRed);
+  hTof->SetFillStyle(3005);
+  hTof->Draw("hist");
+  c11->Print(Form("%s/Run%d_ToF.png", dirname.c_str(), run));
+  c11->Print(Form("%s/Run%d_ToF.pdf", dirname.c_str(), run));
   
   TFile *fout = new TFile(Form("%s/Run%d_histos.root", dirname.c_str(), run), "recreate");
   mapHits->Write();
@@ -498,7 +513,9 @@ int main(int argc, char *argv[]){
   coincidenceInSpillBar->Write();
   hitsInSpill->Write();
   timeBetweenHits->Write();
-
+  hEff->Write();
+  hTof->Write();
+  
   fout->Close();
 }
 
