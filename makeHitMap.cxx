@@ -102,6 +102,8 @@ int main(int argc, char *argv[]){
   TTree *usTofTree[2];
   usTofTree[0]= new TTree ("usTofTree_0", "us TOF TDC 1");
   usTofTree[1]= new TTree ("usTofTree_1", "us TOF TDC 2");
+  usTofTree[0]->SetDirectory(0);
+  usTofTree[1]->SetDirectory(0);
   usTofTree[0]->Branch("usTofNs", &usTofNs, "usTofNs/D");
   usTofTree[1]->Branch("usTofNs", &usTofNs, "usTofNs/D");
   
