@@ -108,6 +108,7 @@ int main(int argc, char *argv[]){
   usTofTree[1]->Branch("usTofNs", &usTofNs, "usTofNs/D");
   
   UInt_t firstTime, lastTime;
+  Double_t tempUsTof;
   for (int itdc=0; itdc<2; itdc++){
     TFile *toftf = new TFile(filename[itdc].c_str(), "read");
     TTree *toftemp = (TTree*)toftf->Get("tofTree");
@@ -123,7 +124,10 @@ int main(int argc, char *argv[]){
 	countSpills[itdc]++;
       }else if (temptof->channel==13){
 	usTofNs=temptof->fakeTimeNs - ustofDelay;
+	// usTof signals shouldn't be coming closer than 500ns
+	if ( (usTofNs-tempUsTof) < 500.) continue;
 	usTofTree[itdc]->Fill();
+	tempUsTof=usTofNs;
       }
     }
   
