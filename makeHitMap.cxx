@@ -117,6 +117,7 @@ int main(int argc, char *argv[]){
     toftemp->SetBranchAddress("tof",       &temptof       );
     toftemp->GetEntry(0);
     firstTime = temptof->unixTime;
+    tempUsTof=0;
     for (int i=0; i<toftemp->GetEntries(); i++){
       toftemp->GetEntry(i);
       if (temptof->channel==15){
