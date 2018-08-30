@@ -28,7 +28,8 @@ Int_t countSpills[2]={0,0};
 
 // Cable delays for the ustof and dstof in ns
 Double_t ustofDelay = 184.7;
-Double_t dstofDelay = 61.6;
+Double_t dstofDelayAllBars = 61.6;
+Double_t dstofDelayBar1    = 70.2;
 
 bool isInSpill( double timeA, int itdc);
 
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]){
 
   Int_t run;
   string baseDir;
+  Double_t dstofDelay;
   
   if((argc!=2)&&(argc!=3)){
     std::cerr << "Usage 1: " << argv[0] << " [irun] (basedir)" << std::endl;
@@ -249,6 +251,9 @@ int main(int argc, char *argv[]){
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
 
+      if (barNumber==1) dstofDelay = dstofDelayBar1;
+      else dstofDelay = dstofDelayAllBars;
+      
       if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9)) && lastDelayedBeamSpillNs>0  ){
 	inSpill=true;
 	hitsInSpill->Fill(tof->fakeTimeNs-lastDelayedBeamSpillNs, barNumber*2+pmtSide);
