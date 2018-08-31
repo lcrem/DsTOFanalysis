@@ -20,6 +20,8 @@ const int tdc2pmt[15] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, -1, -1, -1, -1, -1};
 
 const double clockTicksNs=0.025/1.024;
 
+const double dstofDelayAllBars[10] = { 70.2, 61.6, 61.6, 61.6, 61.6, 61.6, 61.6, 61.6, 61.6, 61.6};
+
 const std::string whereIsMyTOFdata="/unix/dune/hptpctof/";
 
 #endif //DSTOFCONVENTIONS_H

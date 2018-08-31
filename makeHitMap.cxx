@@ -28,8 +28,6 @@ Int_t countSpills[2]={0,0};
 
 // Cable delays for the ustof and dstof in ns
 Double_t ustofDelay = 184.7;
-Double_t dstofDelayAllBars = 61.6;
-Double_t dstofDelayBar1    = 70.2;
 
 bool isInSpill( double timeA, int itdc);
 
@@ -37,7 +35,6 @@ int main(int argc, char *argv[]){
 
   Int_t run;
   string baseDir;
-  Double_t dstofDelay;
   
   if((argc!=2)&&(argc!=3)){
     std::cerr << "Usage 1: " << argv[0] << " [irun] (basedir)" << std::endl;
@@ -46,6 +43,17 @@ int main(int argc, char *argv[]){
     run = atoi(argv[1]);
     if (argc==3) baseDir += argv[2];
     else  baseDir +=  whereIsMyTOFdata;
+  }
+
+  double dstofDelays[10];
+  for (int ibar=0; ibar<10; ibar++) dstofDelays[ibar] = dstofDelayAllBars[ibar];
+
+  
+  if (run>=998){
+    // From run 998 bars 6,9,10 have additional amplifier (2ns from cable + 4ns from amplifier)
+    dstofDelays[5] += 6.;
+    dstofDelays[8] += 6.;
+    dstofDelays[9] += 6.;
   }
   
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);
@@ -250,17 +258,14 @@ int main(int argc, char *argv[]){
       tempHist[pmtSide][barNumber-1]->Fill(tof->fakeTimeNs - lastFakeTimeNs[pmtSide][barNumber-1]);
       lastFakeTimeNs[pmtSide][barNumber-1] = tof->fakeTimeNs;
       lastUnixTime[pmtSide][barNumber-1] = tof->unixTime;
-
-      if (barNumber==1) dstofDelay = dstofDelayBar1;
-      else dstofDelay = dstofDelayAllBars;
       
       if ( (tof->fakeTimeNs>lastDelayedBeamSpillNs) && (tof->fakeTimeNs< (lastDelayedBeamSpillNs+1e9)) && lastDelayedBeamSpillNs>0  ){
 	inSpill=true;
 	hitsInSpill->Fill(tof->fakeTimeNs-lastDelayedBeamSpillNs, barNumber*2+pmtSide);
 	// If in spill then record if in coincidence with ustof hit
-	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelay);
+	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelays[barNumber-1]);
 	usTofTree[itdc]->GetEntry(ustofentry);
-	if(tof->fakeTimeNs - dstofDelay - usTofNs < ustofWindow) {
+	if(tof->fakeTimeNs - dstofDelays[barNumber-1] - usTofNs < ustofWindow) {
 	  if(itdc == 0 && tof->channel<11 && tof->channel!=0) {
 	    if(tof->channel % 2 ==1) { // PMT B
 	      pmtHits[((tof->channel + 1)/ -2) + 10]++;
@@ -300,13 +305,13 @@ int main(int argc, char *argv[]){
 	tofCoin->bar=(Short_t)barNumber;
 
 	if (pmtSide==0){
-	  tofCoin->fakeTimeNs[0] = tof->fakeTimeNs - dstofDelay;
-	  tofCoin->fakeTimeNs[1] = lastFakeTimeNs[1][barNumber-1] - dstofDelay;
+	  tofCoin->fakeTimeNs[0] = tof->fakeTimeNs - dstofDelays[barNumber-1];
+	  tofCoin->fakeTimeNs[1] = lastFakeTimeNs[1][barNumber-1] - dstofDelays[barNumber-1];
 	  tofCoin->unixTime[0]   = tof->unixTime;
 	  tofCoin->unixTime[1]   = lastUnixTime[1][barNumber-1];;
 	} else{
-	  tofCoin->fakeTimeNs[0] = lastFakeTimeNs[0][barNumber-1] - dstofDelay;
-	  tofCoin->fakeTimeNs[1] = tof->fakeTimeNs - dstofDelay;
+	  tofCoin->fakeTimeNs[0] = lastFakeTimeNs[0][barNumber-1] - dstofDelays[barNumber-1];
+	  tofCoin->fakeTimeNs[1] = tof->fakeTimeNs - dstofDelays[barNumber-1];
 	  tofCoin->unixTime[0]   = lastUnixTime[0][barNumber-1];;
 	  tofCoin->unixTime[1]   = tof->unixTime;
 	}
@@ -316,7 +321,7 @@ int main(int argc, char *argv[]){
 	tofCoin->lastRawBeamSignal = lastRawBeamSpillNs;
 	tofCoin->lastDelayedBeamSignal = lastDelayedBeamSpillNs;
 	// tofCoin->usTofSignal = lastUsTofNs;
-	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelay);
+	ustofentry=usTofTree[itdc]->GetEntryNumberWithBestIndex(tof->fakeTimeNs-dstofDelays[barNumber-1]);
 	if (ustofentry==-1) {
 	  //	  cout << " WE HAVE A PROBLEM, US TOF ENTRY NOT FOUND " << endl;
 	  tofCoin->usTofSignal = -1;
