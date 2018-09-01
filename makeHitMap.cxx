@@ -49,11 +49,16 @@ int main(int argc, char *argv[]){
   for (int ibar=0; ibar<10; ibar++) dstofDelays[ibar] = dstofDelayAllBars[ibar];
 
   
-  if (run>=998){
+  if (run>=998 && run<1020){
     // From run 998 bars 6,9,10 have additional amplifier (2ns from cable + 4ns from amplifier)
     dstofDelays[5] += 6.;
     dstofDelays[8] += 6.;
     dstofDelays[9] += 6.;
+  } else if (run>=1020){
+    // From run 1020 all bars apart from 1,2 and 10 are amplified
+    for (int ibar=2; ibar<9; ibar++){
+      dstofDelays[ibar] += 6.;
+    }
   }
   
   string dirname = Form("%s/run%d/", baseDir.c_str(), run);
