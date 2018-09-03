@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
   Int_t runMax=-1;
   
 
-  for (int irun=1000; irun<1090; irun++){
+  for (int irun=950; irun<1095; irun++){
     
     TFile *fin = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc1.root", baseDir.c_str(), irun, irun), "read");
     RawDsTofCoincidence *tofCoinTemp = NULL;
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]){
   }
 
   if (runMin==-1 || runMax==-1){
-    cout << " Couldn't start or end run, check your timestamps!! " << endl;
+    cout << " Couldn't find start or end run, check your timestamps!! " << endl;
     return -1;
   }
 
