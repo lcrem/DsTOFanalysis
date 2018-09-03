@@ -24,8 +24,8 @@ cat  <<EOF
   <div>
     <h1>High Pressure TPC Downstream TOF</h1>
     <h2>Last rootified run is $RUNNUMBER. Data shouldn't be older than 1.5 hours!</h2>
-    <a href="hvstatus.html">Click here to check HV status (updates every 15 mins)</a>
-    <a href="hvplots.html">Click here to check HV plots (updates every 15 mins)</a>
+    <a href="hvstatus.html">Click here to check HV status</a>
+ and <a href="hvplots.html"> here to check HV plots</a> (updates every 15 mins)
 </div>
 EOF
 
@@ -84,6 +84,12 @@ for ((run=$RUNNUMBER;run>LASTRUN;run-=1)) ; do
   							margin-bottom:
 						0.5em;">
     <img src="plots/Run${run}_Efficiency.png" style="float: left;
+							width: 47%;
+							margin-right:
+							1%;
+  							margin-bottom:
+						0.5em;">
+    <img src="plots/Run${run}_ToF.png" style="float: left;
 							width: 47%;
 							margin-right:
 							1%;

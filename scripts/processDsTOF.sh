@@ -109,6 +109,7 @@ do
     cp $DATADIR/run$runNumber/Run${runNumber}_coincidenceInSpillBar.png  $htmlPageDir/plots/
     cp $DATADIR/run$runNumber/Run${runNumber}_hitsInSpillBar.png         $htmlPageDir/plots/
     cp $DATADIR/run$runNumber/Run${runNumber}_Efficiency.png             $htmlPageDir/plots/
+    cp $DATADIR/run$runNumber/Run${runNumber}_ToF.png                    $htmlPageDir/plots/
     
     
     
