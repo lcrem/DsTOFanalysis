@@ -343,7 +343,7 @@ int main(int argc, char *argv[]){
 	  // Adjust for if time taken to travel from particle interaction point
 	  double dstofHitT;
 	  dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
-	  hTof->Fill(dstofHitT - tofCoin->usTofSignal);
+	  hTof->Fill(dstofHitT - tofCoin->usTofSignal, 1./countSpills[itdc]);
 	  
 	  // In spill so record if we're within 200ns of last ustof
 	  if (min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - tofCoin->usTofSignal < ustofWindow) {
@@ -517,7 +517,7 @@ int main(int argc, char *argv[]){
   c10->Print(Form("%s/Run%d_Efficiency.pdf", dirname.c_str(), run));
 
   TCanvas *c11 = new TCanvas("c11");
-  hTof->SetTitle(Form("Run %d: Time of flight, DsToF - UsToF; DsToF - UsToF / ns; Events", run));
+  hTof->SetTitle(Form("Run %d: Time of flight, DsToF - UsToF; DsToF - UsToF / ns; Events/spills", run));
   hTof->SetLineColor(kRed);
   hTof->SetFillColor(kRed);
   hTof->SetFillStyle(3005);
