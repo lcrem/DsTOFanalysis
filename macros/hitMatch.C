@@ -342,16 +342,44 @@ std::vector<ustofTemp> ustofHitVec (TTree *ustofTree, const double spillTime, co
       // spill time = 0
       ustofHit.nhit = nhit;
       for (int h = 0; h < nhit; h++) {
-	ustofHit.tToF[h] = (tToF[h] - spillTime) / (1. + drift);
+	ustofHit.tToF[h] = (tToF[h] - spillTime) / (1. - drift);
 	ustofHit.xToF[h] = xToF[h];
 	ustofHit.yToF[h] = yToF[h];
       }
-      ustofHit.tTrig = (tTrig - spillTime) / (1. + drift);
-      ustofHit.tS1 = (tS1 - spillTime) / (1. + drift);
+      ustofHit.tTrig = (tTrig - spillTime) / (1. - drift);
+      ustofHit.tS1 = (tS1 - spillTime) / (1. - drift);
       ustofHitVec.push_back(ustofHit);
     }
   }
   return ustofHitVec;
+}
+
+// driftCalcLocal
+// Calculate the drift at a more local level since it varies across the run
+double driftCalcLocal (const vector<double> ustofBeamVec, const vector<double> dstofBeamVec, const int spillNo) {
+  // Let's use 20 points as a start to calculate the drift
+  double drift = 0.;
+  // If there are not enough spills to go the same both sides we extend in the longer direction
+  TGraph *gtemp = new TGraph;
+  if (spillNo <= 10) {
+    for (int i = 0; i <= 20; i++) {
+      gtemp->SetPoint(gtemp->GetN(), ustofBeamVec[i], ustofBeamVec[i] - dstofBeamVec[i]);
+    }
+  }
+  else if(spillNo + 9 >= ustofBeamVec.size()) {
+    for (int i = ustofBeamVec.size() - 20; i < ustofBeamVec.size(); i++) {
+      gtemp->SetPoint(gtemp->GetN(), ustofBeamVec[i], ustofBeamVec[i] - dstofBeamVec[i]);
+    }
+  }
+  else {
+    for (int i = spillNo - 10; i < spillNo + 10; i++) {
+      gtemp->SetPoint(gtemp->GetN(), ustofBeamVec[i], ustofBeamVec[i] - dstofBeamVec[i]);
+    }
+  }
+  TF1 *f1 = new TF1("f1", "pol1");
+  gtemp->Fit(f1);
+  drift = f1->GetParameter(1);
+  return drift;
 }
 
 // hitMatch
@@ -400,8 +428,8 @@ void hitMatch (const char* ustofFile, const char* dstofFile1, const char* dstofF
   std::cout<<"Dstof start, end "<<dstofStart<<", "<<dstofEnd<<std::endl;
 
   // Find the clock drift
-  const double drift = driftCalc(ustofFile, dstofFile1);
-  std::cout<<"Drift = "<<drift<<std::endl;
+  //  const double drift = driftCalc(ustofFile, dstofFile1);
+  // std::cout<<"Drift = "<<drift<<std::endl;
 
   // Now first spill should be aligned for ustof and dstof up to ns level
   // So try and match some hits
@@ -413,6 +441,9 @@ void hitMatch (const char* ustofFile, const char* dstofFile1, const char* dstofF
     std::cerr<<"Error: Different number of beam signals in this window!"<<std::endl;
   }
   else { }
+
+  // Find clock drift locally
+  const double drift = driftCalcLocal(dstofBeamT, ustofBeamT, spillNo);
   
   // Select the spill number that we want
   double myDstofSpill = dstofBeamT[spillNo - 1];
@@ -550,12 +581,15 @@ void hitMatch (const char* ustofFile, const char* dstofFile1, const char* dstofF
   g2->SetTitle(Form("Run %d, spill %d: UsToF - DsToF hit matching over spill; Time since spill / ns; #Deltat / ns", run, spillNo));
   TCanvas *c2_4 = new TCanvas("c2_4");
   g2->Draw("AP*");
-
-  TCanvas *c2_5 = new TCanvas("c2_5");
+  g2->GetHistogram()->GetYaxis()->SetRangeUser(-100, 100);
+  c2_4->Print(Form("Run%dspill%d_tDiff_graph.png", run, spillNo));
+  c2_4->Print(Form("Run%dspill%d_tDiff_graph.pdf", run, spillNo));
+  
+  /*TCanvas *c2_5 = new TCanvas("c2_5");
   hS1diff->Fit("gaus");
   hS1diff->Draw("hist same");
   c2_5->Print(Form("Run%dspill%d_matchedS1.png", run, spillNo));
-  c2_5->Print(Form("Run%dspill%d_matchedS1.pdf", run, spillNo));
+  c2_5->Print(Form("Run%dspill%d_matchedS1.pdf", run, spillNo));*/
 
   TCanvas *c2_6 = new TCanvas("c2_6");
   hdiffZoom->Draw("hist");
@@ -636,11 +670,23 @@ void driftSpill (const char* ustofFile, const char* dstofFile, const int nPnts) 
   // the beam window and plot the gradient
   const int Points = nPnts * 2;
   TGraph *gTot = new TGraph;
-  for (int i=nPnts; i<dstofBeamT.size()-nPnts; i++) {
+  for (int i=0; i<dstofBeamT.size(); i++) {
     TGraph *gtemp = new TGraph;
     std::cout<<"Point "<<i<<std::endl;
-    for (int pnt = i - nPnts; pnt < i + nPnts; pnt++) {
-      gtemp->SetPoint(gtemp->GetN(), ustofBeamT[pnt], ustofBeamT[pnt] - dstofBeamT[pnt]);
+    if (i < 10) {
+      for (int pnt = 0; pnt < 20; pnt++) {
+	gtemp->SetPoint(gtemp->GetN(), ustofBeamT[pnt], ustofBeamT[pnt] - dstofBeamT[pnt]);
+      }
+    }
+    else if (i + 10 >= dstofBeamT.size()) {
+      for (int pnt = dstofBeamT.size(); pnt < dstofBeamT.size(); pnt++) {
+	gtemp->SetPoint(gtemp->GetN(), ustofBeamT[pnt], ustofBeamT[pnt] - dstofBeamT[pnt]);
+      }
+    }
+    else {
+      for (int pnt = i - nPnts; pnt < i + nPnts; pnt++) {
+	gtemp->SetPoint(gtemp->GetN(), ustofBeamT[pnt], ustofBeamT[pnt] - dstofBeamT[pnt]);
+      }
     }
     TF1 *f1 = new TF1("f1", "pol1");
     gtemp->Fit(f1);
