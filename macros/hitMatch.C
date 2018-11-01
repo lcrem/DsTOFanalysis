@@ -1,4 +1,5 @@
 // hitMatch.C
+// Various function for measuring the clock drift and matching ustof and dstof hits
 
 // clockComp
 // Makes plot of ustof and dstof beam signal times, hopefully showing that they are matched up correctly
@@ -574,4 +575,78 @@ void hitMatch (const char* ustofFile, const char* dstofFile1, const char* dstofF
   c3_3->Print(Form("Run%dspill%d_GoodHitsDiff.png", run, spillNo));
   c3_3->Print(Form("Run%dspill%d_GoodHitsDiff.pdf", run, spillNo));
 
+}
+
+// driftSpill
+// Makes a plot of the clock drift as we move through the spill
+void driftSpill (const char* ustofFile, const char* dstofFile, const int nPnts) {
+  gSystem->Load("libdstof.so");
+  
+  // Load dstof, get start & end unix times
+  TFile *dstofIn = new TFile(dstofFile, "read");
+  TTree *dstofTree = (TTree*)dstofIn->Get("tofCoinTree");
+
+  RawDsTofCoincidence *tempcoin = NULL;
+  dstofTree->SetBranchAddress("tofCoin", &tempcoin);
+  dstofTree->GetEntry(0);
+  int run = tempcoin->run;
+  const int dstofStart = tempcoin->unixTime[0];
+  size_t lastEntry = dstofTree->GetEntries() - 1;
+  dstofTree->GetEntry(lastEntry);
+  const int dstofEnd = tempcoin->unixTime[0];
+  // Load ustof files
+  TFile *ustofIn = new TFile(ustofFile, "read");
+  TTree *ustofTree = (TTree*)ustofIn->Get("tree");
+
+  TNamed *start = 0;
+  TNamed *end   = 0;
+  ustofIn->GetObject("start_of_run", start);
+  ustofIn->GetObject("end_of_run", end);
+
+  const char* startchar = start->GetTitle();
+  std::string startstr(startchar);
+  std::string unixstart = startstr.substr(25,10);
+  const int ustofStart = stoi(unixstart);
+  
+  const char* endchar = end->GetTitle();
+  std::string endstr(endchar);
+  std::string unixend = endstr.substr(23,10);
+  const int ustofEnd = stoi(unixend);
+  
+  std::cout<<"Ustof start, end "<<ustofStart<<", "<<ustofEnd<<std::endl;
+  std::cout<<"Dstof start, end "<<dstofStart<<", "<<dstofEnd<<std::endl;
+  // Get all the beam times
+  std::vector<double> dstofBeamT = beamDstofVec(dstofTree, dstofStart, ustofStart, ustofEnd);
+  std::vector<double> ustofBeamT = beamUstofVec(ustofTree, ustofStart, dstofStart, dstofEnd);
+  std::cout<<"Dstof, Ustof beam signals "<<dstofBeamT.size()<<", "<<ustofBeamT.size()<<std::endl;
+  if (dstofBeamT.size() != ustofBeamT.size()) {
+    std::cerr<<"Error: Different number of beam signals in this window!"<<std::endl;
+  }
+  else { }
+  // Shift these to zero at the first beam spill time
+  const double dstofFirst = dstofBeamT[0];
+  const double ustofFirst = ustofBeamT[0];
+  for (int i=0; i<dstofBeamT.size(); i++) {
+    dstofBeamT[i] -= dstofFirst;
+  }
+  for (int i=0; i<ustofBeamT.size(); i++) {
+    ustofBeamT[i] -= ustofFirst;
+  }
+  // Now go through each of the spills that are at least 10 spills away from the start/end of
+  // the beam window and plot the gradient
+  const int Points = nPnts * 2;
+  TGraph *gTot = new TGraph;
+  for (int i=nPnts; i<dstofBeamT.size()-nPnts; i++) {
+    TGraph *gtemp = new TGraph;
+    std::cout<<"Point "<<i<<std::endl;
+    for (int pnt = i - nPnts; pnt < i + nPnts; pnt++) {
+      gtemp->SetPoint(gtemp->GetN(), ustofBeamT[pnt], ustofBeamT[pnt] - dstofBeamT[pnt]);
+    }
+    TF1 *f1 = new TF1("f1", "pol1");
+    gtemp->Fit(f1);
+    gTot->SetPoint(gTot->GetN(), ustofBeamT[i], f1->GetParameter(1));
+  }
+  TCanvas *c1 = new TCanvas("c1");
+  gTot->SetTitle(Form("Run %d: Clock drift as a function of time since beam matching begins (%d spills per point); Time / ns; Drift (ns / ns)", run, Points));
+  gTot->Draw("AP*");
 }
