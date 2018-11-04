@@ -696,3 +696,184 @@ void driftSpill (const char* ustofFile, const char* dstofFile, const int nPnts) 
   gTot->SetTitle(Form("Run %d: Clock drift as a function of time since beam matching begins (%d spills per point); Time / ns; Drift (ns / ns)", run, Points));
   gTot->Draw("AP*");
 }
+
+// runSum
+// Basically the same as hitMatch but summed over all spills in the sum
+void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFile2, const int firstSpill, const int lastSpill) {
+  gSystem->Load("libdstof.so");
+
+  // Load dstof, get start end unix times
+  TFile *dstofIn1 = new TFile(dstofFile1, "read");
+  TTree *dstofTree1 = (TTree*)dstofIn1->Get("tofCoinTree");
+  TFile *dstofIn2 = new TFile(dstofFile2, "read");
+  TTree *dstofTree2 = (TTree*)dstofIn2->Get("tofCoinTree");
+  
+  RawDsTofCoincidence *tempcoin1 = NULL;
+  dstofTree1->SetBranchAddress("tofCoin", &tempcoin1);
+  dstofTree1->GetEntry(0);
+  int run = tempcoin1->run;
+  const int dstofStart = tempcoin1->unixTime[0];
+  size_t lastEntry = dstofTree1->GetEntries() - 1;
+  dstofTree1->GetEntry(lastEntry);
+  const int dstofEnd = tempcoin1->unixTime[0];
+
+  RawDsTofCoincidence *tempcoin2 = NULL;
+  dstofTree2->SetBranchAddress("tofCoin", &tempcoin2);
+  
+  // Load ustof files
+  TFile *ustofIn = new TFile(ustofFile, "read");
+  TTree *ustofTree = (TTree*)ustofIn->Get("tree");
+
+  TNamed *start = 0;
+  TNamed *end   = 0;
+  ustofIn->GetObject("start_of_run", start);
+  ustofIn->GetObject("end_of_run", end);
+
+  const char* startchar = start->GetTitle();
+  std::string startstr(startchar);
+  std::string unixstart = startstr.substr(25,10);
+  const int ustofStart = stoi(unixstart);
+  
+  const char* endchar = end->GetTitle();
+  std::string endstr(endchar);
+  std::string unixend = endstr.substr(23,10);
+  const int ustofEnd = stoi(unixend);
+  
+  std::cout<<"Ustof start, end "<<ustofStart<<", "<<ustofEnd<<std::endl;
+  std::cout<<"Dstof start, end "<<dstofStart<<", "<<dstofEnd<<std::endl;
+
+  // Now first spill should be aligned for ustof and dstof up to ns level
+  // So try and match some hits
+  // Get vectors of beam times
+  std::vector<double> dstofBeamT = beamDstofVec(dstofTree1, dstofStart, ustofStart, ustofEnd);
+  std::vector<double> ustofBeamT = beamUstofVec(ustofTree, ustofStart, dstofStart, dstofEnd);
+  std::cout<<"Dstof, Ustof beam signals "<<dstofBeamT.size()<<", "<<ustofBeamT.size()<<std::endl;
+  if (dstofBeamT.size() != ustofBeamT.size()) {
+    std::cerr<<"Error: Different number of beam signals in this window!"<<std::endl;
+  }
+  else { }
+
+  TH2D *hdiff2d = new TH2D("hdiff2d", Form("Run %d: UsToF - DsToF hit matching over spill; Time since spill / ns; #Deltat / ns", run), 100, 0.1e9, 0.65e9, 100, -100000, 100000); 
+  TH1D *hdiffOut = new TH1D("hdiffOut", Form("Run %d: Time difference between UsToF hit and closest DsToF hit; #Deltat / ns; Events", run), 150, -100000, 100000);
+  TH1D *hdiff = new TH1D("hdiff", Form("Run %d: Time difference between UsToF hit and closest DsToF hit; #Deltat / ns; Events", run), 75, -20000, 20000);
+  TH1D *hdiffZoom = new TH1D("hdiffZoom", Form("Run %d: Time difference between UsToF hit and closest DsToF hit; #Deltat / ns; Events", run), 200, -200, 200);
+  TH1D *hS1diff = new TH1D("hS1diff", Form("Run %d: Time difference between S1 hit and closest DsToF hit; #Deltat / ns; Events", run), 200, -20, 200);
+  
+  TH2D *goodHitsUstof = new TH2D("goodHitsUstof", Form("Run %d: Spatial distribution in S3 for hits in S1, S3, S4; x / cm; y / cm", run), 75, -20, 180, 30, 0, 120);
+  TH2D *goodHitsDstof = new TH2D("goodHitsDstof", Form("Run %d: Distribution in S4 for hits in S1, S3, S4; x / cm; y / cm", run), 60, 0, 140, 10, 0, 77.5);
+
+  TH2D *goodHitsDiff = new TH2D("goodHitsDiff", Form("Run %d: Spatial difference between S3 and S4 hits; #Delta x / cm; #Delta y / cm", run), 60, -150, 150, 30, -100, 100);
+    
+  for (int spillNo = firstSpill; spillNo <= lastSpill; spillNo++) {
+    // Find clock drift locally
+    const double drift = driftCalcLocal(dstofBeamT, ustofBeamT, spillNo);
+  
+    // Select the spill number that we want
+    double myDstofSpill = dstofBeamT[spillNo - 1];
+    double myUstofSpill = ustofBeamT[spillNo - 1];
+    // Get all the dstof hits up to 1 second after the chosen spill (and in the correct time frame)
+    std::cout<<"Getting all the dstof hits in the chosen spill..."<<std::endl;
+    // TDC 1
+    std::cout<<"For dstof TDC1"<<std::endl;
+    std::vector<dstofTemp> dstofHit1 = dstofHitVec(dstofTree1, myDstofSpill);
+    // TDC 2
+    std::cout<<"For dstof TDC2"<<std::endl;
+    std::vector<dstofTemp> dstofHit2 = dstofHitVec(dstofTree2, myDstofSpill);
+    std::cout<<"Found "<<(dstofHit1.size() + dstofHit2.size())<<" dstof hits in spill "<<spillNo<<std::endl;
+
+    std::cout<<"Getting all the ustof hits in the chosen spill"<<std::endl;
+    std::vector<ustofTemp> ustofHit = ustofHitVec(ustofTree, myUstofSpill, drift);
+    std::cout<<"Found "<<ustofHit.size()<<" ustof hits in spill "<<spillNo<<std::endl;
+
+    // Plots plots plots
+    for (int us=0; us<ustofHit.size(); us++) {
+      if (us % 100 == 1) {
+	std::cout<<"Ustof event no. "<<us<<std::endl;
+      }
+      double diffLowS1 = 999999999.;
+      double diffS1 = 9999999999.;
+      for (int hit=0; hit<ustofHit[us].nhit; hit++) {
+	double diff = 999999.;
+	double diffLow = 999999999.;
+	int hitLow = -1;
+	int tdc = 0;
+	for (int ds=0; ds<dstofHit1.size(); ds++) {
+	  diff = ustofHit[us].tToF[hit] - dstofHit1[ds].hitTime;
+	  //diffS1 = ustofHit[us].tS1 - dstofHit1[ds].hitTime;
+	  if (abs(diff) < abs(diffLow)) {
+	    diffLow = diff;
+	    diffLowS1 = ustofHit[us].tS1 - dstofHit1[ds].hitTime;
+	    hitLow = ds;
+	    tdc = 1;
+	  }
+	}
+	for (int ds=0; ds<dstofHit2.size(); ds++) {
+	  diff = ustofHit[us].tToF[hit] - dstofHit2[ds].hitTime;
+	  //diffS1 = ustofHit[us].tS1 - dstofHit1[ds].hitTime;
+	  if (abs(diff) < abs(diffLow)) {
+	    diffLow = diff;
+	    diffLowS1 = ustofHit[us].tS1 - dstofHit2[ds].hitTime;
+	    hitLow = ds;
+	    tdc = 2;
+	  }
+	}
+	//g2->SetPoint(g2->GetN(), ustofHit[us].tToF[hit], diffLow);
+	hdiffZoom->Fill(diffLow);
+	hdiff->Fill(diffLow);
+	hdiffOut->Fill(diffLow);
+	hdiff2d->Fill(ustofHit[us].tToF[hit], diffLow);
+	// Pick out the best hits and find the x and y positions
+	if (diffLow > -100 && diffLow < 200) {
+	  goodHitsUstof->Fill(ustofHit[us].xToF[hit], ustofHit[us].yToF[hit]);
+	  if(tdc==1) {
+	    goodHitsDstof->Fill((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7./2.)+70., (dstofHit1[hitLow].bar*7.5) - 2.5);
+	    goodHitsDiff->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
+	  }
+	  else if(tdc==2) {
+	    goodHitsDstof->Fill((dstofHit2[hitLow].pmtTime[0] - dstofHit2[hitLow].pmtTime[1]) * (7. / 2.) + 70, (dstofHit2[hitLow].bar * 7.5) - 2.5);
+	    goodHitsDiff->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
+	  }
+	  else {
+	    std::cout<<"This should not be happening!"<<std::endl;
+	  }
+	}
+      } // nhit
+      hS1diff->Fill(diffLowS1);
+    } // ustof entries
+  } // Loop over spills
+  TCanvas *c2_1 = new TCanvas("c2_1");
+  hdiff->SetLineWidth(2);
+  hdiff->Draw("hist same");
+  c2_1->Print(Form("Run%dsum_tDiff_zoom.png", run));
+  c2_1->Print(Form("Run%dsum_tDiff_zoom.pdf", run));
+    
+  TCanvas *c2_2 = new TCanvas("c2_2");
+  hdiffOut->SetLineWidth(2);
+  hdiffOut->Draw("hist");
+  c2_2->Print(Form("Run%dsum_tDiff.png", run));
+  c2_2->Print(Form("Run%dsum_tDiff.pdf", run));
+
+  TCanvas *c2_3 = new TCanvas("c2_3");
+  gStyle->SetPalette(55);
+  hdiff2d->Draw("colz");
+  c2_3->Print(Form("Run%dsum_tDiff2d.png", run));
+  c2_3->Print(Form("Run%dsum_tDiff2d.pdf", run));
+
+  TCanvas *c2_6 = new TCanvas("c2_6");
+  hdiffZoom->Draw("hist");
+  c2_6->Print(Form("Run%dsum_tDiffzoomzoom.png", run));
+  c2_6->Print(Form("Run%dsum_tDiffzoomzoom.pdf", run));
+
+  TCanvas *c3_1 = new TCanvas("c3_1");
+  goodHitsUstof->Draw("box");
+  c3_1->Print(Form("Run%dsum_s3GoodHits.png", run));
+  c3_1->Print(Form("Run%dsum_s3GoodHits.pdf", run));
+  TCanvas *c3_2 = new TCanvas("c3_2");
+  goodHitsDstof->Draw("box");
+  c3_2->Print(Form("Run%dsum_s4GoodHits.png", run));
+  c3_2->Print(Form("Run%dsum_s4GoodHits.pdf", run));
+  TCanvas *c3_3 = new TCanvas("c3_3");
+  goodHitsDiff->Draw("box");
+  c3_3->Print(Form("Run%dsum_GoodHitsDiff.png", run));
+  c3_3->Print(Form("Run%dsum_GoodHitsDiff.pdf", run));  
+} // runSum
