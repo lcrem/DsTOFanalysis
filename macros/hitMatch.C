@@ -823,7 +823,7 @@ void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFil
 	hdiffOut->Fill(diffLow);
 	hdiff2d->Fill(ustofHit[us].tToF[hit], diffLow);
 	// Pick out the best hits and find the x and y positions
-	if (diffLow > -100 && diffLow < 200) {
+	if (diffLow > -50 && diffLow < 80) {
 	  goodHitsUstof->Fill(ustofHit[us].xToF[hit], ustofHit[us].yToF[hit]);
 	  if(tdc==1) {
 	    goodHitsDstof->Fill((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7./2.)+70., (dstofHit1[hitLow].bar*7.5) - 2.5);
@@ -865,15 +865,15 @@ void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFil
   c2_6->Print(Form("Run%dsum_tDiffzoomzoom.pdf", run));
 
   TCanvas *c3_1 = new TCanvas("c3_1");
-  goodHitsUstof->Draw("box");
+  goodHitsUstof->Draw("colz");
   c3_1->Print(Form("Run%dsum_s3GoodHits.png", run));
   c3_1->Print(Form("Run%dsum_s3GoodHits.pdf", run));
   TCanvas *c3_2 = new TCanvas("c3_2");
-  goodHitsDstof->Draw("box");
+  goodHitsDstof->Draw("colz");
   c3_2->Print(Form("Run%dsum_s4GoodHits.png", run));
   c3_2->Print(Form("Run%dsum_s4GoodHits.pdf", run));
   TCanvas *c3_3 = new TCanvas("c3_3");
-  goodHitsDiff->Draw("box");
+  goodHitsDiff->Draw("colz");
   c3_3->Print(Form("Run%dsum_GoodHitsDiff.png", run));
   c3_3->Print(Form("Run%dsum_GoodHitsDiff.pdf", run));  
 } // runSum
