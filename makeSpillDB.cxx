@@ -28,7 +28,8 @@ using namespace std;
 const int maxRunDs = 1442; // Last dstof run
 // File directories
 const char* usDir = "/nfs/dbhome/jwalding/Dropbox (Royal Holloway)/HPTPC/utofdatabackup_firsthitpinnedtounixtime/";
-const char* dsDir = "/nfs/dbhome/jwalding/Dropbox (Royal Holloway)/HPTPC/dtofdatabackup/www.hep.ucl.ac.uk/~lindac/dstof/hptpctof/";
+const char* dsDir = "/scratch0/dbrailsf/temp/mylinktodtof/";
+
 
 // Checks if a given unix time is within a supplied ustof file
 bool checkUstofFile(unsigned int time, TFile *f);
@@ -60,10 +61,11 @@ int main() {
 
   // Loop over all the dstof files
   for (int file = 750; file <= maxRunDs; file++) {
-    cout<<"Opening run "<<file<<endl;
-    const char* filename = Form("%crun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file);
+
+    const char* filename = Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file);
     if (!gSystem->AccessPathName(filename)) {
-      TFile *inFile = TFile::Open(Form("%crun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file), "read");
+      cout<<"Opening run "<<file<<endl;
+      TFile *inFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file), "read");
       TTree *coinTree = (TTree*)inFile->Get("tofCoinTree");
 
       delete coinTree;
