@@ -34,72 +34,8 @@ const char* dsDir = "/scratch0/dbrailsf/temp/mylinktodtof/";
 // Makes tree of all the ustof beam spill times
 TTree *ustofSpillTree(int i);
 // Makes of tree of all ustof file start end times
-//TTree *ustofFileTree(int i);
-TTree *ustofFileTree() {
-  cout<<"Making vector of ustof start/end times"<<endl;
-  const char* ext   = ".root";
-  const char* pref  = "Data";
-  const char* indir = "/home/sjones/mylinktoutof/";
+TTree *ustofFileTree();
 
-  TString str;
-  const char *entry;
-  vector<pair<vector<int>, TString> > fileVec;
-
-  char *dir  = gSystem->ExpandPathName(indir);
-  void *dirp = gSystem->OpenDirectory(dir);
-  TString bad("8_24_b7_800MeV_4block_ch46");
-
-  while (entry = (char*)gSystem->GetDirEntry(dirp)) { 
-    str = entry;
-    if (str.EndsWith(ext) && !str.Contains(bad) && str.Contains(pref)) {
-      TString strTemp = str;
-      str.Prepend(indir);
-      
-      TFile *ustofFile = new TFile(str, "read");
-      TTree *tree = (TTree*)ustofFile->Get("tree");
-      TNamed *start = 0;
-      TNamed *end   = 0;
-      ustofFile->GetObject("start_of_run", start);
-      ustofFile->GetObject("end_of_run", end);
-      const char* startchar = start->GetTitle();
-      const char* endchar   = end->GetTitle();
-      string startstr(startchar);
-      string endstr(endchar);
-      string unixstart = startstr.substr(25,10);
-      string unixend   = endstr.substr(23,10);
-      const int ustofStart = stoi(unixstart);	 
-      const int ustofEnd   = stoi(unixend);	 
-      
-      vector<int> ustofTmp =  {ustofStart, ustofEnd};
-      fileVec.push_back(make_pair(ustofTmp, strTemp));
-     
-      delete start;
-      delete end;
-      delete tree;
-      delete ustofFile;
-    }
-  }
-  sort(begin(fileVec), end(fileVec));
-  cout<<"Files: "<<fileVec.size()<<endl;
-
-  // Make new tree
-  TTree *ustofFileTree = new TTree("ustofFileTree", "HPTPC ustof files");
-  ustofFileTree->SetDirectory(0);
-  string fileName;
-  int start;
-  int end;
-  ustofFileTree->SetBranchAddress("fileName", &fileName);
-  ustofFileTree->SetBranchAddress("start", &start);
-  ustofFileTree->SetBranchAddress("end", &end);
-  for (int i=0; i < fileVec.size(); i++) {
-    fileName = fileVec[i].second;
-    start = fileVec[i].first[0];
-    end = fileVec[i].first[1];
-
-    ustofFileTree->Fill();
-  }
-  return ustofFileTree;
-} // ustofFileTree
 // Checks if a given unix time is within a supplied ustof file
 bool checkUstofFile(unsigned int time, TFile *f);
 
@@ -258,3 +194,69 @@ TTree *ustofSpillTree() {
   }
   return ustofBeamTree;
 }
+
+TTree *ustofFileTree() {
+  cout<<"Making vector of ustof start/end times"<<endl;
+  const char* ext   = ".root";
+  const char* pref  = "Data";
+  const char* indir = "/home/sjones/mylinktoutof/";
+
+  TString str;
+  const char *entry;
+  vector<pair<vector<int>, TString> > fileVec;
+
+  char *dir  = gSystem->ExpandPathName(indir);
+  void *dirp = gSystem->OpenDirectory(dir);
+  TString bad("8_24_b7_800MeV_4block_ch46");
+
+  while (entry = (char*)gSystem->GetDirEntry(dirp)) { 
+    str = entry;
+    if (str.EndsWith(ext) && !str.Contains(bad) && str.Contains(pref)) {
+      TString strTemp = str;
+      str.Prepend(indir);
+      
+      TFile *ustofFile = new TFile(str, "read");
+      TTree *tree = (TTree*)ustofFile->Get("tree");
+      TNamed *start = 0;
+      TNamed *end   = 0;
+      ustofFile->GetObject("start_of_run", start);
+      ustofFile->GetObject("end_of_run", end);
+      const char* startchar = start->GetTitle();
+      const char* endchar   = end->GetTitle();
+      string startstr(startchar);
+      string endstr(endchar);
+      string unixstart = startstr.substr(25,10);
+      string unixend   = endstr.substr(23,10);
+      const int ustofStart = stoi(unixstart);	 
+      const int ustofEnd   = stoi(unixend);	 
+      
+      vector<int> ustofTmp =  {ustofStart, ustofEnd};
+      fileVec.push_back(make_pair(ustofTmp, strTemp));
+     
+      delete start;
+      delete end;
+      delete tree;
+      delete ustofFile;
+    }
+  }
+  sort(begin(fileVec), end(fileVec));
+  cout<<"Files: "<<fileVec.size()<<endl;
+
+  // Make new tree
+  TTree *ustofFileTree = new TTree("ustofFileTree", "HPTPC ustof files");
+  ustofFileTree->SetDirectory(0);
+  string fileName;
+  int start;
+  int end;
+  ustofFileTree->Branch("fileName", &fileName);
+  ustofFileTree->Branch("start", &start);
+  ustofFileTree->Branch("end", &end);
+  for (int i=0; i < fileVec.size(); i++) {
+    fileName = fileVec[i].second;
+    start = fileVec[i].first[0];
+    end = fileVec[i].first[1];
+
+    ustofFileTree->Fill();
+  }
+  return ustofFileTree;
+} // ustofFileTree
