@@ -31,6 +31,8 @@ const int maxRunDs = 1442; // Last dstof run
 // File directories
 const char* usDir = "/home/sjones/mylinktoutof/";
 const char* dsDir = "/scratch0/dbrailsf/temp/mylinktodtof/";
+const double stdDrift = -2.8e-6;
+
 
 // Makes tree of all the ustof beam spill times
 TTree *ustofSpillTree(int i);
@@ -127,7 +129,7 @@ int main(int argc, char *argv[]) {
       delete coinTree2;
       delete inFile2;
     }
-
+    cout<<" "<<endl;
   } // Loop over dstof files
 } // main
 
@@ -166,7 +168,6 @@ double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTr
     // Find tSoSd that match within window
     double ustofUnix = ustofStart + (tSoSd / 1e9);
     if (ustofUnix >= (timeDs - window) && ustofUnix <= (timeDs + window) && ustofUnix != lastUnix) {
-      cout<<"Spill at "<<ustofUnix<<"  Offset: "<<(timeDs - ustofUnix)<<endl;
       spillT = ustofUnix;
       nMatch++;
       lastUnix = ustofUnix;
@@ -175,33 +176,101 @@ double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTr
       spillsNs.push_back(tSoSd);
     }
   }
-  cout<<nMatch<<" matching spills"<<"\n"<<endl;
+  cout<<nMatch<<" matching spills"<<endl;
   // Get dstof hits in both TDCs
   RawDsTofCoincidence *tempcoin1 = NULL;
   RawDsTofCoincidence *tempcoin2 = NULL;
-  dsFile1->SetBranchAddress("tofCoin", tempcoin1);
-  dsFile2->SetBranchAddress("tofCoin", tempcoin2);
+  dsFile1->SetBranchAddress("tofCoin", &tempcoin1);
+  dsFile2->SetBranchAddress("tofCoin", &tempcoin2);
   vector<double> dsHits1;
   vector<double> dsHits2;
   for (int ds1=0; ds1<dsFile1->GetEntries(); ds1++) {
     dsFile1->GetEntry(ds1);
     // In spill
     if ((tempcoin1->fakeTimeNs[0] - timeNsDs) < 1e9 && tempcoin1->fakeTimeNs[0] > timeNsDs) {
-      dsHits1.push_back(hitTime(tempcoin1->fakeTimeNs[0]-timeNsDs, tempcoin1->fakeTimeNs[1]-timeNsDs));
+      //      dsHits1.push_back(hitTime(tempcoin1->fakeTimeNs[0]-timeNsDs, tempcoin1->fakeTimeNs[1]-timeNsDs));
+      dsHits1.push_back(tempcoin1->fakeTimeNs[0] - timeNsDs);
     }
   }
   for (int ds2=0; ds2<dsFile2->GetEntries(); ds2++) {
     dsFile2->GetEntry(ds2);
     // In spill
     if ((tempcoin2->fakeTimeNs[0] - timeNsDs) < 1e9 && tempcoin2->fakeTimeNs[0] > timeNsDs) {
-      dsHits2.push_back(hitTime(tempcoin2->fakeTimeNs[0]-timeNsDs, tempcoin2->fakeTimeNs[1]-timeNsDs));
+      //      dsHits2.push_back(hitTime((tempcoin2->fakeTimeNs[0]-timeNsDs), (tempcoin2->fakeTimeNs[1]-timeNsDs)));
+      dsHits2.push_back(tempcoin2->fakeTimeNs[0] - timeNsDs);
     }
   }
   // See if the hits match between ustof and dstof
+  for (int s=0; s < spills.size(); s++) {
+    // Get ustof hits
+    vector<double> usHits;
+    TGraph* gr1 = new TGraph();
+    TH1D *hds = new TH1D("hds", "", 400, 0, 1e9);
+    TH1D *hus = new TH1D("hus", "", 400, 0, 1e9);
+    hds->SetLineColor(kMagenta);
+    hds->SetFillColor(kMagenta);
+    hds->SetFillStyle(3005);
+    int nMatchedHits = 0;
+    for (int i = 0; i<tree->GetEntries(); i++) {
+      tree->GetEntry(i);
+      // In spill
+      if (tToF[0] > spillsNs[s] && tToF[0] - spillsNs[s] < 1e9) {
+	for (int h=0; h<nhit; h++) {
+	  // Use crude drift correction. Should work...
+	  usHits.push_back((tToF[h] - spillsNs[s]) / (1. + stdDrift));	  
+	} // hits
+      }
+    } // ustof tree
 
-  for (int spill=0; spill < spills.size(); spill++) {
-    
-  }
+    // Match each ustof hit to a dstof hit
+    for (int us=0; us<usHits.size(); us++) {
+      double diffLow1 = 9999999999.;
+      double diff1    = 9999999999.;
+      double diffLow2 = 9999999999.;
+      double diff2    = 9999999999.;
+      double lowest   = 9999999999999.;
+      int tdc = 0;
+      hus->Fill(usHits[us]);
+      for (int ds=0; ds<dsHits1.size(); ds++) {
+	diff1 = usHits[us] - dsHits1[ds];
+	hds->Fill(dsHits1[ds]);
+	if (abs(diff1) < abs(diffLow1)) {
+	  diffLow1 = diff1;
+	  tdc = 1;
+	}
+      } // ds1 hits
+      for (int ds=0; ds<dsHits2.size(); ds++) {
+	diff2 = usHits[us] - dsHits2[ds];
+	hds->Fill(dsHits2[ds]);
+	if (abs(diff2) < abs(diffLow2)) {
+	  diffLow2 = diff2;
+	  tdc = 2;
+	}
+      } // ds2 hits
+      if(abs(diffLow1) < abs(diffLow2)) {
+	lowest = diffLow1;
+      }
+      else {
+	lowest = diffLow2;
+      }
+      gr1->SetPoint(gr1->GetN(), usHits[us], lowest);
+      // Put the cut on number of matched hits required to be matched at 75
+      // Count the number of matched (<500ns separation) hits
+      if (abs(lowest) <= 750) {
+	nMatchedHits++;
+      }
+    }
+    cout<<nMatchedHits<<" matched hits"<<endl;
+    new TCanvas;
+    //    hds->Draw("hist");
+    hus->Draw("hist");
+    gPad->Print("test.pdf");
+    gPad->Print("test.png");
+    new TCanvas;
+    gr1->GetYaxis()->SetRangeUser(-2000, 2000);
+    gr1->Draw("AP*");
+    gPad->Print("gr.png");
+  } // spills
 
   delete tree;
   delete ustofFile;
