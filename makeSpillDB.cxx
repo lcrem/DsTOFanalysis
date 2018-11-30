@@ -17,6 +17,7 @@
 #include "TString.h"
 
 #include <iostream>
+#include <string>
 #include <fstream>
 #include <sstream>
 #include <sys/types.h>
@@ -36,10 +37,24 @@ TTree *ustofSpillTree(int i);
 // Makes of tree of all ustof file start end times
 TTree *ustofFileTree();
 
-// Checks if a given unix time is within a supplied ustof file
-bool checkUstofFile(unsigned int time, TFile *f);
+vector<pair<vector<int>, TString>> ustofFileVec();
+// Checks if a given unix time is within ustof files
+string checkUstofFiles(double time, TTree *t);
 
-int main() {
+string checkUstofFilesVec(double time, vector<pair<vector<int>, TString>> fileVec);
+
+int main(int argc, char *argv[]) {
+
+  unsigned int firstRun;
+  unsigned int lastRun;
+  if(argc!=3) {
+    cerr<<"Usage: "<<argv[0]<<"[First dstof run] [Last dstof run]"<<endl;
+    return 1;
+  }
+  else {
+    firstRun = atoi(argv[1]);
+    lastRun  = atoi(argv[2]);
+  }
 
   // The final word in beam spill databases
   TTree *spillTree = new TTree("spillTree", "HPTPC beam spills");
@@ -63,10 +78,10 @@ int main() {
   spillTree->Branch("unixRunStartUs", &unixRunStartUs);
   spillTree->Branch("nsTimeUs", &nsTimeUs);
 
-  TTree *usFiles = ustofFileTree();
-
+  //  TTree *usFiles = ustofFileTree();
+  vector<pair<vector<int>, TString>> usFiles;
   // Loop over all the dstof files
-  for (int file = 900; file <= maxRunDs; file++) {
+  for (unsigned int file = firstRun; file <= lastRun; file++) {
 
     const char* filename = Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file);
     if (!gSystem->AccessPathName(filename)) {
@@ -77,20 +92,27 @@ int main() {
       coinTree->SetBranchAddress("tofCoin", &tempcoin);
       coinTree->GetEntry(0);
       int runStart = tempcoin->unixTime[0];
+      cout<<"Start: "<<runStart<<endl;
       // Find first spill in the file
       double lastdelayed = 0.;
       double firstSpillNs   = 0.;
       double firstSpillUnix = 0.;
-      for (int t = 0; t < coinTree->GetEntry(t); t++) {
+      for (int t = 0; t < coinTree->GetEntries(); t++) {
 	coinTree->GetEntry(t);
 	if (tempcoin->lastDelayedBeamSignal > 0. && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal > 0.5e9 && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal < 1e9) {
 	  firstSpillNs = tempcoin->lastDelayedBeamSignal;
 	  firstSpillUnix = (tempcoin->lastDelayedBeamSignal / 1e9) + runStart;
-	  break;
+	  cout.precision(17);
+	  cout<<firstSpillUnix<<endl;
 	  // Now search through ustof files to find in which one this lies
+	  string goodFile = checkUstofFilesVec(firstSpillUnix, usFiles);
+	  if (goodFile != "nofile") {
+	    cout<<goodFile<<endl;
+	  }
+	  break;
 	}
-      }
-
+      } // Loop over entries
+            
       delete coinTree;
       delete inFile;
     }
@@ -98,13 +120,34 @@ int main() {
   } // Loop over dstof files
 } // main
 
-bool checkUstofFiles(unsigned int time, TTree *fileTree) {
-  bool isHere = false;
-
-  return isHere;
+string checkUstofFilesVec(double time, vector<pair<vector<int>, TString> > fileVec) {
+  string ustofFile = "nofile";
+  for (int i=0; i<fileVec.size(); i++) {
+    if (time >= fileVec[i].first[0] && time <= fileVec[i].first[1]) {
+      ustofFile = fileVec[i].second;
+    }
+  }
+  return ustofFile;
 }
 
+string checkUstofFiles(double time, TTree *fileTree) {
+  string ustofFile = "nofile";
+  string fileName;
+  int start;
+  int end;
+  fileTree->SetBranchAddress("fileName", &fileName);
+  fileTree->SetBranchAddress("start", &start);
+  fileTree->SetBranchAddress("end", &end);
+  // Loop over file tree
+  for (int t = 0; t < fileTree->GetEntries(); t++) {
+    fileTree->GetEntry(t);
+    if (time >= start && time <= end) {
+      ustofFile = fileName;
+    }
+  }
 
+  return ustofFile;
+}
 
 TTree *ustofSpillTree() {
   const char* ext   = ".root";
@@ -227,9 +270,8 @@ TTree *ustofFileTree() {
       string endstr(endchar);
       string unixstart = startstr.substr(25,10);
       string unixend   = endstr.substr(23,10);
-      const int ustofStart = stoi(unixstart);	 
-      const int ustofEnd   = stoi(unixend);	 
-      
+      int ustofStart = stoi(unixstart);	 
+      int ustofEnd   = stoi(unixend);	 
       vector<int> ustofTmp =  {ustofStart, ustofEnd};
       fileVec.push_back(make_pair(ustofTmp, strTemp));
      
@@ -241,6 +283,7 @@ TTree *ustofFileTree() {
   }
   sort(begin(fileVec), end(fileVec));
   cout<<"Files: "<<fileVec.size()<<endl;
+
 
   // Make new tree
   TTree *ustofFileTree = new TTree("ustofFileTree", "HPTPC ustof files");
@@ -255,8 +298,62 @@ TTree *ustofFileTree() {
     fileName = fileVec[i].second;
     start = fileVec[i].first[0];
     end = fileVec[i].first[1];
-
     ustofFileTree->Fill();
   }
+
+  for (int t=0; t<ustofFileTree->GetEntries(); t++) {
+    ustofFileTree->GetEntry(t);
+    cout<<fileName<<" "<<start<<" "<<end<<endl;
+  }
+
   return ustofFileTree;
 } // ustofFileTree
+
+vector<pair<vector<int>, TString> >  ustofFileVec() {
+  cout<<"Making vector of ustof start/end times"<<endl;
+  const char* ext   = ".root";
+  const char* pref  = "Data";
+  const char* indir = "/home/sjones/mylinktoutof/";
+
+  TString str;
+  const char *entry;
+  vector<pair<vector<int>, TString> > fileVec;
+
+  char *dir  = gSystem->ExpandPathName(indir);
+  void *dirp = gSystem->OpenDirectory(dir);
+  TString bad("8_24_b7_800MeV_4block_ch46");
+
+  while (entry = (char*)gSystem->GetDirEntry(dirp)) { 
+    str = entry;
+    if (str.EndsWith(ext) && !str.Contains(bad) && str.Contains(pref)) {
+      TString strTemp = str;
+      str.Prepend(indir);
+      
+      TFile *ustofFile = new TFile(str, "read");
+      TTree *tree = (TTree*)ustofFile->Get("tree");
+      TNamed *start = 0;
+      TNamed *end   = 0;
+      ustofFile->GetObject("start_of_run", start);
+      ustofFile->GetObject("end_of_run", end);
+      const char* startchar = start->GetTitle();
+      const char* endchar   = end->GetTitle();
+      string startstr(startchar);
+      string endstr(endchar);
+      string unixstart = startstr.substr(25,10);
+      string unixend   = endstr.substr(23,10);
+      int ustofStart = stoi(unixstart);	 
+      int ustofEnd   = stoi(unixend);	 
+      vector<int> ustofTmp =  {ustofStart, ustofEnd};
+      fileVec.push_back(make_pair(ustofTmp, strTemp));
+     
+      delete start;
+      delete end;
+      delete tree;
+      delete ustofFile;
+    }
+  }
+  sort(begin(fileVec), end(fileVec));
+  cout<<"Files: "<<fileVec.size()<<endl;
+
+  return fileVec;
+} // ustofFileVec
