@@ -40,7 +40,9 @@ vector<pair<vector<double>, TString>> ustofFileVec();
 TString checkUstofFiles(double time, vector<pair<vector<double>, TString>> fileVec);
 // For a given utof file and time returns utof spill time if there is a spill within a certain time frame
 // Returns -1 otherwise
-double findSpill(double time, TString fileName, double window = 3.);
+double findSpill(double timeDs, double timeNsDs, TTree *dsFile1, TTree* dsFile2, TString fileName, double window = 3.);
+// Checks if the hits match within a given spill
+bool spillMatch(double ustofSpillT, double dstofSpillT);
 
 int main(int argc, char *argv[]) {
 
@@ -114,7 +116,7 @@ int main(int argc, char *argv[]) {
       } // Loop over entries
       // Try and find matching spill within the ustof file
       if (goodFile != "nofile") {
-	double spill = findSpill(firstSpillUnix, goodFile);
+	double spill = findSpill(firstSpillUnix, firstSpillNs, coinTree1, coinTree2, goodFile);
       }
 
       // Find entry with tSoSd within 3s of given spill
@@ -129,7 +131,11 @@ int main(int argc, char *argv[]) {
   } // Loop over dstof files
 } // main
 
-double findSpill(double time, TString fileName, double window) {
+double hitTime(double pmtA, double pmtB) {
+  double hitT = min(pmtA, pmtB) - (10. - abs(pmtA - pmtB));
+}
+
+double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTree *dsFile2, TString fileName, double window) {
   double spillT = -1.;
   cout<<"Looking for matching spill in ustof file "<<fileName<<endl;
   // Open file
@@ -152,19 +158,51 @@ double findSpill(double time, TString fileName, double window) {
   tree->SetBranchAddress("nhit", &nhit);
   double lastUnix = 0.;
   int nMatch = 0;
+  vector<double> spills;
+  vector<double> spillsNs;
   // Loop over entries
   for (int i=0; i<tree->GetEntries(); i++) {
     tree->GetEntry(i);
     // Find tSoSd that match within window
     double ustofUnix = ustofStart + (tSoSd / 1e9);
-    if (ustofUnix >= (time - window) && ustofUnix <= (time + window) && ustofUnix != lastUnix) {
-      cout<<"Spill at "<<ustofUnix<<endl;
+    if (ustofUnix >= (timeDs - window) && ustofUnix <= (timeDs + window) && ustofUnix != lastUnix) {
+      cout<<"Spill at "<<ustofUnix<<"  Offset: "<<(timeDs - ustofUnix)<<endl;
       spillT = ustofUnix;
       nMatch++;
       lastUnix = ustofUnix;
+      // Make a vector of these spills
+      spills.push_back(ustofUnix);
+      spillsNs.push_back(tSoSd);
     }
   }
   cout<<nMatch<<" matching spills"<<"\n"<<endl;
+  // Get dstof hits in both TDCs
+  RawDsTofCoincidence *tempcoin1 = NULL;
+  RawDsTofCoincidence *tempcoin2 = NULL;
+  dsFile1->SetBranchAddress("tofCoin", tempcoin1);
+  dsFile2->SetBranchAddress("tofCoin", tempcoin2);
+  vector<double> dsHits1;
+  vector<double> dsHits2;
+  for (int ds1=0; ds1<dsFile1->GetEntries(); ds1++) {
+    dsFile1->GetEntry(ds1);
+    // In spill
+    if ((tempcoin1->fakeTimeNs[0] - timeNsDs) < 1e9 && tempcoin1->fakeTimeNs[0] > timeNsDs) {
+      dsHits1.push_back(hitTime(tempcoin1->fakeTimeNs[0]-timeNsDs, tempcoin1->fakeTimeNs[1]-timeNsDs));
+    }
+  }
+  for (int ds2=0; ds2<dsFile2->GetEntries(); ds2++) {
+    dsFile2->GetEntry(ds2);
+    // In spill
+    if ((tempcoin2->fakeTimeNs[0] - timeNsDs) < 1e9 && tempcoin2->fakeTimeNs[0] > timeNsDs) {
+      dsHits2.push_back(hitTime(tempcoin2->fakeTimeNs[0]-timeNsDs, tempcoin2->fakeTimeNs[1]-timeNsDs));
+    }
+  }
+  // See if the hits match between ustof and dstof
+
+  for (int spill=0; spill < spills.size(); spill++) {
+    
+  }
+
   delete tree;
   delete ustofFile;
 
