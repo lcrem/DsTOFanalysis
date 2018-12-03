@@ -42,9 +42,16 @@ vector<pair<vector<double>, TString>> ustofFileVec();
 TString checkUstofFiles(double time, vector<pair<vector<double>, TString>> fileVec);
 // For a given utof file and time returns utof spill time if there is a spill within a certain time frame
 // Returns -1 otherwise
-double findSpill(double timeDs, double timeNsDs, TTree *dsFile1, TTree* dsFile2, TString fileName, double window = 3.);
+// First element: Utof Ns time
+// Second element: Utof unix time
+// Third element: Dtof Ns time
+// Fourth element: Dtof unix time
+vector<double> findSpill(double timeDs, double timeNsDs, TTree *dsFile1, TTree* dsFile2, TString fileName, double window = 3.);
 // Checks if the hits match within a given spill
 bool spillMatch(double ustofSpillT, double dstofSpillT);
+// Go through spills, having found offset and attempt to match
+// First pair dstof elements, second pair ustof elements. First is ns time, second is unix time
+vector<pair< pair<double,double>, pair<double,double> >> spillCount(double lastSpillDs, double lastSpillUs);
 
 int main(int argc, char *argv[]) {
 
@@ -118,7 +125,29 @@ int main(int argc, char *argv[]) {
       } // Loop over entries
       // Try and find matching spill within the ustof file
       if (goodFile != "nofile") {
-	double spill = findSpill(firstSpillUnix, firstSpillNs, coinTree1, coinTree2, goodFile);
+	vector<double> spill = findSpill(firstSpillUnix, firstSpillNs, coinTree1, coinTree2, goodFile);
+	if (spill.at(2) != -1.) {
+	  globalSpillTime = spill.at(1);
+	  unixRunStartDs  = runStart;
+	  nsTimeDs        = spill.at(0);
+	  stopOutDs       = true;
+	  runDs           = file;
+	  unixRunStartUs  = 0.;
+	  ustofSpillTime  = spill.at(3);
+	  nsTimeUs        = spill.at(2);
+	  spillTree->Fill();
+	  // Start counting with the spill offsets
+	  vector<pair< pair<double, double>, pair<double, double> >> spillList = spillCount(spill.at(1), spill.at(3));
+	}
+	// Spill does not match
+	else {
+
+	}
+      }
+      
+      // Try with the next spill
+      else {
+
       }
 
       // Find entry with tSoSd within 3s of given spill
@@ -128,7 +157,7 @@ int main(int argc, char *argv[]) {
       delete tempcoin2;
       delete coinTree2;
       delete inFile2;
-    }
+    }  
     cout<<" "<<endl;
   } // Loop over dstof files
 } // main
@@ -136,9 +165,21 @@ int main(int argc, char *argv[]) {
 double hitTime(double pmtA, double pmtB) {
   double hitT = min(pmtA, pmtB) - (10. - abs(pmtA - pmtB));
 }
+// countSpill implementation
+vector<pair< pair<double,double>, pair<double, double> >> spillCount(double lastSpillDs, double lastSpillUs) {
+  vector<pair< pair<double,double>, pair<double, double> >> spills;
 
-double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTree *dsFile2, TString fileName, double window) {
-  double spillT = -1.;
+  return spills;
+}
+
+// findSpill implementation
+vector<double> findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTree *dsFile2, TString fileName, double window) {
+  vector<double> spillTimes;
+  spillTimes.reserve(4);
+  spillTimes.at(0) = timeNsDs;
+  spillTimes.at(1) = timeDs;
+  spillTimes.at(2) = -1.;
+  spillTimes.at(3) = -1.;
   cout<<"Looking for matching spill in ustof file "<<fileName<<endl;
   // Open file
   TString path = fileName;
@@ -168,7 +209,7 @@ double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTr
     // Find tSoSd that match within window
     double ustofUnix = ustofStart + (tSoSd / 1e9);
     if (ustofUnix >= (timeDs - window) && ustofUnix <= (timeDs + window) && ustofUnix != lastUnix) {
-      spillT = ustofUnix;
+      spillTimes.at(3) = ustofUnix;
       nMatch++;
       lastUnix = ustofUnix;
       // Make a vector of these spills
@@ -260,9 +301,19 @@ double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTr
 	nMatchedHits++;
       }
     }
-    cout<<nMatchedHits<<" matched hits"<<endl;
+    cout<<nMatchedHits<<" matched hits: ";
+    
+    if(nMatchedHits >= 70) {
+      spillTimes.at(2) = spillsNs[s];
+      spillTimes.at(3) = spills[s];
+      cout<<"PASSED"<<endl;
+    }
+    else {
+      cout<<"FAILED"<<endl;
+    }
+    /*
     new TCanvas;
-    //    hds->Draw("hist");
+    hds->Draw("hist");
     hus->Draw("hist");
     gPad->Print("test.pdf");
     gPad->Print("test.png");
@@ -270,12 +321,13 @@ double findSpill(const double timeDs, const double timeNsDs, TTree *dsFile1, TTr
     gr1->GetYaxis()->SetRangeUser(-2000, 2000);
     gr1->Draw("AP*");
     gPad->Print("gr.png");
+    */
   } // spills
 
   delete tree;
   delete ustofFile;
 
-  return spillT;
+  return spillTimes;
 }
 
 TString checkUstofFiles(double time, vector<pair<vector<double>, TString> > fileVec) {
