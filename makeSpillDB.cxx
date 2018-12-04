@@ -142,6 +142,7 @@ int main(int argc, char *argv[]) {
 	  if (goodFile != "nofile") {
 	    vector<double> spill = findSpill(firstSpillUnix, firstSpillNs, 
 					     coinTree1, coinTree2, usCh, goodFile);
+	    cout<<"goodFile = "<<goodFile<<endl;
 	    // Found a spill which matches
 	    if (spill.at(2) != -1.) {
 	      globalSpillTime = spill.at(1);
@@ -153,6 +154,7 @@ int main(int argc, char *argv[]) {
 	      ustofSpillTime  = spill.at(3);
 	      nsTimeUs        = spill.at(2);
 	      spillTree->Fill();
+
 	      // Start counting with the spill offsets
 	      vector<pair< pair<double, double>, pair<double, double> >> spillList = spillCount(spill.at(1), spill.at(3), coinTree1, usCh, goodFile, usFiles);
 	    }
@@ -200,15 +202,17 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
   // string unixend = endstr.substr(23,10);
   double ustofEnd = 0.;
   int lastj=0;
+
   for (int vec = 0; vec < fileVec.size(); vec++) {
     if (ustofFile == fileVec[vec].second) {
       lastj = fileVec[vec].first[2];
       ustofStart = fileVec[vec].first[0];
     }
   }
+  cout<< lastj<<endl;
   double tSoSd;
   chain->SetBranchAddress("tSoSd", &tSoSd);
-
+  cout<<"Branch address set"<<endl;
   double offset = lastSpillDs - lastSpillUs;
   // Go through the dstof file and find the next spill
   RawDsTofCoincidence *tempcoin = NULL;
@@ -216,7 +220,7 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
   // Get run start
   dsFile->GetEntry(0);
   int runStart = tempcoin->unixTime[0];
-
+  cout<<"Found ds run start"<<endl;
   // Go and find next dstof signal
   double lastSpillNsDs = 0.;
   double lastSpillNsUs = 0.;
@@ -225,8 +229,13 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
     double lastSpillUnixDs = runStart + (tempcoin->lastDelayedBeamSignal / 1e9);
     // If the ustof file we are going through has changed we need to stop and re-pin
     chain->GetEntry(lastj);
+    //    cout<<"Got TChain entry ok"<<endl;
     TString currentFile = chain->GetCurrentFile()->GetName();
+    currentFile.Remove(0, 26);
+    //    cout<<currentFile<<" "<<ustofFile<<endl;
+    //    cout<<"Got File name ok"<<endl;
     if (currentFile != ustofFile) {
+      cout<<"Breaking..."<<endl;
       break;
     }
     else if (lastSpillUnixDs > lastSpillDs && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal > 0.5e9 && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal < 1e9 && lastSpillNsDs != tempcoin->lastDelayedBeamSignal) {
@@ -244,14 +253,14 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
 	  pair<double, double> ustofPair = make_pair(tSoSd, lastSpillUnixUs);
 	  pair <pair<double, double>, pair<double, double>> tempPair = make_pair(dstofPair, ustofPair);
 	  spills.push_back(tempPair);
-
+	  cout<<j<<endl;
 	  lastj = j; // We're always going in ascending order
 	  break;     // Once we've found one we don't need to go any further
 	}
       }
     }
   }
-	 
+  cout<<"Returning spills"<<endl;
   return spills;
 
 }
@@ -261,7 +270,7 @@ vector<double> findSpill(const double timeDs, const double timeNsDs,
 			 TTree *dsFile1, TTree *dsFile2, 
 			 TChain *chain, TString fileName, double window) {
   vector<double> spillTimes (4);
-  cout<<"Reserved ok"<<endl;
+
   spillTimes.at(0) = timeNsDs;
   spillTimes.at(1) = timeDs;
   spillTimes.at(2) = -1.;
@@ -440,8 +449,6 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
   void *dirp = gSystem->OpenDirectory(dir);
   TString bad("8_24_b7_800MeV_4block_ch46");
 
-  double entries = 2.;
-
   while (entry = (char*)gSystem->GetDirEntry(dirp)) { 
     str = entry;
     if (str.EndsWith(ext) && !str.Contains(bad) && str.Contains(pref)) {
@@ -450,7 +457,7 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
 
       TFile *ustofFile = new TFile(str, "read");
       TTree *tree = (TTree*)ustofFile->Get("tree");
-      int subentries = tree->GetEntries();
+      double subentries = tree->GetEntries();
       TNamed *start = 0;
       TNamed *end   = 0;
       ustofFile->GetObject("start_of_run", start);
@@ -463,9 +470,9 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
       string unixend   = endstr.substr(23,10);
       double ustofStart = stod(unixstart);	 
       double ustofEnd   = stod(unixend);	 
-      vector<double> ustofTmp =  {ustofStart, ustofEnd, entries};
+      vector<double> ustofTmp =  {ustofStart, ustofEnd, subentries};
       fileVec.push_back(make_pair(ustofTmp, strTemp));
-      entries += subentries;
+      
       delete start;
       delete end;
       delete tree;
@@ -474,10 +481,18 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
   }
   sort(begin(fileVec), end(fileVec));
   cout<<"Files: "<<fileVec.size()<<endl;
-  /*
+
+  double entries = 0.;
+  double lastentry = 0.;
   for (int i=0; i<fileVec.size(); i++) {
-    cout<<fileVec[i].first[0]<<" "<<fileVec[i].first[1]<<" "<<fileVec[i].second<<endl;
+    lastentry = fileVec[i].first[2];
+    fileVec[i].first[2] = entries;
+    entries += lastentry;
   }
-  */
+
+  for (int i=0; i<fileVec.size(); i++) {
+    cout<<fileVec[i].first[0]<<" "<<fileVec[i].first[1]<<" "<<fileVec[i].second<<" "<<fileVec[i].first[2]<<endl;
+  }
+
   return fileVec;
 } // ustofFileVec
