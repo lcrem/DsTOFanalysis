@@ -47,17 +47,13 @@ TString checkUstofFiles(double time, vector<pair<vector<double>, TString>> fileV
 // Second element: Utof unix time
 // Third element: Dtof Ns time
 // Fourth element: Dtof unix time
-vector<double> findSpill(double timeDs, double timeNsDs, TTree *dsFile1, TTree* dsFile2, TString fileName, double window = 3.);
+vector<double> findSpill(double timeDs, double timeNsDs, TTree *dsFile1, 
+			 TTree* dsFile2, TChain *chain, TString fileName, double window = 3.);
 // Checks if the hits match within a given spill
 bool spillMatch(double ustofSpillT, double dstofSpillT);
 // Go through spills, having found offset and attempt to match
 // First pair dstof elements, second pair ustof elements. First is ns time, second is unix time
-vector<pair< pair<double,double>, pair<double,double> >> spillCount(double lastSpillDs, 
-								    double lastSpillUs,
-								    TTree *dsFile,
-								    TChain chain,
-								    TString ustofFile,
-								    double window = 0.3);
+vector<pair< pair<double,double>, pair<double,double> >> spillCount(double lastSpillDs, double lastSpillUs, TTree *dsFile, TChain *chain, TString ustofFile, vector<pair<vector<double>, TString>>fileVec, double window = 0.1);
 
 int main(int argc, char *argv[]) {
 
@@ -72,7 +68,9 @@ int main(int argc, char *argv[]) {
     lastRun  = atoi(argv[2]);
   }
 
-  TChain usCh("tree");
+  TChain *usCh = new TChain("tree");
+  // Pointer to the above so can be used in functions
+  //  TChain *chainptr = *usCh;
 
   // The final word in beam spill databases
   TTree *spillTree = new TTree("spillTree", "HPTPC beam spills");
@@ -96,15 +94,15 @@ int main(int argc, char *argv[]) {
   spillTree->Branch("unixRunStartUs", &unixRunStartUs);
   spillTree->Branch("nsTimeUs", &nsTimeUs);
 
-  vector<pair<vector<double>, TString>> usFiles = ustofFileVec();
+  vector< pair<vector<double>, TString> > usFiles = ustofFileVec();
   for(int t=0; t<usFiles.size(); t++) {
     // Get full file path
     TString path = usFiles[t].second;
     path.Prepend(usDir);
     // Add this to the TChain
-    usCh.Add(path);
+    usCh->Add(path);
   }
-  cout<<"Have made TChain with "<<usCh.GetEntries()<<" entries"<<endl;
+  cout<<"Have made TChain with "<<usCh->GetEntries()<<" entries"<<endl;
 
 
   // Loop over all the dstof files
@@ -130,7 +128,8 @@ int main(int argc, char *argv[]) {
       TString goodFile;
       for (int t = 0; t < coinTree1->GetEntries(); t++) {
 	coinTree1->GetEntry(t);
-	if (tempcoin1->lastDelayedBeamSignal > 0. && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal > 0.5e9 && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal < 1e9) {
+	if (tempcoin1->lastDelayedBeamSignal > 0. && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal > 0.5e9 && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal < 1e9 && tempcoin1->lastDelayedBeamSignal != lastdelayed) {
+	  lastdelayed = tempcoin1->lastDelayedBeamSignal;
 	  firstSpillNs = tempcoin1->lastDelayedBeamSignal;
 	  firstSpillUnix = (tempcoin1->lastDelayedBeamSignal / 1e9) + runStart;
 	  cout.precision(17);
@@ -138,35 +137,30 @@ int main(int argc, char *argv[]) {
 	  // Now search through ustof files to find in which one this lies
 	  goodFile = checkUstofFiles(firstSpillUnix, usFiles); 
 	  // cout<<goodFile<<endl; 
-	  break;
+	  // break;
+	  // Try and find matching spill within the ustof file
+	  if (goodFile != "nofile") {
+	    vector<double> spill = findSpill(firstSpillUnix, firstSpillNs, 
+					     coinTree1, coinTree2, usCh, goodFile);
+	    // Found a spill which matches
+	    if (spill.at(2) != -1.) {
+	      globalSpillTime = spill.at(1);
+	      unixRunStartDs  = runStart;
+	      nsTimeDs        = spill.at(0);
+	      stopOutDs       = true;
+	      runDs           = file;
+	      unixRunStartUs  = 0.;
+	      ustofSpillTime  = spill.at(3);
+	      nsTimeUs        = spill.at(2);
+	      spillTree->Fill();
+	      // Start counting with the spill offsets
+	      vector<pair< pair<double, double>, pair<double, double> >> spillList = spillCount(spill.at(1), spill.at(3), coinTree1, usCh, goodFile, usFiles);
+	    }
+
+	  }
 	}
       } // Loop over entries
-      // Try and find matching spill within the ustof file
-      if (goodFile != "nofile") {
-	vector<double> spill = findSpill(firstSpillUnix, firstSpillNs, coinTree1, coinTree2, goodFile);
-	if (spill.at(2) != -1.) {
-	  globalSpillTime = spill.at(1);
-	  unixRunStartDs  = runStart;
-	  nsTimeDs        = spill.at(0);
-	  stopOutDs       = true;
-	  runDs           = file;
-	  unixRunStartUs  = 0.;
-	  ustofSpillTime  = spill.at(3);
-	  nsTimeUs        = spill.at(2);
-	  spillTree->Fill();
-	  // Start counting with the spill offsets
-	  vector<pair< pair<double, double>, pair<double, double> >> spillList = spillCount(spill.at(1), spill.at(3), coinTree1, goodFile);
-	}
-	// Spill does not match
-	else {
-
-	}
-      }
       
-      // Try with the next spill
-      else {
-
-      }
 
       // Find entry with tSoSd within 3s of given spill
       delete tempcoin1;
@@ -184,13 +178,7 @@ double hitTime(double pmtA, double pmtB) {
   double hitT = min(pmtA, pmtB) - (10. - abs(pmtA - pmtB));
 }
 // countSpill implementation
-vector<pair< pair<double,double>, pair<double, double> >> spillCount(const double lastSpillDs, 
-								     const double lastSpillUs, 
-								     TTree *dsFile, 
-								     TChain chain, 
-								     TString ustofFile,
-								     int index,
-								     double window) 
+vector<pair< pair<double,double>, pair<double, double> >> spillCount(const double lastSpillDs, const double lastSpillUs, TTree *dsFile, TChain *chain, TString ustofFile, vector< pair<vector<double>, TString> > fileVec, double window) 
 {
   vector<pair< pair<double,double>, pair<double, double> >> spills;
   // Open ustof file
@@ -204,16 +192,22 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
   // const char* startchar = start->GetTitle();
   // string startstr(startchar);
   // string unixstart = startstr.substr(25,10);
-  // double ustofStart = stod(unixstart);	 
+  double ustofStart = 0.;	 
   // TNamed *end = 0;
   // ustofFile->GetObject("end_of_run", end);
   // const char* endchar = end->GetTitle();
   // string endstr(endchar);
   // string unixend = endstr.substr(23,10);
-  // double ustofEnd = stod(unixend);
-
-  // double tSoSd;
-  // tree->SetBranchAddress("tSoSd", &tSoSd);
+  double ustofEnd = 0.;
+  int lastj=0;
+  for (int vec = 0; vec < fileVec.size(); vec++) {
+    if (ustofFile == fileVec[vec].second) {
+      lastj = fileVec[vec].first[2];
+      ustofStart = fileVec[vec].first[0];
+    }
+  }
+  double tSoSd;
+  chain->SetBranchAddress("tSoSd", &tSoSd);
 
   double offset = lastSpillDs - lastSpillUs;
   // Go through the dstof file and find the next spill
@@ -223,7 +217,6 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
   dsFile->GetEntry(0);
   int runStart = tempcoin->unixTime[0];
 
-  int lastj = index;
   // Go and find next dstof signal
   double lastSpillNsDs = 0.;
   double lastSpillNsUs = 0.;
@@ -231,8 +224,8 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
     dsFile->GetEntry(i);
     double lastSpillUnixDs = runStart + (tempcoin->lastDelayedBeamSignal / 1e9);
     // If the ustof file we are going through has changed we need to stop and re-pin
-    usCh->GetEntry(lastj);
-    TString currentFile = usCh->GetCurrentFile()->GetName();
+    chain->GetEntry(lastj);
+    TString currentFile = chain->GetCurrentFile()->GetName();
     if (currentFile != ustofFile) {
       break;
     }
@@ -246,6 +239,7 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
 	if (lastSpillUnixUs > lastSpillUs && lastSpillUnixUs+offset >= lastSpillUnixDs - window && lastSpillUnixUs + offset <= lastSpillUnixDs + window && lastSpillNsUs != tSoSd && tSoSd - lastSpillNsUs > 1e9) {
 	  lastSpillNsUs = tSoSd;
 	  cout<<"Spill matched. Ustof "<<lastSpillUnixUs<<", Dstof "<<lastSpillUnixDs<<", Offset "<<(lastSpillUnixDs - lastSpillUnixUs)<<endl;
+	  offset = lastSpillUnixDs - lastSpillUnixUs;
 	  pair<double, double> dstofPair = make_pair(tempcoin->lastDelayedBeamSignal, lastSpillUnixDs);
 	  pair<double, double> ustofPair = make_pair(tSoSd, lastSpillUnixUs);
 	  pair <pair<double, double>, pair<double, double>> tempPair = make_pair(dstofPair, ustofPair);
@@ -265,7 +259,7 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
 // findSpill implementation
 vector<double> findSpill(const double timeDs, const double timeNsDs, 
 			 TTree *dsFile1, TTree *dsFile2, 
-			 TChain fileName, double window) {
+			 TChain *chain, TString fileName, double window) {
   vector<double> spillTimes (4);
   cout<<"Reserved ok"<<endl;
   spillTimes.at(0) = timeNsDs;
