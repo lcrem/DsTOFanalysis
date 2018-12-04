@@ -104,16 +104,24 @@ int main(int argc, char *argv[]) {
   }
   cout<<"Have made TChain with "<<usCh->GetEntries()<<" entries"<<endl;
 
-
+  //TTree *coinTree1 = NULL;
+  //TTree *coinTree2 = NULL; 
   // Loop over all the dstof files
-  for (unsigned int file = firstRun; file <= lastRun; file++) {
+  for (int file = firstRun; file <= lastRun; file++) {
     const char* filename = Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file);
     if (!gSystem->AccessPathName(filename)) {
       cout<<"Opening run "<<file<<endl;
       TFile *inFile1 = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dsDir, file, file), "read");
+      cout<<"Opened file 1"<<endl;
       TFile *inFile2 = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc2.root", dsDir, file, file), "read");
-      TTree *coinTree1 = (TTree*)inFile1->Get("tofCoinTree");
-      TTree *coinTree2 = (TTree*)inFile2->Get("tofCoinTree");
+      cout<<"Opened file 2"<<endl;
+      TTree *coinTree1 = NULL;
+      TTree *coinTree2 = NULL; 
+      inFile1->GetObject("tofCoinTree", coinTree1);
+      inFile2->GetObject("tofCoinTree", coinTree2);
+      coinTree1->SetDirectory(0);
+      coinTree2->SetDirectory(0);
+      cout<<"Got the TTrees"<<endl;
       RawDsTofCoincidence *tempcoin1 = NULL;
       RawDsTofCoincidence *tempcoin2 = NULL;
       coinTree1->SetBranchAddress("tofCoin", &tempcoin1);
@@ -128,7 +136,7 @@ int main(int argc, char *argv[]) {
       TString goodFile;
       for (int t = 0; t < coinTree1->GetEntries(); t++) {
 	coinTree1->GetEntry(t);
-	if (tempcoin1->lastDelayedBeamSignal > 0. && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal > 0.5e9 && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal < 1e9 && tempcoin1->lastDelayedBeamSignal != lastdelayed) {
+	if (tempcoin1->lastDelayedBeamSignal > 0. && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal > 0.5e9 && tempcoin1->lastDelayedBeamSignal - tempcoin1->lastRawBeamSignal < 1e9 && tempcoin1->lastDelayedBeamSignal > lastdelayed) {
 	  lastdelayed = tempcoin1->lastDelayedBeamSignal;
 	  firstSpillNs = tempcoin1->lastDelayedBeamSignal;
 	  firstSpillUnix = (tempcoin1->lastDelayedBeamSignal / 1e9) + runStart;
@@ -157,20 +165,22 @@ int main(int argc, char *argv[]) {
 
 	      // Start counting with the spill offsets
 	      vector<pair< pair<double, double>, pair<double, double> >> spillList = spillCount(spill.at(1), spill.at(3), coinTree1, usCh, goodFile, usFiles);
+	      // Write these spills to files
+	      
 	    }
-
 	  }
 	}
       } // Loop over entries
-      
-
-      // Find entry with tSoSd within 3s of given spill
+    
       delete tempcoin1;
-      delete coinTree1;
-      delete inFile1;
+      //      delete coinTree1;
+      //      delete inFile1;
       delete tempcoin2;
-      delete coinTree2;
-      delete inFile2;
+      //delete coinTree2;
+      inFile1->Close();
+      inFile2->Close();      
+      //      delete inFile2;
+      
     }  
     cout<<" "<<endl;
   } // Loop over dstof files
@@ -202,11 +212,12 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
   // string unixend = endstr.substr(23,10);
   double ustofEnd = 0.;
   int lastj=0;
-
+  int nextFileInd = 0;
   for (int vec = 0; vec < fileVec.size(); vec++) {
     if (ustofFile == fileVec[vec].second) {
       lastj = fileVec[vec].first[2];
       ustofStart = fileVec[vec].first[0];
+      nextFileInd = fileVec[vec+1].first[2];
     }
   }
   cout<< lastj<<endl;
@@ -232,17 +243,25 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
     //    cout<<"Got TChain entry ok"<<endl;
     TString currentFile = chain->GetCurrentFile()->GetName();
     currentFile.Remove(0, 26);
-    //    cout<<currentFile<<" "<<ustofFile<<endl;
+    //   cout<<currentFile<<" "<<ustofFile<<endl;
     //    cout<<"Got File name ok"<<endl;
     if (currentFile != ustofFile) {
+      cout<<"Current file "<<currentFile<<endl;
       cout<<"Breaking..."<<endl;
       break;
     }
     else if (lastSpillUnixDs > lastSpillDs && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal > 0.5e9 && tempcoin->lastDelayedBeamSignal - tempcoin->lastRawBeamSignal < 1e9 && lastSpillNsDs != tempcoin->lastDelayedBeamSignal) {
       lastSpillNsDs = tempcoin->lastDelayedBeamSignal;
       // We have found a dstof spill signal
-      for (int j=lastj; j < chain->GetEntries(); j++) {
+      for (int j=lastj; j < nextFileInd; j++) {
 	chain->GetEntry(j);
+	// get start time from the entry number
+	for (int vec2 = 0; vec2 < fileVec.size(); vec2++) {
+	  if (ustofFile == fileVec[vec2].second) {
+	    ustofStart = fileVec[vec2].first[0];
+	    break;
+	  }
+	}
 	double lastSpillUnixUs = ustofStart + (tSoSd / 1e9);
 	// Find spill signal 
 	if (lastSpillUnixUs > lastSpillUs && lastSpillUnixUs+offset >= lastSpillUnixDs - window && lastSpillUnixUs + offset <= lastSpillUnixDs + window && lastSpillNsUs != tSoSd && tSoSd - lastSpillNsUs > 1e9) {
@@ -253,13 +272,14 @@ vector<pair< pair<double,double>, pair<double, double> >> spillCount(const doubl
 	  pair<double, double> ustofPair = make_pair(tSoSd, lastSpillUnixUs);
 	  pair <pair<double, double>, pair<double, double>> tempPair = make_pair(dstofPair, ustofPair);
 	  spills.push_back(tempPair);
-	  cout<<j<<endl;
+	  
 	  lastj = j; // We're always going in ascending order
 	  break;     // Once we've found one we don't need to go any further
 	}
       }
     }
   }
+
   cout<<"Returning spills"<<endl;
   return spills;
 
