@@ -23,12 +23,15 @@ void angularDist (const int nBlocks) {
   // Timing cuts
   const double piLow  = 80.;
   const double piHi   = 95.;
-  const double proLow = 116.;
+  const double proLow = 106.;
   const double proHi  = 134.;
 
+  double nSpills = 0.;
+  double lastSpill = 0.;
+
   TH1D *htof1d = new TH1D("htof1d", Form("Time of flight, %d blocks; DsToF - UsToF / ns; Events", nBlocks), 100, 50, 150);
-  TH2D *piHitsDstof = new TH2D("piHitsDstof", Form("%d blocks, position of S4 #pi hits; x / cm; y / cm; Events", nBlocks), 35, 0, 140, 10, 0, 77.5);
-  TH2D *proHitsDstof = new TH2D("proHitsDstof", Form("%d blocks, position of S4 proton hits; x / cm; y / cm; Events", nBlocks), 35, 0, 140, 10, 0, 77.5);
+  TH2D *piHitsDstof = new TH2D("piHitsDstof", Form("%d blocks, position of S4 #pi hits; x / cm; y / cm; Events / spill", nBlocks), 35, 0, 140, 10, 0, 77.5);
+  TH2D *proHitsDstof = new TH2D("proHitsDstof", Form("%d blocks, position of S4 proton hits; x / cm; y / cm; Events / spill", nBlocks), 35, 0, 140, 10, 0, 77.5);
   TH2D *proPiDstof = new TH2D("proPiDstof", Form("%d blocks, proton/pion ratio in S4; x / cm; y / cm", nBlocks), 35, 0, 140, 10, 0, 77.5);
   // Find the correct dstof files
   Int_t runMin=-1;
@@ -98,7 +101,11 @@ void angularDist (const int nBlocks) {
       if (tofCoin->unixTime[0]<startTime) continue;
       if (tofCoin->unixTime[0]>endTime) break;
       
-      
+      if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc==0) {
+	lastSpill = tofCoin->lastDelayedBeamSignal;
+	nSpills++;
+      }      
+
       deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
       dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
       double tof = dstofHitT - tofCoin->usTofSignal;
@@ -115,18 +122,20 @@ void angularDist (const int nBlocks) {
   gStyle->SetPalette(55);
   TCanvas *c1 = new TCanvas("c1");
   proPiDstof->Divide(proHitsDstof, piHitsDstof);
-  proPiDstof->GetZaxis()->SetRangeUser(0, 1.5);
+  proPiDstof->GetZaxis()->SetRangeUser(0, 1.7);
   c1->SetRightMargin(0.13);
   proPiDstof->Draw("colz");
   c1->Print(Form("%dblocks_propiratio.png", nBlocks));
   c1->Print(Form("%dblocks_propiratio.pdf", nBlocks));
   TCanvas *c2 = new TCanvas("c2");
   c2->SetRightMargin(0.13);
+  proHitsDstof->Scale(1./nSpills);
   proHitsDstof->Draw("colz");
   c2->Print(Form("%dblocks_protons.png", nBlocks));
   c2->Print(Form("%dblocks_protons.pdf", nBlocks));
   TCanvas *c3 = new TCanvas("c3");
   c3->SetRightMargin(0.13);
+  piHitsDstof->Scale(1./nSpills);
   piHitsDstof->Draw("colz");
   c3->Print(Form("%dblocks_pions.png", nBlocks));
   c3->Print(Form("%dblocks_pions.pdf", nBlocks));
