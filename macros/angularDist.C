@@ -101,9 +101,23 @@ void angularDist (const int nBlocks) {
       
       deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
       dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
+      double tof = dstofHitT - tofCoin->usTofSignal;
       htof1d->Fill(dstofHitT - tofCoin->usTofSignal);
+      if (tof > piLow && tof < piHi) {
+	piHitsDstof->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+      }
+      else if (tof > proLow && tof < proHi) {
+	proHitsDstof->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+      }
     }
   }
-
+  new TCanvas;
+  proPiDstof->Divide(proHitsDstof, piHitsDstof);
+  proPiDstof->Draw("colz");
+  new TCanvas;
+  proHitsDstof->Draw("colz");
+  new TCanvas;
+  piHitsDstof->Draw("colz");
+  new TCanvas;
   htof1d->Draw("hist");
 }
