@@ -30,6 +30,7 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
   const double proHi  = 134.;
 
   double nSpills = 0.;
+  double nSpillsTrue = 0.;
   double lastSpill = 0.;
 
   TH1D *htof1d = new TH1D("htof1d", Form("Time of flight, %d blocks; DsToF - UsToF / ns; Events / spill", nBlocks), 100, 50, 150);
@@ -116,6 +117,18 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
       if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc==0) {
 	lastSpill = tofCoin->lastDelayedBeamSignal;
 	nSpills++;
+	for (int sp=ientry; sp < tofCoinChain->GetEntries(); sp++) {
+	  tofCoinChain->GetEntry(sp);
+	  if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. && 
+	      (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
+	      (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
+	      (tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
+	    nSpillsTrue++;
+	    break;
+	  }
+
+	  if (tofCoin->unixTime[0]>endTime) break;
+	}
       }      
 
       deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
@@ -123,19 +136,19 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
       double tof = dstofHitT - tofCoin->usTofSignal;
       htof1d->Fill(dstofHitT - tofCoin->usTofSignal);
       if (tof > piLow && tof < piHi) {
-	piHitsDstof->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+	piHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
 	piHitsDstofVert->Fill(1, tofCoin->bar);
-	piHitsDstofHorz->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	piHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
       }
       else if (tof > proLow && tof < proHi) {
-	proHitsDstof->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+	proHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
 	proHitsDstofVert->Fill(1, tofCoin->bar);
-	proHitsDstofHorz->Fill((tofCoin->fakeTimeNs[0] - tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	proHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
       }
     }
   }
 
-  cout<<"Data from "<<nSpills<<" spills over "<<(endTime - startTime)<<" seconds"<<endl;
+  cout<<"Data from "<<nSpills<<" spills ("<<nSpillsTrue<<" true)"<<" over "<<(endTime - startTime)<<" seconds"<<endl;
 
   gStyle->SetOptStat(0);
   gStyle->SetPalette(55);
@@ -148,18 +161,20 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
   c1->Print(Form("../nBlocksPlots/%dblocks_propiratio.pdf", nBlocks));
   TCanvas *c2 = new TCanvas("c2");
   c2->SetRightMargin(0.13);
-  proHitsDstof->Scale(1./nSpills);
+  proHitsDstof->Scale(1./nSpillsTrue);
+  proHitsDstof->GetZaxis()->SetRangeUser(0, 3.); 
   proHitsDstof->Draw("colz");
   c2->Print(Form("../nBlocksPlots/%dblocks_protons.png", nBlocks));
   c2->Print(Form("../nBlocksPlots/%dblocks_protons.pdf", nBlocks));
   TCanvas *c3 = new TCanvas("c3");
   c3->SetRightMargin(0.13);
-  piHitsDstof->Scale(1./nSpills);
+  piHitsDstof->Scale(1./nSpillsTrue);
+  piHitsDstof->GetZaxis()->SetRangeUser(0, 14.);
   piHitsDstof->Draw("colz");
   c3->Print(Form("../nBlocksPlots/%dblocks_pions.png", nBlocks));
   c3->Print(Form("../nBlocksPlots/%dblocks_pions.pdf", nBlocks));
   TCanvas *c4 = new TCanvas("c4");
-  htof1d->Scale(1./nSpills);
+  htof1d->Scale(1./nSpillsTrue);
   htof1d->Draw("hist");
   c4->Print(Form("../nBlocksPlots/%dblocks_tof.png", nBlocks));
   c4->Print(Form("../nBlocksPlots/%dblocks_tof.pdf", nBlocks));
@@ -173,14 +188,16 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
   c1_1->Print(Form("../nBlocksPlots/%dblocks_propiratio_vert.pdf", nBlocks));
   TCanvas *c1_2 = new TCanvas("c1_2");
   c1_2->SetRightMargin(0.13);
-  proHitsDstofVert->Scale(1./nSpills);
+  proHitsDstofVert->Scale(1./nSpillsTrue);
+  proHitsDstofVert->GetZaxis()->SetRangeUser(0, 10.); 
   proHitsDstofVert->Draw("colz text");
   c1_2->Print(Form("../nBlocksPlots/%dblocks_protons_vert.png", nBlocks));
   c1_2->Print(Form("../nBlocksPlots/%dblocks_protons_vert.pdf", nBlocks));
   TCanvas *c1_3 = new TCanvas("c1_3");
   c1_3->SetRightMargin(0.13);
-  piHitsDstofVert->Scale(1./nSpills);
-  piHitsDstofVert->Draw("colz");
+  piHitsDstofVert->Scale(1./nSpillsTrue);
+  piHitsDstofVert->GetZaxis()->SetRangeUser(0, 70.); 
+  piHitsDstofVert->Draw("colz text");
   c1_3->Print(Form("../nBlocksPlots/%dblocks_pions_vert.png", nBlocks));
   c1_3->Print(Form("../nBlocksPlots/%dblocks_pions_vert.pdf", nBlocks));
 
@@ -193,13 +210,13 @@ void angularDist (const int nBlocks, const char* dstofDir="/scratch0/dbrailsf/te
   c2_1->Print(Form("../nBlocksPlots/%dblocks_propiratio_horz.pdf", nBlocks));
   TCanvas *c2_2 = new TCanvas("c2_2");
   c2_2->SetRightMargin(0.13);
-  proHitsDstofHorz->Scale(1./nSpills);
+  proHitsDstofHorz->Scale(1./nSpillsTrue);
   proHitsDstofHorz->Draw("colz");
   c2_2->Print(Form("../nBlocksPlots/%dblocks_protons_horz.png", nBlocks));
   c2_2->Print(Form("../nBlocksPlots/%dblocks_protons_horz.pdf", nBlocks));
   TCanvas *c2_3 = new TCanvas("c2_3");
   c2_3->SetRightMargin(0.13);
-  piHitsDstofHorz->Scale(1./nSpills);
+  piHitsDstofHorz->Scale(1./nSpillsTrue);
   piHitsDstofHorz->Draw("colz");
   c2_3->Print(Form("../nBlocksPlots/%dblocks_pions_horz.png", nBlocks));
   c2_3->Print(Form("../nBlocksPlots/%dblocks_pions_horz.pdf", nBlocks));
