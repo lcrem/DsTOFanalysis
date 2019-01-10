@@ -58,13 +58,13 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
     hpiHitsDstofVert->Sumw2();
     TH1D *hproHitsDstofVert = new TH1D("hproHitsDstofVert", Form("%d blocks, position of S4 proton hits; Bar; Events / spill", nBlocks), 10, 0.5, 10.5);
     hproHitsDstofVert->Sumw2();
-    TH1D *hproPiDstofVert = new TH1D("hproPiDstofVert", Form("%d blocks, proton/pion ratio in S4; Bar", nBlocks), 10, 0.5, 10.5);
+    TH1D *hproPiDstofVert = new TH1D(Form("hproPiDstofVert_block%d",nBlocks), "Proton/pion ratio in S4; Bar", 10, 0.5, 10.5);
     // Horizontal binning only
     TH1D *hpiHitsDstofHorz = new TH1D("hpiHitsDstofHorz", Form("%d blocks, position of S4 #pi hits; x / cm", nBlocks), 20, 0, 140);
     hpiHitsDstofHorz->Sumw2();
     TH1D *hproHitsDstofHorz = new TH1D("hproHitsDstofHorz", Form("%d blocks, position of S4 proton hits; x / cm", nBlocks), 20, 0, 140);
     hproHitsDstofHorz->Sumw2();
-    TH1D *hproPiDstofHorz = new TH1D("hproPiDstofHorz", Form("%d blocks, proton/pion ratio in S4; x / cm", nBlocks), 20, 0, 140);
+    TH1D *hproPiDstofHorz = new TH1D(Form("hproPiDstofHorz_block%d",nBlocks), "Proton/pion ratio in S4; x / cm", 20, 0, 140);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -116,7 +116,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   }
 
   cout << "Min and max runs are " << runMin << " " << runMax << endl;
-
+ 
   for (int itdc=0; itdc<2; itdc++) {
     TChain *tofCoinChain = new TChain("tofCoinTree");
 
