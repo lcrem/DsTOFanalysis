@@ -39,6 +39,9 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
     double nSpills = 0.;
     double nSpillsTrue = 0.;
     double lastSpill = 0.;
+
+    int nPi = 0;
+    int nP  = 0;
     
     TH1D *htof1d = new TH1D("htof1d", Form("Time of flight, %d blocks; DsToF - UsToF / ns; Events / spill", nBlocks), 100, 50, 150);
     TH2D *piHitsDstof = new TH2D("piHitsDstof", Form("%d blocks, position of S4 #pi hits; x / cm; y / cm; Events / spill", nBlocks), 20, 0, 140, 10, 0, 77.5);
@@ -58,13 +61,13 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
     hpiHitsDstofVert->Sumw2();
     TH1D *hproHitsDstofVert = new TH1D("hproHitsDstofVert", Form("%d blocks, position of S4 proton hits; Bar; Events / spill", nBlocks), 10, 0.5, 10.5);
     hproHitsDstofVert->Sumw2();
-    TH1D *hproPiDstofVert = new TH1D(Form("hproPiDstofVert_block%d",nBlocks), "Proton/pion ratio in S4; Bar", 10, 0.5, 10.5);
+    TH1D *hproPiDstofVert = new TH1D(Form("hproPiDstofVert_block%d",nBlocks), "Proton/(#pi+#mu) ratio in S4; Vertical Bar in S4", 10, 0.5, 10.5);
     // Horizontal binning only
     TH1D *hpiHitsDstofHorz = new TH1D("hpiHitsDstofHorz", Form("%d blocks, position of S4 #pi hits; x / cm", nBlocks), 20, 0, 140);
     hpiHitsDstofHorz->Sumw2();
     TH1D *hproHitsDstofHorz = new TH1D("hproHitsDstofHorz", Form("%d blocks, position of S4 proton hits; x / cm", nBlocks), 20, 0, 140);
     hproHitsDstofHorz->Sumw2();
-    TH1D *hproPiDstofHorz = new TH1D(Form("hproPiDstofHorz_block%d",nBlocks), "Proton/pion ratio in S4; x / cm", 20, 0, 140);
+    TH1D *hproPiDstofHorz = new TH1D(Form("hproPiDstofHorz_block%d",nBlocks), "Proton/(#pi+#mu) ratio in S4; x / cm", 20, 0, 140);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -87,6 +90,10 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
     else if (nBlocks == 3) {
       startTime = start3Block;
       endTime   = end3Block;
+    }
+    else if (nBlocks == 4) {
+      startTime = start4Block;
+      endTime   = end4Block;
     }
 
   for (int irun=950; irun<1200; irun++){
@@ -159,6 +166,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
 	piHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
 	piHitsDstofVert->Fill(1, tofCoin->bar);
 	piHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	nPi++;
 	if (tofCoin->bar != 10) {
 	  hpiHitsDstofVert->Fill(tofCoin->bar);
 	  hpiHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
@@ -168,6 +176,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
 	proHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
 	proHitsDstofVert->Fill(1, tofCoin->bar);
 	proHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	nP++;
 	if (tofCoin->bar != 10) {
 	  hproHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
 	  hproHitsDstofVert->Fill(tofCoin->bar);
@@ -213,7 +222,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   proPiDstofVert->GetZaxis()->SetRangeUser(0, 1.7);
   c1_1->SetRightMargin(0.13);
   proPiDstofVert->Draw("colz text");
-  c1_1->Print(Form("../nBlocksPlots/%dblocks_propiratio_vert.png", nBlocks));
+  c1_1->Print(Form("../nBlocksPlots/%dblock_propiratio_vert.png", nBlocks));
   c1_1->Print(Form("../nBlocksPlots/%dblocks_propiratio_vert.pdf", nBlocks));
   TCanvas *c1_2 = new TCanvas("c1_2");
   c1_2->SetRightMargin(0.13);
@@ -300,7 +309,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   */
   c_proPiVert->cd();
   hproPiDstofVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
-  hproPiDstofVert->SetTitle("Proton/pion ratio in S_{4}"); 
+  hproPiDstofVert->SetTitle("Proton/(#pi+#mu) in S4; Bar number in S4; P/(#pi+#mu)"); 
   if (nBlocks == 0) {
     hproPiDstofVert->SetLineColor(kBlue);
     legVert->AddEntry(hproPiDstofVert, "0 blocks", "l");
@@ -324,7 +333,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
 
   c_proPiHorz->cd();
   hproPiDstofHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
-  hproPiDstofVert->SetTitle("Proton/pion ratio in S_{4}"); 
+  hproPiDstofHorz->SetTitle("Proton/(#pi+#mu) in S4; x / cm; P/(#pi+#mu)"); 
   if (nBlocks == 0) {
     hproPiDstofHorz->SetLineColor(kBlue);
     legHorz->AddEntry(hproPiDstofHorz, "0 blocks", "l");
@@ -347,16 +356,16 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   }
 
   double piInt = piHitsDstof->Integral(1, 20, 1, 10);
-  cout<<"Have "<<piInt<<" pis per spill"<<endl;
+  cout<<nBlocks<<" blocks: Have "<<nPi<<" pis and "<<nP<<" protons in "<<nSpillsTrue<<" spills"<<endl;
   }
   c_proPiVert->cd();
-  c_proPiVert->SetTitle("Proton/pion ratio in S_{4}"); 
+  c_proPiVert->SetTitle("Proton/(#pi+#mu) in S4"); 
   legVert->Draw();
   c_proPiVert->Print("../nBlocksPlots/proPiVert_hist.png");
   c_proPiVert->Print("../nBlocksPlots/proPiVert_hist.pdf");
 
   c_proPiHorz->cd();
-  c_proPiHorz->SetTitle("Proton/pion ratio in S_{4}"); 
+  c_proPiHorz->SetTitle("Proton/(#pi+#mu) in S4"); 
   legHorz->Draw();
   c_proPiHorz->Print("../nBlocksPlots/proPiHorz_hist.png");
   c_proPiHorz->Print("../nBlocksPlots/proPiHorz_hist.pdf");
