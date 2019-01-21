@@ -35,7 +35,7 @@ void proPiFrac(const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
 
     TH1D *hproton = new TH1D(Form("hproton_%d", nBlocks), Form("%d blocks: Number of protons; Time since spill start / ns; P", nBlocks), 40, 0, 1e9);
     TH1D *hpion = new TH1D(Form("hpion_%d", nBlocks), Form("%d blocks: Number of pions; Time since spill start / ns; #pi", nBlocks), 40, 0, 1e9);
-    TH1D *hratio = new TH1D(Form("hratio_%d", nBlocks), Form("%d blocks: Proton/pion ratio; Time since spill start / ns; P / #pi", nBlocks), 40, 0, 1e9);
+    TH1D *hratio = new TH1D(Form("hratio_%d", nBlocks), Form("%d blocks: Proton/(#pi+#mu); Time since spill start / ns; P / (#pi+#mu)", nBlocks), 40, 0, 1e9);
     hproton->Sumw2();
     hpion->Sumw2();
     // Find the correct dstof files
@@ -139,9 +139,12 @@ void proPiFrac(const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
 
     TCanvas *c1 = new TCanvas(Form("c1_%d", nBlocks));
     hratio->Divide(hproton, hpion, 1., 1., "B");
+    if (nBlocks == 0) {
+      hratio->SetBinContent(25, 0);
+    }
     hratio->Draw("hist E");
-    c1->Print(Form("%dblocks_proPiSpillRatio.png", nBlocks));
-    c1->Print(Form("%dblocks_proPiSpillRatio.pdf", nBlocks));
+    c1->Print(Form("../nBlocksPlots/%dblocks_proPiSpillRatio.png", nBlocks));
+    c1->Print(Form("../nBlocksPlots/%dblocks_proPiSpillRatio.pdf", nBlocks));
 
   } 
 }
