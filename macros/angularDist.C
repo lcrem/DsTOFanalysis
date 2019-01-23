@@ -1,6 +1,6 @@
 // angularDist.C
 // Angular distribution of protons and pions for different moderator blocks
-void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/", const char* saveDir) {
+void angularDist (/*const int nBlocks, */ const char* saveDir, const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
 
   gROOT->SetBatch(kTRUE);
 
@@ -189,7 +189,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
 
   gStyle->SetOptStat(0);
   gStyle->SetPalette(55);
-  /*
+  
   TCanvas *c1 = new TCanvas("c1");
   proPiDstof->Divide(proHitsDstof, piHitsDstof);
   proPiDstof->GetZaxis()->SetRangeUser(0, 1.7);
@@ -216,7 +216,7 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   htof1d->Draw("hist");
   c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.png", saveDir, nBlocks));
   c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.pdf", saveDir, nBlocks));
-
+  /*
   TCanvas *c1_1 = new TCanvas("c1_1");
   proPiDstofVert->Divide(proHitsDstofVert, piHitsDstofVert);
   proPiDstofVert->GetZaxis()->SetRangeUser(0, 1.7);
@@ -370,3 +370,140 @@ void angularDist (/*const int nBlocks, */const char* dstofDir="/scratch0/dbrails
   c_proPiHorz->Print(Form("%s/nBlocksPlots/proPiHorz_hist.png", saveDir));
   c_proPiHorz->Print(Form("%s/nBlocksPlots/proPiHorz_hist.pdf", saveDir));
 }
+
+// Divide up ToF spectra by bar to see if there is a difference in background
+void tofBar(const char* saveDir, const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
+  gROOT->SetBatch(kTRUE);
+
+  // Unix timestamps for variable block moves
+  // 0.8GeV/c, 0 blocks
+  const double start0Block = 1535713289;
+  const double end0Block   = 1535716132;
+  // 0.8GeV/c, 1 block
+  const double start1Block = 1535796057;
+  const double end1Block   = 1535799112;
+  // 0.8GeV/c, 2 blocks
+  const double start2Block = 1535789157;
+  const double end2Block   = 1535792026;
+  // 0.8GeV/c, 3 block
+  const double start3Block = 1535792404;
+  const double end3Block   = 1535798437;
+  // 0.8GeV/c, 4 block
+  // Most runs were in this configuration so don't need to use necessarily
+  const double start4Block = 1535608220;
+  const double end4Block   = 1535617102;
+
+  for (int nBlocks=0; nBlocks < 4; nBlocks++) {
+    double nSpills = 0.;
+    double nSpillsTrue = 0.;
+    double lastSpill = 0.;
+
+    TH2D *h2dtof = new TH2D(Form("h2dtof_%d",nBlocks), Form("S4 - S1 by vertical S4 bar: %d blocks; S4 - S1 / ns; Vertical bar in S4; Events / spill",nBlocks), 100, 50, 150, 10, 0.5, 10.5);
+    // Find the correct dstof files
+    Int_t runMin=-1;
+    Int_t runMax=-1;
+
+    double startTime = 0;
+    double endTime   = 0;
+    if (nBlocks == 0) {
+      startTime = start0Block;
+      endTime   = end0Block;
+    }
+    else if (nBlocks == 1) {
+      startTime = start1Block;
+      endTime   = end1Block;
+    }
+    else if (nBlocks == 2) {
+      startTime = start2Block;
+      endTime   = end2Block;
+    }
+    else if (nBlocks == 3) {
+      startTime = start3Block;
+      endTime   = end3Block;
+    }
+    else if (nBlocks == 4) {
+      startTime = start4Block;
+      endTime   = end4Block;
+    }
+
+    for (int irun=950; irun<1200; irun++){
+      TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+      RawDsTofCoincidence *tofCoinTemp = NULL;
+      TTree *tree = (TTree*) fin->Get("tofCoinTree");
+      tree->SetBranchAddress("tofCoin", &tofCoinTemp);
+      tree->GetEntry(0);
+      UInt_t firstTemp = tofCoinTemp->unixTime[0];
+      tree->GetEntry(tree->GetEntries()-1);
+      UInt_t lastTemp = tofCoinTemp->unixTime[0];
+
+      fin->Close();
+      delete fin;
+      
+      if (firstTemp>endTime){
+	break;
+      }
+    
+      if (firstTemp<startTime && lastTemp>startTime){
+	runMin = irun;
+      }
+    
+      if (firstTemp<endTime && lastTemp>endTime){
+	runMax = irun;
+      }   
+    }
+  
+    cout << "Min and max runs are " << runMin << " " << runMax << endl;
+
+    for (int itdc=0; itdc<2; itdc++) {
+      TChain *tofCoinChain = new TChain("tofCoinTree");
+
+      for (int irun=runMin; irun<runMax+1; irun++){
+	tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+      }
+
+      RawDsTofCoincidence *tofCoin = NULL;
+      tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+
+      double dstofHitT, deltat;
+
+      for (int ientry=0; ientry<tofCoinChain->GetEntries(); ientry++){
+	tofCoinChain->GetEntry(ientry);
+	if (tofCoin->unixTime[0]<startTime) continue;
+	if (tofCoin->unixTime[0]>endTime) break;
+      
+	if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc==0) {
+	  lastSpill = tofCoin->lastDelayedBeamSignal;
+	  nSpills++;
+	  for (int sp=ientry; sp < tofCoinChain->GetEntries(); sp++) {
+	    tofCoinChain->GetEntry(sp);
+	    if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. && 
+		(tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
+	      nSpillsTrue++;
+	      break;
+	    }
+	  
+	    if (tofCoin->unixTime[0]>endTime) break;
+	  }
+	}      
+      
+	deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
+	dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10.-TMath::Abs(deltat) / 2 );
+	if (tofCoin->inSpill) {
+	  double tof = dstofHitT - tofCoin->usTofSignal;
+	  h2dtof->Fill(tof, tofCoin->bar);  
+	}
+      }
+    }
+    gStyle->SetPalette(55);
+    gStyle->SetOptStat(0);
+    h2dtof->Scale(1./nSpillsTrue);
+    TCanvas *c1 = new TCanvas(Form("c1_%d", nBlocks));
+    c1->SetLogz();
+    c1->SetRightMargin(0.13);
+    h2dtof->Draw("colz");
+    c1->Print(Form("%s/nBlocksPlots/2dtofVert_blocks%d.png", saveDir, nBlocks));
+    c1->Print(Form("%s/nBlocksPlots/2dtofVert_blocks%d.pdf", saveDir, nBlocks));
+  } // nBlocks
+} // tofBar
