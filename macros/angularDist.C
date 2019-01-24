@@ -1,20 +1,24 @@
 // angularDist.C
 // Angular distribution of protons and pions for different moderator blocks
-void angularDist (/*const int nBlocks, */ const char* saveDir, const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
+void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = false, const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") {
 
   gROOT->SetBatch(kTRUE);
 
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
+  // 31/08/2018
   const double start0Block = 1535713289;
   const double end0Block   = 1535716132;
   // 0.8GeV/c, 1 block
+  // 01/09/2018
   const double start1Block = 1535796057;
   const double end1Block   = 1535799112;
   // 0.8GeV/c, 2 blocks
+  // 01/09/2018
   const double start2Block = 1535789157;
   const double end2Block   = 1535792026;
   // 0.8GeV/c, 3 block
+  // 01/09/2018
   const double start3Block = 1535792404;
   const double end3Block   = 1535798437;
   // 0.8GeV/c, 4 block
@@ -40,10 +44,26 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, const char* dstof
     double nSpillsTrue = 0.;
     double lastSpill = 0.;
 
+    vector< vector<double> > pmtHitTimesA;
+    vector< vector<double> > pmtHitTimesB;
+    pmtHitTimesA.resize(10);
+    pmtHitTimesB.resize(10);
+
+    vector<int> pmtHitsA;
+    vector<int> pmtHitsB;
+    pmtHitsA.resize(10, 0);
+    pmtHitsB.resize(10, 0);
+
     int nPi = 0;
     int nP  = 0;
+
+    TH1D *htof1dHitsA = new TH1D(Form("htof1dHitsA_%d",nBlocks), Form("Time of flight, %d blocks; PMT_{A} - UsToF / ns; Events", nBlocks), 100, 130, 230);
+    TH1D *htof1dHitsB = new TH1D(Form("htof1dHitsB_%d",nBlocks), Form("Time of flight, %d blocks; PMT_{B} - UsToF / ns; Events", nBlocks), 100, 130, 230);
+    TH1D *hHitsA = new TH1D(Form("hHitsA_%d",nBlocks), Form("Time of flight, %d blocks; Bar; Events", nBlocks), 10, 0.5, 10.5);
+    TH1D *hHitsB = new TH1D(Form("hHitsB_%d",nBlocks), Form("PMT_B + S1,2 coincidences, %d blocks; Bar; Events", nBlocks), 10, 0.5, 10.5);
+    TH1D *hCoins = new TH1D(Form("hCoins_%d",nBlocks), Form("PMT_A + PMT_B + S1,2 coincidences, %d blocks; Bar; Events", nBlocks), 10, 0.5, 10.5);
     
-    TH1D *htof1d = new TH1D("htof1d", Form("Time of flight, %d blocks; DsToF - UsToF / ns; Events / spill", nBlocks), 100, 50, 150);
+    TH1D *htof1d = new TH1D(Form("htof1d_%d",nBlocks), Form("Time of flight, %d blocks; DsToF - UsToF / ns; Events / spill", nBlocks), 100, 50, 150);
     TH2D *piHitsDstof = new TH2D("piHitsDstof", Form("%d blocks, position of S4 #pi hits; x / cm; y / cm; Events / spill", nBlocks), 20, 0, 140, 10, 0, 77.5);
     TH2D *proHitsDstof = new TH2D("proHitsDstof", Form("%d blocks, position of S4 proton hits; x / cm; y / cm; Events / spill", nBlocks), 20, 0, 140, 10, 0, 77.5);
     TH2D *proPiDstof = new TH2D("proPiDstof", Form("%d blocks, proton/pion ratio in S4; x / cm; y / cm", nBlocks), 20, 0, 140, 10, 0, 77.5);
@@ -68,6 +88,8 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, const char* dstof
     TH1D *hproHitsDstofHorz = new TH1D("hproHitsDstofHorz", Form("%d blocks, position of S4 proton hits; x / cm", nBlocks), 20, 0, 140);
     hproHitsDstofHorz->Sumw2();
     TH1D *hproPiDstofHorz = new TH1D(Form("hproPiDstofHorz_block%d",nBlocks), "Proton/(#pi+#mu) ratio in S4; x / cm", 20, 0, 140);
+
+    TH1D *hbarEff = new TH1D(Form("hbarEff_block%d", nBlocks), Form("%d blocks, S4 bar efficiency; Vertical bar in S4; Efficiency", nBlocks), 10, 0.5, 10.5);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -96,267 +118,388 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, const char* dstof
       endTime   = end4Block;
     }
 
-  for (int irun=950; irun<1200; irun++){
-    TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
-    RawDsTofCoincidence *tofCoinTemp = NULL;
-    TTree *tree = (TTree*) fin->Get("tofCoinTree");
-    tree->SetBranchAddress("tofCoin", &tofCoinTemp);
-    tree->GetEntry(0);
-    UInt_t firstTemp = tofCoinTemp->unixTime[0];
-    tree->GetEntry(tree->GetEntries()-1);
-    UInt_t lastTemp = tofCoinTemp->unixTime[0];
-
-    fin->Close();
-    delete fin;
-
-    if (firstTemp>endTime){
-      break;
-    }
-
-    if (firstTemp<startTime && lastTemp>startTime){
-      runMin = irun;
-    }
-
-    if (firstTemp<endTime && lastTemp>endTime){
-      runMax = irun;
-    }   
-  }
-
-  cout << "Min and max runs are " << runMin << " " << runMax << endl;
- 
-  for (int itdc=0; itdc<2; itdc++) {
-    TChain *tofCoinChain = new TChain("tofCoinTree");
-
-    for (int irun=runMin; irun<runMax+1; irun++){
-      tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
-    }
-
-    RawDsTofCoincidence *tofCoin = NULL;
-    tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
-
-    double dstofHitT, deltat;
-
-    for (int ientry=0; ientry<tofCoinChain->GetEntries(); ientry++){
-      tofCoinChain->GetEntry(ientry);
-      if (tofCoin->unixTime[0]<startTime) continue;
-      if (tofCoin->unixTime[0]>endTime) break;
+    for (int irun=950; irun<1200; irun++){
+      TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+      RawDsTofCoincidence *tofCoinTemp = NULL;
+      TTree *tree = (TTree*) fin->Get("tofCoinTree");
+      tree->SetBranchAddress("tofCoin", &tofCoinTemp);
+      tree->GetEntry(0);
+      UInt_t firstTemp = tofCoinTemp->unixTime[0];
+      tree->GetEntry(tree->GetEntries()-1);
+      UInt_t lastTemp = tofCoinTemp->unixTime[0];
       
-      if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc==0) {
-	lastSpill = tofCoin->lastDelayedBeamSignal;
-	nSpills++;
-	for (int sp=ientry; sp < tofCoinChain->GetEntries(); sp++) {
-	  tofCoinChain->GetEntry(sp);
-	  if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. && 
-	      (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
-	      (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
-	      (tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
-	    nSpillsTrue++;
-	    break;
-	  }
+      fin->Close();
+      delete fin;
+      
+      if (firstTemp>endTime){
+	break;
+      }
+      
+      if (firstTemp<startTime && lastTemp>startTime){
+	runMin = irun;
+      }
+      
+      if (firstTemp<endTime && lastTemp>endTime){
+	runMax = irun;
+      }   
+    }
+    
+    cout << "Min and max runs are " << runMin << " " << runMax << endl;
+    
+    for (int itdc=0; itdc<2; itdc++) {
+      TChain *tofCoinChain = new TChain("tofCoinTree");
 
-	  if (tofCoin->unixTime[0]>endTime) break;
-	}
-      }      
+      TChain *tofChain = new TChain("tofTree");
 
-      deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
-      dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
-      double tof = dstofHitT - tofCoin->usTofSignal;
-      htof1d->Fill(dstofHitT - tofCoin->usTofSignal);
-      if (tof > piLow && tof < piHi) {
-	piHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
-	piHitsDstofVert->Fill(1, tofCoin->bar);
-	piHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
-	nPi++;
-	if (tofCoin->bar != 10) {
-	  hpiHitsDstofVert->Fill(tofCoin->bar);
-	  hpiHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
+      for (int irun=runMin; irun<runMax+1; irun++){
+	tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+	if (useEffs) {
+	  tofChain->Add(Form("%srun%d/DsTOFtreeRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
 	}
       }
-      else if (tof > proLow && tof < proHi) {
-	proHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
-	proHitsDstofVert->Fill(1, tofCoin->bar);
-	proHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
-	nP++;
-	if (tofCoin->bar != 10) {
-	  hproHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
-	  hproHitsDstofVert->Fill(tofCoin->bar);
+      
+      RawDsTofCoincidence *tofCoin = NULL;
+      tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+
+      RawDsTofHeader *tof = NULL;
+      tofChain->SetBranchAddress("tof", &tof);
+
+      vector<double> ustofTimes;
+      for (int jentry=0; jentry<tofChain->GetEntries(); jentry++) {
+	tofChain->GetEntry(jentry);
+	if (tof->unixTime<startTime) continue;
+	if (tof->unixTime>endTime) break;
+	
+	if(tof->channel ==13) {
+	  ustofTimes.push_back(tof->fakeTimeNs - 184.7);
+	}
+      }
+      cout<<"Ustof signals "<<ustofTimes.size()<<endl;
+      double dstofHitT, deltat;
+
+      if (useEffs) {
+	double lastUstof = 0.;
+	cout<<"Matching ustof signals to pmt hits"<<endl;
+	int lastu=0;
+	for (int jentry=0; jentry<tofChain->GetEntries(); jentry++) {
+	  cout<<jentry<<" of "<<tofChain->GetEntries()<<endl;
+	  tofChain->GetEntry(jentry);
+	  if (tof->unixTime<startTime) continue;
+	  if (tof->unixTime>endTime) break;
+	  // Check if each pmt hit is in coincidence with a utof hit
+	  /*
+	  if (tof->channel==13) {
+	    lastUstof = tof->fakeTimeNs - 184.7;
+	  }
+	  */
+	  if (tof->channel <= 10 && tof->channel > 0) {
+	    for (int u = lastu; u < ustofTimes.size(); u++) {
+	      double pmtTof = tof->fakeTimeNs - ustofTimes[u];
+	      // Is a coincidence
+	      if (pmtTof > 130 && pmtTof < 230) {
+		cout<<"Matched"<<endl;
+		// TDC 1
+		if (itdc == 0) {
+		  if (tof->channel % 2 == 1) { // PMT B
+		    pmtHitsB[((tof->channel + 1) / -2) + 10]++;
+		    pmtHitTimesB[((tof->channel + 1) / -2) + 10].push_back(tof->fakeTimeNs);
+		    htof1dHitsB->Fill(pmtTof);
+		    hHitsB->Fill(((tof->channel + 1) / -2) + 10);
+		  }
+		  else { // PMT A
+		    pmtHitsA[((tof->channel) / -2) + 10]++;
+		    pmtHitTimesA[((tof->channel) / -2) + 10].push_back(tof->fakeTimeNs);
+		    htof1dHitsA->Fill(pmtTof);
+		    hHitsA->Fill(((tof->channel) / -2) + 10);
+		  }
+		}
+		// TDC 2
+		else {
+		  if (tof->channel % 2 == 1) { // PMT B
+		    pmtHitsB[((tof->channel + 1) / -2) + 5]++;
+		    pmtHitTimesB[((tof->channel + 1) / -2) + 5].push_back(tof->fakeTimeNs);
+		    htof1dHitsB->Fill(pmtTof);
+		    hHitsB->Fill(((tof->channel + 1) / -2) + 5);
+		  }
+		  else { // PMT A
+		    pmtHitsA[((tof->channel) / -2) + 5]++;
+		    pmtHitTimesA[((tof->channel) / -2) + 5].push_back(tof->fakeTimeNs);
+		    htof1dHitsA->Fill(pmtTof);
+		    hHitsA->Fill(((tof->channel) / -2) + 5);
+		  }
+		}
+		lastu = u;
+		break;
+	      }
+	    }
+	  }
+	  
+	}
+      } // useEffs
+      
+      for (int ientry=0; ientry<tofCoinChain->GetEntries(); ientry++){
+	tofCoinChain->GetEntry(ientry);
+	if (tofCoin->unixTime[0]<startTime) continue;
+	if (tofCoin->unixTime[0]>endTime) break;
+      
+	if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc==0) {
+	  lastSpill = tofCoin->lastDelayedBeamSignal;
+	  nSpills++;
+	  for (int sp=ientry; sp < tofCoinChain->GetEntries(); sp++) {
+	    tofCoinChain->GetEntry(sp);
+	    if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. && 
+		(tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
+	      nSpillsTrue++;
+	      break;
+	    }
+
+	    if (tofCoin->unixTime[0]>endTime) break;
+	  }
+	}  
+
+	deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
+	dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2 );
+	double tof = dstofHitT - tofCoin->usTofSignal;
+
+	// Is a genuine coincidence
+	if (tof < 150. && tof > 50.) {
+	  hCoins->Fill(tofCoin->bar); // Signal bar hits
+	  htof1d->Fill(dstofHitT - tofCoin->usTofSignal);
+	}
+	if (tof > piLow && tof < piHi) {
+	  piHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+	  piHitsDstofVert->Fill(1, tofCoin->bar);
+	  piHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	  nPi++;
+	  if (tofCoin->bar != 10) {
+	    hpiHitsDstofVert->Fill(tofCoin->bar);
+	    hpiHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
+	  }
+	}
+	else if (tof > proLow && tof < proHi) {
+	  proHitsDstof->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., (tofCoin->bar*7.5) - 2.5);
+	  proHitsDstofVert->Fill(1, tofCoin->bar);
+	  proHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70., 1);
+	  nP++;
+	  if (tofCoin->bar != 10) {
+	    hproHitsDstofHorz->Fill((-1.*tofCoin->fakeTimeNs[0] + tofCoin->fakeTimeNs[1])*(7./2.)+70.);
+	    hproHitsDstofVert->Fill(tofCoin->bar);
+	  }
 	}
       }
     }
-  }
 
-  cout<<"Data from "<<nSpills<<" spills ("<<nSpillsTrue<<" true)"<<" over "<<(endTime - startTime)<<" seconds"<<endl;
+    cout<<"Data from "<<nSpills<<" spills ("<<nSpillsTrue<<" true)"<<" over "<<(endTime - startTime)<<" seconds"<<endl;
 
-  gStyle->SetOptStat(0);
-  gStyle->SetPalette(55);
-  
-  TCanvas *c1 = new TCanvas("c1");
-  proPiDstof->Divide(proHitsDstof, piHitsDstof);
-  proPiDstof->GetZaxis()->SetRangeUser(0, 1.7);
-  c1->SetRightMargin(0.13);
-  proPiDstof->Draw("colz");
-  c1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio.png", saveDir, nBlocks));
-  c1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio.pdf", saveDir, nBlocks));
-  TCanvas *c2 = new TCanvas("c2");
-  c2->SetRightMargin(0.13);
-  proHitsDstof->Scale(1./nSpillsTrue);
-  proHitsDstof->GetZaxis()->SetRangeUser(0, 3.); 
-  proHitsDstof->Draw("colz");
-  c2->Print(Form("%s/nBlocksPlots/%dblocks_protons.png", saveDir, nBlocks));
-  c2->Print(Form("%s/nBlocksPlots/%dblocks_protons.pdf", saveDir, nBlocks));
-  TCanvas *c3 = new TCanvas("c3");
-  c3->SetRightMargin(0.13);
-  piHitsDstof->Scale(1./nSpillsTrue);
-  piHitsDstof->GetZaxis()->SetRangeUser(0, 14.);
-  piHitsDstof->Draw("colz");
-  c3->Print(Form("%s/nBlocksPlots/%dblocks_pions.png", saveDir, nBlocks));
-  c3->Print(Form("%s/nBlocksPlots/%dblocks_pions.pdf", saveDir, nBlocks));
-  TCanvas *c4 = new TCanvas("c4");
-  htof1d->Scale(1./nSpillsTrue);
-  htof1d->Draw("hist");
-  c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.png", saveDir, nBlocks));
-  c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.pdf", saveDir, nBlocks));
-  /*
-  TCanvas *c1_1 = new TCanvas("c1_1");
-  proPiDstofVert->Divide(proHitsDstofVert, piHitsDstofVert);
-  proPiDstofVert->GetZaxis()->SetRangeUser(0, 1.7);
-  c1_1->SetRightMargin(0.13);
-  proPiDstofVert->Draw("colz text");
-  c1_1->Print(Form("%s/nBlocksPlots/%dblock_propiratio_vert.png", saveDir, nBlocks));
-  c1_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert.pdf", saveDir, nBlocks));
-  TCanvas *c1_2 = new TCanvas("c1_2");
-  c1_2->SetRightMargin(0.13);
-  proHitsDstofVert->Scale(1./nSpillsTrue);
-  proHitsDstofVert->GetZaxis()->SetRangeUser(0, 10.); 
-  proHitsDstofVert->Draw("colz text");
-  c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.png", saveDir, nBlocks));
-  c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.pdf", saveDir, nBlocks));
-  TCanvas *c1_3 = new TCanvas("c1_3");
-  c1_3->SetRightMargin(0.13);
-  piHitsDstofVert->Scale(1./nSpillsTrue);
-  piHitsDstofVert->GetZaxis()->SetRangeUser(0, 70.); 
-  piHitsDstofVert->Draw("colz text");
-  c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.png", saveDir, nBlocks));
-  c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.pdf", saveDir, nBlocks));
+    gStyle->SetOptStat(0);
+    gStyle->SetPalette(55);
 
-  TCanvas *c2_1 = new TCanvas("c2_1");
-  proPiDstofHorz->Divide(proHitsDstofHorz, piHitsDstofHorz);
-  proPiDstofHorz->GetZaxis()->SetRangeUser(0, 0.8);
-  c2_1->SetRightMargin(0.13);
-  proPiDstofHorz->Draw("colz");
-  c2_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz.png", saveDir, nBlocks));
-  c2_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz.pdf", saveDir, nBlocks));
-  TCanvas *c2_2 = new TCanvas("c2_2");
-  c2_2->SetRightMargin(0.13);
-  proHitsDstofHorz->Scale(1./nSpillsTrue);
-  proHitsDstofHorz->Draw("colz");
-  c2_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz.png", saveDir, nBlocks));
-  c2_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz.pdf", saveDir, nBlocks));
-  TCanvas *c2_3 = new TCanvas("c2_3");
-  c2_3->SetRightMargin(0.13);
-  piHitsDstofHorz->Scale(1./nSpillsTrue);
-  piHitsDstofHorz->Draw("colz");
-  c2_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz.png", saveDir, nBlocks));
-  c2_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz.pdf", saveDir, nBlocks));
-  */
-  TCanvas *c3_1 = new TCanvas("c3_1");
-  hproPiDstofVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
-  //  hproPiDstofVert->GetYaxis()->SetRangeUser(0, 5.);
-  hproPiDstofVert->Draw("hist E");
-  c3_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert_hist.png", saveDir, nBlocks));
-  c3_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert_hist.pdf", saveDir, nBlocks));
-  TCanvas *c3_2 = new TCanvas("c3_2");
-  hproPiDstofHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
-  //  hproPiDstofHorz->GetYaxis()->SetRangeUser(0, 1.9);
-  hproPiDstofHorz->Draw("hist E");
-  c3_2->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz_hist.png", saveDir, nBlocks));
-  c3_2->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz_hist.pdf", saveDir, nBlocks));
-  TCanvas *c3_3 = new TCanvas("c3_3");
-  hproHitsDstofHorz->Scale(1./nSpillsTrue);
-  hproHitsDstofHorz->Draw("hist");
-  c3_3->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz_hist.png", saveDir, nBlocks));
-  c3_3->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz_hist.pdf", saveDir, nBlocks));
-  TCanvas *c3_4 = new TCanvas("c3_4");
-  hpiHitsDstofHorz->Scale(1./nSpillsTrue);
-  hpiHitsDstofHorz->Draw("hist");
-  c3_4->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz_hist.png", saveDir, nBlocks));
-  c3_4->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz_hist.pdf", saveDir, nBlocks));
-  TCanvas *c3_5 = new TCanvas("c3_5");
-  hproHitsDstofVert->Scale(1./nSpillsTrue);
-  hproHitsDstofVert->Draw("hist");
-  c3_5->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert_hist.png", saveDir, nBlocks));
-  c3_5->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert_hist.pdf", saveDir, nBlocks));
-  TCanvas *c3_6 = new TCanvas("c3_6");
-  hpiHitsDstofVert->Scale(1./nSpillsTrue);
-  hpiHitsDstofVert->Draw("hist");
-  c3_6->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert_hist.png", saveDir, nBlocks));
-  c3_6->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert_hist.pdf", saveDir, nBlocks));
-  /*
-  TCanvas *c3_2 = new TCanvas("c3_2");
-  c1_2->SetRightMargin(0.13);
-  proHitsDstofVert->Scale(1./nSpillsTrue);
-  proHitsDstofVert->GetZaxis()->SetRangeUser(0, 10.); 
-  proHitsDstofVert->Draw("colz text");
-  c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.png", saveDir, nBlocks));
-  c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.pdf", saveDir, nBlocks));
-  TCanvas *c3_3 = new TCanvas("c3_3");
-  c1_3->SetRightMargin(0.13);
-  piHitsDstofVert->Scale(1./nSpillsTrue);
-  piHitsDstofVert->GetZaxis()->SetRangeUser(0, 70.); 
-  piHitsDstofVert->Draw("colz text");
-  c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.png", saveDir, nBlocks));
-  c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.pdf", saveDir, nBlocks));
-  */
-  c_proPiVert->cd();
-  hproPiDstofVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
-  hproPiDstofVert->SetTitle("Proton/(#pi+#mu) in S4; Bar number in S4; P/(#pi+#mu)"); 
-  if (nBlocks == 0) {
-    hproPiDstofVert->SetLineColor(kBlue);
-    legVert->AddEntry(hproPiDstofVert, "0 blocks", "l");
+    // Now calculate efficiencies
+    if (useEffs) {
+      int lastb = 0;
+      for (int bar = 0; bar < 10; bar++) {
+	for (int a = 0; a < pmtHitTimesA[bar].size(); a++) {
+	  for (int b = 0; b < pmtHitTimesB[bar].size(); b++) {
+	    if(abs(pmtHitTimesA[bar][a] - pmtHitTimesB[bar][b]) < 20.) {
+	      pmtHitsA[bar]--;
+	      lastb = b;
+	      break;
+	    }
+	  }
+	}
+	hbarEff->SetBinContent(bar+1, hCoins->GetBinContent(bar+1) / (pmtHitsA[bar]+pmtHitsB[bar]));
+      } // bars
+    } // useEffs
+    
+    TCanvas *cEff = new TCanvas(Form("cEff_%d",nBlocks));
+    hbarEff->Draw("hist");
+    cEff->Print(Form("%s/nBlocksPlots/Eff_blocks%d.png", saveDir, nBlocks));
+
+    TCanvas *cCoins = new TCanvas(Form("cCoins_%d",nBlocks));
+    hCoins->Draw("hist");
+    cCoins->Print(Form("%s/nBlocksPlots/coins_blocks%d.png", saveDir, nBlocks));
+
+    TCanvas *cHitsA2 = new TCanvas(Form("cHitsA2_%d",nBlocks));
+    hHitsA->Draw("hist");
+    cHitsA2->Print(Form("%s/nBlocksPlots/HitsA_blocks%d.png", saveDir, nBlocks));
+    TCanvas *cHitsB2 = new TCanvas(Form("cHitsB2_%d",nBlocks));
+    hHitsB->Draw("hist");
+    cHitsB2->Print(Form("%s/nBlocksPlots/HitsB_blocks%d.png", saveDir, nBlocks));
+
+    TCanvas *cHitsA = new TCanvas(Form("cHitsA_%d",nBlocks));
+    htof1dHitsA->Draw("hist");
+    cHitsA->Print(Form("%s/nBlocksPlots/tofHitsA_blocks%d.png", saveDir, nBlocks));
+    TCanvas *cHitsB = new TCanvas(Form("cHitsB_%d",nBlocks));
+    htof1dHitsB->Draw("hist");
+    cHitsB->Print(Form("%s/nBlocksPlots/tofHitsB_blocks%d.png", saveDir, nBlocks));
+
+    TCanvas *c1 = new TCanvas("c1");
+    proPiDstof->Divide(proHitsDstof, piHitsDstof);
+    proPiDstof->GetZaxis()->SetRangeUser(0, 1.7);
+    c1->SetRightMargin(0.13);
+    proPiDstof->Draw("colz");
+    c1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio.png", saveDir, nBlocks));
+    c1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio.pdf", saveDir, nBlocks));
+    TCanvas *c2 = new TCanvas("c2");
+    c2->SetRightMargin(0.13);
+    proHitsDstof->Scale(1./nSpillsTrue);
+    proHitsDstof->GetZaxis()->SetRangeUser(0, 3.); 
+    proHitsDstof->Draw("colz");
+    c2->Print(Form("%s/nBlocksPlots/%dblocks_protons.png", saveDir, nBlocks));
+    c2->Print(Form("%s/nBlocksPlots/%dblocks_protons.pdf", saveDir, nBlocks));
+    TCanvas *c3 = new TCanvas("c3");
+    c3->SetRightMargin(0.13);
+    piHitsDstof->Scale(1./nSpillsTrue);
+    piHitsDstof->GetZaxis()->SetRangeUser(0, 14.);
+    piHitsDstof->Draw("colz");
+    c3->Print(Form("%s/nBlocksPlots/%dblocks_pions.png", saveDir, nBlocks));
+    c3->Print(Form("%s/nBlocksPlots/%dblocks_pions.pdf", saveDir, nBlocks));
+    TCanvas *c4 = new TCanvas("c4");
+    //    htof1d->Scale(1./nSpillsTrue);
+    htof1d->Draw("hist");
+    c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.png", saveDir, nBlocks));
+    c4->Print(Form("%s/nBlocksPlots/%dblocks_tof.pdf", saveDir, nBlocks));
+    /*
+    TCanvas *c1_1 = new TCanvas("c1_1");
+    proPiDstofVert->Divide(proHitsDstofVert, piHitsDstofVert);
+    proPiDstofVert->GetZaxis()->SetRangeUser(0, 1.7);
+    c1_1->SetRightMargin(0.13);
+    proPiDstofVert->Draw("colz text");
+    c1_1->Print(Form("%s/nBlocksPlots/%dblock_propiratio_vert.png", saveDir, nBlocks));
+    c1_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert.pdf", saveDir, nBlocks));
+    TCanvas *c1_2 = new TCanvas("c1_2");
+    c1_2->SetRightMargin(0.13);
+    proHitsDstofVert->Scale(1./nSpillsTrue);
+    proHitsDstofVert->GetZaxis()->SetRangeUser(0, 10.); 
+    proHitsDstofVert->Draw("colz text");
+    c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.png", saveDir, nBlocks));
+    c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.pdf", saveDir, nBlocks));
+    TCanvas *c1_3 = new TCanvas("c1_3");
+    c1_3->SetRightMargin(0.13);
+    piHitsDstofVert->Scale(1./nSpillsTrue);
+    piHitsDstofVert->GetZaxis()->SetRangeUser(0, 70.); 
+    piHitsDstofVert->Draw("colz text");
+    c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.png", saveDir, nBlocks));
+    c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.pdf", saveDir, nBlocks));
+    
+    TCanvas *c2_1 = new TCanvas("c2_1");
+    proPiDstofHorz->Divide(proHitsDstofHorz, piHitsDstofHorz);
+    proPiDstofHorz->GetZaxis()->SetRangeUser(0, 0.8);
+    c2_1->SetRightMargin(0.13);
+    proPiDstofHorz->Draw("colz");
+    c2_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz.png", saveDir, nBlocks));
+    c2_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz.pdf", saveDir, nBlocks));
+    TCanvas *c2_2 = new TCanvas("c2_2");
+    c2_2->SetRightMargin(0.13);
+    proHitsDstofHorz->Scale(1./nSpillsTrue);
+    proHitsDstofHorz->Draw("colz");
+    c2_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz.png", saveDir, nBlocks));
+    c2_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz.pdf", saveDir, nBlocks));
+    TCanvas *c2_3 = new TCanvas("c2_3");
+    c2_3->SetRightMargin(0.13);
+    piHitsDstofHorz->Scale(1./nSpillsTrue);
+    piHitsDstofHorz->Draw("colz");
+    c2_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz.png", saveDir, nBlocks));
+    c2_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz.pdf", saveDir, nBlocks));
+    */
+    TCanvas *c3_1 = new TCanvas("c3_1");
+    hproPiDstofVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
     hproPiDstofVert->Draw("hist E");
-  }
-  else if (nBlocks == 1) {
-    hproPiDstofVert->SetLineColor(kRed);
-    legVert->AddEntry(hproPiDstofVert, "1 block", "l");
-    hproPiDstofVert->Draw("hist same E");
-  }
-  else if (nBlocks == 2) {
-    hproPiDstofVert->SetLineColor(kBlack);
-    legVert->AddEntry(hproPiDstofVert, "2 blocks", "l");
-    hproPiDstofVert->Draw("hist same E");
-  }
-  else {
-    hproPiDstofVert->SetLineColor(kGreen+2);
-    legVert->AddEntry(hproPiDstofVert, "3 blocks", "l");
-    hproPiDstofVert->Draw("hist same E");
-  }
-
-  c_proPiHorz->cd();
-  hproPiDstofHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
-  hproPiDstofHorz->SetTitle("Proton/(#pi+#mu) in S4; x / cm; P/(#pi+#mu)"); 
-  if (nBlocks == 0) {
-    hproPiDstofHorz->SetLineColor(kBlue);
-    legHorz->AddEntry(hproPiDstofHorz, "0 blocks", "l");
+    c3_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert_hist.png", saveDir, nBlocks));
+    c3_1->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_vert_hist.pdf", saveDir, nBlocks));
+    TCanvas *c3_2 = new TCanvas("c3_2");
+    hproPiDstofHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
     hproPiDstofHorz->Draw("hist E");
-  }
-  else if (nBlocks == 1) {
-    hproPiDstofHorz->SetLineColor(kRed);
-    legHorz->AddEntry(hproPiDstofHorz, "1 block", "l");
-    hproPiDstofHorz->Draw("hist same E");
-  }
-  else if (nBlocks == 2) {
-    hproPiDstofHorz->SetLineColor(kBlack);
-    legHorz->AddEntry(hproPiDstofHorz, "2 blocks", "l");
-    hproPiDstofHorz->Draw("hist same E");
-  }
-  else {
-    hproPiDstofHorz->SetLineColor(kGreen+2);
-    legHorz->AddEntry(hproPiDstofHorz, "3 blocks", "l");
-    hproPiDstofHorz->Draw("hist same E");
-  }
-
-  double piInt = piHitsDstof->Integral(1, 20, 1, 10);
-  cout<<nBlocks<<" blocks: Have "<<nPi<<" pis and "<<nP<<" protons in "<<nSpillsTrue<<" spills"<<endl;
+    c3_2->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz_hist.png", saveDir, nBlocks));
+    c3_2->Print(Form("%s/nBlocksPlots/%dblocks_propiratio_horz_hist.pdf", saveDir, nBlocks));
+    TCanvas *c3_3 = new TCanvas("c3_3");
+    hproHitsDstofHorz->Scale(1./nSpillsTrue);
+    hproHitsDstofHorz->Draw("hist");
+    c3_3->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz_hist.png", saveDir, nBlocks));
+    c3_3->Print(Form("%s/nBlocksPlots/%dblocks_protons_horz_hist.pdf", saveDir, nBlocks));
+    TCanvas *c3_4 = new TCanvas("c3_4");
+    hpiHitsDstofHorz->Scale(1./nSpillsTrue);
+    hpiHitsDstofHorz->Draw("hist");
+    c3_4->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz_hist.png", saveDir, nBlocks));
+    c3_4->Print(Form("%s/nBlocksPlots/%dblocks_pions_horz_hist.pdf", saveDir, nBlocks));
+    TCanvas *c3_5 = new TCanvas("c3_5");
+    hproHitsDstofVert->Scale(1./nSpillsTrue);
+    hproHitsDstofVert->Draw("hist");
+    c3_5->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert_hist.png", saveDir, nBlocks));
+    c3_5->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert_hist.pdf", saveDir, nBlocks));
+    TCanvas *c3_6 = new TCanvas("c3_6");
+    hpiHitsDstofVert->Scale(1./nSpillsTrue);
+    hpiHitsDstofVert->Draw("hist");
+    c3_6->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert_hist.png", saveDir, nBlocks));
+    c3_6->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert_hist.pdf", saveDir, nBlocks));
+    /*
+    TCanvas *c3_2 = new TCanvas("c3_2");
+    c1_2->SetRightMargin(0.13);
+    proHitsDstofVert->Scale(1./nSpillsTrue);
+    proHitsDstofVert->GetZaxis()->SetRangeUser(0, 10.); 
+    proHitsDstofVert->Draw("colz text");
+    c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.png", saveDir, nBlocks));
+    c1_2->Print(Form("%s/nBlocksPlots/%dblocks_protons_vert.pdf", saveDir, nBlocks));
+    TCanvas *c3_3 = new TCanvas("c3_3");
+    c1_3->SetRightMargin(0.13);
+    piHitsDstofVert->Scale(1./nSpillsTrue);
+    piHitsDstofVert->GetZaxis()->SetRangeUser(0, 70.); 
+    piHitsDstofVert->Draw("colz text");
+    c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.png", saveDir, nBlocks));
+    c1_3->Print(Form("%s/nBlocksPlots/%dblocks_pions_vert.pdf", saveDir, nBlocks));
+    */
+    c_proPiVert->cd();
+    hproPiDstofVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
+    hproPiDstofVert->SetTitle("Proton/(#pi+#mu) in S4; Bar number in S4; P/(#pi+#mu)"); 
+    if (nBlocks == 0) {
+      hproPiDstofVert->SetLineColor(kBlue);
+      legVert->AddEntry(hproPiDstofVert, "0 blocks", "l");
+      hproPiDstofVert->Draw("hist E");
+    }
+    else if (nBlocks == 1) {
+      hproPiDstofVert->SetLineColor(kRed);
+      legVert->AddEntry(hproPiDstofVert, "1 block", "l");
+      hproPiDstofVert->Draw("hist same E");
+    }
+    else if (nBlocks == 2) {
+      hproPiDstofVert->SetLineColor(kBlack);
+      legVert->AddEntry(hproPiDstofVert, "2 blocks", "l");
+      hproPiDstofVert->Draw("hist same E");
+    }
+    else {
+      hproPiDstofVert->SetLineColor(kGreen+2);
+      legVert->AddEntry(hproPiDstofVert, "3 blocks", "l");
+      hproPiDstofVert->Draw("hist same E");
+    }
+    
+    c_proPiHorz->cd();
+    hproPiDstofHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
+    hproPiDstofHorz->SetTitle("Proton/(#pi+#mu) in S4; x / cm; P/(#pi+#mu)"); 
+    if (nBlocks == 0) {
+      hproPiDstofHorz->SetLineColor(kBlue);
+      legHorz->AddEntry(hproPiDstofHorz, "0 blocks", "l");
+      hproPiDstofHorz->Draw("hist E");
+    }
+    else if (nBlocks == 1) {
+      hproPiDstofHorz->SetLineColor(kRed);
+      legHorz->AddEntry(hproPiDstofHorz, "1 block", "l");
+      hproPiDstofHorz->Draw("hist same E");
+    }
+    else if (nBlocks == 2) {
+      hproPiDstofHorz->SetLineColor(kBlack);
+      legHorz->AddEntry(hproPiDstofHorz, "2 blocks", "l");
+      hproPiDstofHorz->Draw("hist same E");
+    }
+    else {
+      hproPiDstofHorz->SetLineColor(kGreen+2);
+      legHorz->AddEntry(hproPiDstofHorz, "3 blocks", "l");
+      hproPiDstofHorz->Draw("hist same E");
+    }
+    
+    double piInt = piHitsDstof->Integral(1, 20, 1, 10);
+    cout<<nBlocks<<" blocks: Have "<<nPi<<" pis and "<<nP<<" protons in "<<nSpillsTrue<<" spills"<<endl;
   }
   c_proPiVert->cd();
   c_proPiVert->SetTitle("Proton/(#pi+#mu) in S4"); 
