@@ -98,15 +98,15 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
     // With efficiencies taken into account
     // 1D hists
     TH1D *hpiHitsDstofVert_eff = new TH1D(Form("hpiHitsDstofVert_eff_block%d",nBlocks), Form("%d blocks, position of S4 #pi hits (eff. adjusted); Bar; Events / spill", nBlocks), 10, 0.5, 10.5);
-    hpiHitsDstofVert->Sumw2();
+    hpiHitsDstofVert_eff->Sumw2();
     TH1D *hproHitsDstofVert_eff = new TH1D(Form("hproHitsDstofVert_eff_block%d",nBlocks), Form("%d blocks, position of S4 proton hits (eff. adjusted); Bar; Events / spill", nBlocks), 10, 0.5, 10.5);
-    hproHitsDstofVert->Sumw2();
+    hproHitsDstofVert_eff->Sumw2();
     TH1D *hproPiDstofVert_eff = new TH1D(Form("hproPiDstofVert_eff_block%d",nBlocks), "Proton/(#pi+#mu) ratio in S4 (eff. adjusted); Vertical Bar in S4", 10, 0.5, 10.5);
     // Horizontal binning only
     TH1D *hpiHitsDstofHorz_eff = new TH1D(Form("hpiHitsDstofHorz_eff_block%d",nBlocks), Form("%d blocks, position of S4 #pi hits (eff. adjusted); x / cm", nBlocks), 20, 0, 140);
-    hpiHitsDstofHorz->Sumw2();
+    hpiHitsDstofHorz_eff->Sumw2();
     TH1D *hproHitsDstofHorz_eff = new TH1D(Form("hproHitsDstofHorz_eff_block%d",nBlocks), Form("%d blocks, position of S4 proton hits (eff. adjusted); x / cm", nBlocks), 20, 0, 140);
-    hproHitsDstofHorz->Sumw2();
+    hproHitsDstofHorz_eff->Sumw2();
     TH1D *hproPiDstofHorz_eff = new TH1D(Form("hproPiDstofHorz_eff_block%d",nBlocks), "Proton/(#pi+#mu) ratio in S4 (eff. adjusted); x / cm", 20, 0, 140);
 
     TH1D *hbarEff = new TH1D(Form("hbarEff_block%d", nBlocks), Form("%d blocks, S4 bar efficiency; Vertical bar in S4; Efficiency", nBlocks), 10, 0.5, 10.5);
@@ -181,6 +181,19 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
       tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
       RawDsTofHeader *tof = NULL;
       tofChain->SetBranchAddress("tof", &tof);
+
+      for (int h=0; h<tofCoinChain->GetEntries(); h++) {
+	tofCoinChain->GetEntry(h);
+	if (tofCoin->unixTime[0]<startTime) continue;
+	if (tofCoin->unixTime[0]>endTime) break;
+	// Need to calculate total signal hits here so we 
+	double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
+	double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
+	double tofCalc = dstofHitT - tofCoin->usTofSignal;
+	if (tofCalc < 150. && tofCalc > 50.) {
+	  hCoins->Fill(tofCoin->bar); // Signal bar hits
+	}
+      }
 
       vector<double> ustofTimes;
       for (int jentry=0; jentry<tofChain->GetEntries(); jentry++) {
@@ -257,22 +270,22 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
       } // useEffs
     } // itdc
   
-    //    if (useEffs) {
-      int lastb = 0;
-      for (int bar = 0; bar < 10; bar++) {
-	for (int a = 0; a < pmtHitTimesA[bar].size(); a++) {
-	  for (int b = 0; b < pmtHitTimesB[bar].size(); b++) {
-	    if(abs(pmtHitTimesA[bar][a] - pmtHitTimesB[bar][b]) < 20.) {
-	      pmtHitsA[bar]--;
-	      lastb = b;
-	      break;
-	    }
+    
+    int lastb = 0;
+    for (int bar = 0; bar < 10; bar++) {
+      for (int a = 0; a < pmtHitTimesA[bar].size(); a++) {
+	for (int b = 0; b < pmtHitTimesB[bar].size(); b++) {
+	  if(abs(pmtHitTimesA[bar][a] - pmtHitTimesB[bar][b]) < 20.) {
+	    pmtHitsA[bar]--;
+	    lastb = b;
+	    break;
 	  }
 	}
-	hHits->SetBinContent(bar+1, (pmtHitsA[bar]+pmtHitsB[bar]));
-      } // bars
-
-      //    } // useEffs
+      }
+      hHits->SetBinContent(bar+1, (pmtHitsA[bar]+pmtHitsB[bar]));
+    } // bars
+    
+    hbarEff->Divide(hCoins, hHits, 1., 1., "B");
 
     for (int itdc=0; itdc<2; itdc++) {
       TChain *tof1CoinChain = new TChain("tofCoinTree");
@@ -280,15 +293,12 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
 
       for (int irun=runMin; irun<runMax+1; irun++){
 	tof1CoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
-	if (useEffs) {
-	  tof1Chain->Add(Form("%srun%d/DsTOFtreeRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
-	}
       }    
 
       RawDsTofCoincidence *tof1Coin = NULL;
       tof1CoinChain->SetBranchAddress("tofCoin", &tof1Coin);
-      RawDsTofHeader *tof1 = NULL;
-      tof1Chain->SetBranchAddress("tof", &tof1);
+     
+
 
       for (int ientry=0; ientry<tof1CoinChain->GetEntries(); ientry++){
 	tof1CoinChain->GetEntry(ientry);
@@ -346,7 +356,6 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
       } // for (int ientry=0; ientry<tof1CoinChain->GetEntries(); ientry++)
     } // for (int itdc=0; itdc<2; itdc++)
 
-    hbarEff->Divide(hCoins, hHits, 1., 1., "B");
 
     cout<<"Data from "<<nSpills<<" spills ("<<nSpillsTrue<<" true)"<<" over "<<(endTime - startTime)<<" seconds"<<endl;
 
