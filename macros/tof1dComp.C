@@ -1,7 +1,7 @@
 // tof1dComp.C
 void tof1dComp (const char* saveDir, 
 		const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
-		const char* ustofDir="/scratch0/sjones/temp/mylinktoutof/") 
+		const char* ustofDir="/home/sjones/mylinktoutof/") 
 {
   //  gROOT->SetBatch(kTRUE);
 
@@ -30,7 +30,8 @@ void tof1dComp (const char* saveDir,
   THStack *hsu = new THStack("hsu", "Time of flight for various moderator thicknesses; S3 - S1 / ns; Events / spill");
   THStack *hsd = new THStack("hsd", "Time of flight for various moderator thicknesses; S4 - S1 / ns; Events / spill");
 
-  TLegend *legd = new TLegend(0.75, 0.6, 0.9, 0.8);
+  TLegend *legd = new TLegend(0.75, 0.6, 0.87, 0.8);
+  TLegend *legu = new TLegend(0.75, 0.6, 0.87, 0.8);
   // Find the appropriate dtof files
   for (int nBlocks=0; nBlocks < 4; nBlocks++) {
 
@@ -130,7 +131,7 @@ void tof1dComp (const char* saveDir,
 	double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
 	double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
 	double tofCalc = dstofHitT - tofCoin->usTofSignal;
-	if (tofCalc < 150. && tofCalc > 50.) {
+	if (tofCalc < 150. && tofCalc > 70.) {
 	  hdtof1d->Fill(tofCalc);
 	} // if (tofCalc < 150. && tofCalc > 50.) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
@@ -156,18 +157,69 @@ void tof1dComp (const char* saveDir,
     hdtof1d->Scale(1./ (double)nSpillsTrue);
 
     hsd->Add(hdtof1d);
-    // hdtof1d->Draw(nBlocks==0 ? "hist" : "hist same");
 
+    // Now do the same thing for the utof
+    // Input appropriate files by hand
+    char *nustof;
+    if (nBlocks==0) nustof = Form("%sData_2018_8_31_b2_800MeV_0block.root", ustofDir);
+    else if (nBlocks==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
+    else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
+    else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
 
-    /*
-    TCanvas *cu = new TCanvas("cu");
-    cu->SetLogy();
-    hutof1d->Draw(nBlocks==0 ? "hist" : "hist same");
-    */
+    TFile *futof = new TFile(nustof, "read");
+
+    double tToF[50];
+    double tS1;
+    int nhit;
+
+    TTree *tree = (TTree*)futof->Get("tree");
+
+    tree->SetBranchAddress("nhit", &nhit);
+    tree->SetBranchAddress("tS1", &tS1);
+    tree->SetBranchAddress("tToF", tToF);
+
+    for (int t=0; t<tree->GetEntries(); t++) {
+      tree->GetEntry(t);
+      for (int n=0; n<nhit; n++) {
+	cout<<tToF[n]<<" "<<tS1<<endl;
+	double tofCalc = tToF[n] - tS1;
+	hutof1d->Fill(tofCalc);
+	cout<<tofCalc<<endl;
+      }
+    } // for (int t=0; t<tree->GetEntries(); t++)
+
+    if (nBlocks==0) {
+      hutof1d->SetLineColor(kRed);
+      legu->AddEntry(hutof1d, "0 blocks",  "l");
+    }
+    else if (nBlocks==1) {
+      hutof1d->SetLineColor(kBlue);
+      legu->AddEntry(hutof1d, "1 block",  "l");
+    }
+    else if (nBlocks==2) {
+      hutof1d->SetLineColor(kBlack);
+      legu->AddEntry(hutof1d, "2 blocks",  "l");
+    }
+    else if (nBlocks==3) {
+      hutof1d->SetLineColor(kGreen+2);
+      legu->AddEntry(hutof1d, "3 blocks",  "l");
+    }
+
+    hutof1d->Scale(1./ (double)nSpillsTrue);
+
+    hsu->Add(hutof1d);
 
   } // nBlocks
 
   cd->cd();
   hsd->Draw("hist nostack");
   legd->Draw();
+  cd->Print("dstofAllBlockLog.png");
+  cd->Print("dstofAllBlockLog.pdf");
+
+  cu->cd();
+  hsu->Draw("hist nostack");
+  legu->Draw();
+  cu->Print("ustofAllBlockLog.png");
+  cu->Print("ustofAllBlockLog.pdf");
 }
