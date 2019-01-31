@@ -39,7 +39,7 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
   TLegend *legHorz = new TLegend(0.6, 0.8, 0.85, 0.6);
   TLegend *legVert = new TLegend(0.2, 0.8, 0.35, 0.6);
 
-  for (int nBlocks=0; nBlocks < 1; nBlocks++) {
+  for (int nBlocks=0; nBlocks < 4; nBlocks++) {
     double nSpills = 0.;
     double nSpillsTrue = 0.;
     double lastSpill = 0.;
@@ -298,8 +298,6 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
       RawDsTofCoincidence *tof1Coin = NULL;
       tof1CoinChain->SetBranchAddress("tofCoin", &tof1Coin);
      
-
-
       for (int ientry=0; ientry<tof1CoinChain->GetEntries(); ientry++){
 	tof1CoinChain->GetEntry(ientry);
 	if (tof1Coin->unixTime[0]<startTime) continue;
@@ -339,8 +337,10 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
 	  piHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1);
 	  nPi++;
 	  if (tof1Coin->bar != 10) {
-	    hpiHitsDstofVert->Fill(tof1Coin->bar, 1./hbarEff->GetBinContent(tof1Coin->bar));
-	    hpiHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1./hbarEff->GetBinContent(tof1Coin->bar));
+	    hpiHitsDstofVert->Fill(tof1Coin->bar);
+	    hpiHitsDstofVert_eff->Fill(tof1Coin->bar, 1./hbarEff->GetBinContent(tof1Coin->bar));
+	    hpiHitsDstofHorz_eff->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1./hbarEff->GetBinContent(tof1Coin->bar));
+	    hpiHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70.);
 	  }
 	}
 	else if (tofCalc > proLow && tofCalc < proHi) {
@@ -349,8 +349,10 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
 	  proHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1);
 	  nP++;
 	  if (tof1Coin->bar != 10) {
-	    hproHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1./hbarEff->GetBinContent(tof1Coin->bar));
-	    hproHitsDstofVert->Fill(tof1Coin->bar, 1./hbarEff->GetBinContent(tof1Coin->bar));
+	    hproHitsDstofHorz->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70.);
+	    hproHitsDstofHorz_eff->Fill((-1.*tof1Coin->fakeTimeNs[0] + tof1Coin->fakeTimeNs[1])*(7./2.)+70., 1./hbarEff->GetBinContent(tof1Coin->bar));
+	    hproHitsDstofVert->Fill(tof1Coin->bar);
+	    hproHitsDstofVert_eff->Fill(tof1Coin->bar, 1./hbarEff->GetBinContent(tof1Coin->bar));
 	  } // if (tof1Coin->bar != 10)
 	} // else if (tof > proLow && tof < proHi)
       } // for (int ientry=0; ientry<tof1CoinChain->GetEntries(); ientry++)
@@ -622,7 +624,7 @@ void tofBar(const char* saveDir, const char* dstofDir="/scratch0/dbrailsf/temp/m
 
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
-  const double start0Block = 1535713289;
+  const double start0Block = 1535713289; 
   const double end0Block   = 1535716132;
   // 0.8GeV/c, 1 block
   const double start1Block = 1535796057;
