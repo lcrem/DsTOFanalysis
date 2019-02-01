@@ -20,7 +20,8 @@ void angularDist (/*const int nBlocks, */ const char* saveDir, bool useEffs = fa
   // 0.8GeV/c, 3 block
   // 01/09/2018
   const double start3Block = 1535792404;
-  const double end3Block   = 1535798437;
+  const double end3Block   = 1535795300;
+  // const double end3Block   = 1535798437;
   // 0.8GeV/c, 4 block
   // Most runs were in this configuration so don't need to use necessarily
   const double start4Block = 1535608220;
