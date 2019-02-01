@@ -17,7 +17,7 @@ void tof1dComp (const char* saveDir,
   const double end2Block   = 1535792026;
   // 0.8GeV/c, 3 block
   const double start3Block = 1535792404;
-  const double end3Block   = 1535798437;
+  const double end3Block   = 1535795300;
   // 0.8GeV/c, 4 block
   // Most runs were in this configuration so don't need to use necessarily
   const double start4Block = 1535608220;
@@ -68,6 +68,8 @@ void tof1dComp (const char* saveDir,
       startTime = start4Block;
       endTime   = end4Block;
     }
+
+    TH2D *hdtof2d = new TH2D(Form("hdtof2d_%d",nBlocks), Form("Time of flight across run length, %d blocks; S4 - S1 / ns; Unix time / s",nBlocks), 160, 70, 150, 400, startTime, endTime);
 
     for (int irun=950; irun<1200; irun++){
       TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
@@ -133,6 +135,7 @@ void tof1dComp (const char* saveDir,
 	double tofCalc = dstofHitT - tofCoin->usTofSignal;
 	if (tofCalc < 150. && tofCalc > 70.) {
 	  hdtof1d->Fill(tofCalc);
+	  hdtof2d->Fill(tofCalc, tofCoin->unixTime[0]);
 	} // if (tofCalc < 150. && tofCalc > 50.) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
     } // for (int itdc=0; itdc<2; itdc++)
@@ -155,8 +158,12 @@ void tof1dComp (const char* saveDir,
     }
 
     hdtof1d->Scale(1./ (double)nSpillsTrue);
-
     hsd->Add(hdtof1d);
+
+    TCanvas *c2d = new TCanvas("c2d");
+    hdtof2d->Draw();
+    c2d->Print(Form("%s/%d_dtof2d.png",saveDir,nBlocks));
+    c2d->Print(Form("%s/%d_dtof2d.pdf",saveDir,nBlocks));
 
     // Now do the same thing for the utof
     // Input appropriate files by hand
@@ -181,10 +188,8 @@ void tof1dComp (const char* saveDir,
     for (int t=0; t<tree->GetEntries(); t++) {
       tree->GetEntry(t);
       for (int n=0; n<nhit; n++) {
-	cout<<tToF[n]<<" "<<tS1<<endl;
 	double tofCalc = tToF[n] - tS1;
 	hutof1d->Fill(tofCalc);
-	cout<<tofCalc<<endl;
       }
     } // for (int t=0; t<tree->GetEntries(); t++)
 
@@ -214,12 +219,12 @@ void tof1dComp (const char* saveDir,
   cd->cd();
   hsd->Draw("hist nostack");
   legd->Draw();
-  cd->Print("dstofAllBlockLog.png");
-  cd->Print("dstofAllBlockLog.pdf");
+  cd->Print(Form("%s/dstofAllBlockLog.png",saveDir));
+  cd->Print(Form("%s/dstofAllBlockLog.pdf",saveDir));
 
   cu->cd();
   hsu->Draw("hist nostack");
   legu->Draw();
-  cu->Print("ustofAllBlockLog.png");
-  cu->Print("ustofAllBlockLog.pdf");
+  cu->Print(Form("%s/ustofAllBlockLog.png", saveDir));
+  cu->Print(Form("%s/ustofAllBlockLog.pdf", saveDir));
 }
