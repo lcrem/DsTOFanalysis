@@ -20,8 +20,8 @@ void tof1dComp (const char* saveDir,
   const double end3Block   = 1535795300;
   // 0.8GeV/c, 4 block
   // Most runs were in this configuration so don't need to use necessarily
-  const double start4Block = 1535608220;
-  const double end4Block   = 1535617102;
+  const double start4Block = 1536537600; 
+  const double end4Block   = 1536669600;
 
   TCanvas *cd = new TCanvas("cd");
   cd->SetLogy();
@@ -33,14 +33,14 @@ void tof1dComp (const char* saveDir,
   TLegend *legd = new TLegend(0.75, 0.6, 0.87, 0.8);
   TLegend *legu = new TLegend(0.75, 0.6, 0.87, 0.8);
   // Find the appropriate dtof files
-  for (int nBlocks=0; nBlocks < 4; nBlocks++) {
+  for (int nBlocks=0; nBlocks <= 4; nBlocks++) {
 
     int nSpills = 0;
     int nSpillsTrue = 0;
     double lastSpill = 0.;
     
-    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 160, 70, 150);
-    TH1D *hutof1d = new TH1D(Form("hutof1d_%d",nBlocks), Form("Time of flight, %d blocks; S3 - S1 / ns; Events / spill", nBlocks), 160, -40, 40);
+    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 220, 70, 180);
+    TH1D *hutof1d = new TH1D(Form("hutof1d_%d",nBlocks), Form("Time of flight, %d blocks; S3 - S1 / ns; Events / spill", nBlocks), 220, -40, 70);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -69,9 +69,9 @@ void tof1dComp (const char* saveDir,
       endTime   = end4Block;
     }
 
-    TH2D *hdtof2d = new TH2D(Form("hdtof2d_%d",nBlocks), Form("Time of flight across run length, %d blocks; S4 - S1 / ns; Unix time / s",nBlocks), 160, 70, 150, 400, startTime, endTime);
+    TH2D *hdtof2d = new TH2D(Form("hdtof2d_%d",nBlocks), Form("Time of flight across run length, %d blocks; S4 - S1 / ns; Unix time / s",nBlocks), 220, 70, 180, 400, startTime, endTime);
 
-    for (int irun=950; irun<1200; irun++){
+    for (int irun=950; irun<1400; irun++){
       TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
       RawDsTofCoincidence *tofCoinTemp = NULL;
       TTree *tree = (TTree*) fin->Get("tofCoinTree");
@@ -133,10 +133,10 @@ void tof1dComp (const char* saveDir,
 	double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
 	double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
 	double tofCalc = dstofHitT - tofCoin->usTofSignal;
-	if (tofCalc < 150. && tofCalc > 70.) {
+	if (tofCalc < 180. && tofCalc > 70.) {
 	  hdtof1d->Fill(tofCalc);
 	  hdtof2d->Fill(tofCalc, tofCoin->unixTime[0]);
-	} // if (tofCalc < 150. && tofCalc > 50.) 
+	} // if (tofCalc < 180. && tofCalc > 50.) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
     } // for (int itdc=0; itdc<2; itdc++)
 
@@ -156,6 +156,10 @@ void tof1dComp (const char* saveDir,
       hdtof1d->SetLineColor(kGreen+2);
       legd->AddEntry(hdtof1d, "3 blocks",  "l");
     }
+    else if (nBlocks==4) {
+      hdtof1d->SetLineColor(kMagenta);
+      legd->AddEntry(hdtof1d, "4 blocks",  "l");
+    }
 
     hdtof1d->Scale(1./ (double)nSpillsTrue);
     hsd->Add(hdtof1d);
@@ -172,6 +176,7 @@ void tof1dComp (const char* saveDir,
     else if (nBlocks==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
     else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
     else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
+    else if (nBlocks==4) nustof = Form("%sData_2018_8_30_b1.root", ustofDir);
 
     TFile *futof = new TFile(nustof, "read");
 
@@ -208,6 +213,10 @@ void tof1dComp (const char* saveDir,
     else if (nBlocks==3) {
       hutof1d->SetLineColor(kGreen+2);
       legu->AddEntry(hutof1d, "3 blocks",  "l");
+    }
+    else if (nBlocks==4) {
+      hutof1d->SetLineColor(kMagenta);
+      legu->AddEntry(hutof1d, "4 blocks",  "l");
     }
 
     hutof1d->Scale(1./ (double)nSpillsTrue);
