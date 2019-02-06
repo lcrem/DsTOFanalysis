@@ -5,6 +5,7 @@
 // Makes plot of ustof and dstof beam signal times, hopefully showing that they are matched up correctly
 void clockComp (const char* ustofFile, const char* dstofFile) {
 
+  gROOT->SetBatch(kTRUE);
   gSystem->Load("libdstof.so");
   
   TFile *dstofIn = new TFile(dstofFile, "read");
@@ -700,6 +701,8 @@ void driftSpill (const char* ustofFile, const char* dstofFile, const int nPnts) 
 // runSum
 // Basically the same as hitMatch but summed over all spills in the sum
 void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFile2, const int firstSpill, const int lastSpill) {
+
+  gROOT->SetBatch(kTRUE);
   gSystem->Load("libdstof.so");
 
   // Load dstof, get start end unix times
@@ -760,9 +763,10 @@ void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFil
   TH1D *hS1diff = new TH1D("hS1diff", Form("Run %d: Time difference between S1 hit and closest DsToF hit; #Deltat / ns; Events", run), 200, -20, 200);
   
   TH2D *goodHitsUstof = new TH2D("goodHitsUstof", Form("Run %d: Spatial distribution in S3 for hits in S1, S3, S4; x / cm; y / cm", run), 75, -20, 180, 30, 0, 120);
-  TH2D *goodHitsDstof = new TH2D("goodHitsDstof", Form("Run %d: Distribution in S4 for hits in S1, S3, S4; x / cm; y / cm", run), 60, 0, 140, 10, 0, 77.5);
-
+  TH2D *goodHitsDstof = new TH2D("goodHitsDstof", Form("Run %d: Distribution in S4 for hits in S1, S3, S4; PMT_{A} - PMT_{B} / cm; y / cm", run), 60, 0, 140, 10, 0, 77.5);
   TH2D *goodHitsDiff = new TH2D("goodHitsDiff", Form("Run %d: Spatial difference between S3 and S4 hits; #Delta x / cm; #Delta y / cm", run), 60, -150, 150, 30, -100, 100);
+  TH2D *goodHitsDstof_rev = new TH2D("goodHitsDstof_rev", Form("Run %d: Distribution in S4 for hits in S1, S3, S4 (reversed); PMT_{B} - PMT_{A} / cm; y / cm", run), 60, 0, 140, 10, 0, 77.5);
+  TH2D *goodHitsDiff_rev = new TH2D("goodHitsDiff_rev", Form("Run %d: Spatial difference between S3 and S4 hits (reversed); #Delta x / cm; #Delta y / cm", run), 60, -150, 150, 30, -100, 100);
     
   for (int spillNo = firstSpill; spillNo <= lastSpill; spillNo++) {
     // Find clock drift locally
@@ -828,10 +832,14 @@ void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFil
 	  if(tdc==1) {
 	    goodHitsDstof->Fill((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7./2.)+70., (dstofHit1[hitLow].bar*7.5) - 2.5);
 	    goodHitsDiff->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
+	    goodHitsDstof_rev->Fill((dstofHit1[hitLow].pmtTime[1] - dstofHit1[hitLow].pmtTime[0])*(7./2.)+70., (dstofHit1[hitLow].bar*7.5) - 2.5);
+	    goodHitsDiff_rev->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[1] - dstofHit1[hitLow].pmtTime[0])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
 	  }
 	  else if(tdc==2) {
 	    goodHitsDstof->Fill((dstofHit2[hitLow].pmtTime[0] - dstofHit2[hitLow].pmtTime[1]) * (7. / 2.) + 70, (dstofHit2[hitLow].bar * 7.5) - 2.5);
 	    goodHitsDiff->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[0] - dstofHit1[hitLow].pmtTime[1])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
+	    goodHitsDstof_rev->Fill((dstofHit2[hitLow].pmtTime[1] - dstofHit2[hitLow].pmtTime[0]) * (7. / 2.) + 70, (dstofHit2[hitLow].bar * 7.5) - 2.5);
+	    goodHitsDiff_rev->Fill(ustofHit[us].xToF[hit] - ((dstofHit1[hitLow].pmtTime[1] - dstofHit1[hitLow].pmtTime[0])*(7. / 2.)+ 70.), ustofHit[us].yToF[hit]-((dstofHit1[hitLow].bar*7.5)-2.5));
 	  }
 	  else {
 	    std::cout<<"This should not be happening!"<<std::endl;
@@ -876,4 +884,13 @@ void runSum (const char* ustofFile, const char* dstofFile1, const char* dstofFil
   goodHitsDiff->Draw("colz");
   c3_3->Print(Form("Run%dsum_GoodHitsDiff.png", run));
   c3_3->Print(Form("Run%dsum_GoodHitsDiff.pdf", run));  
+
+  TCanvas *c3_2_rev = new TCanvas("c3_2_rev");
+  goodHitsDstof_rev->Draw("colz");
+  c3_2_rev->Print(Form("Run%dsum_s4GoodHits_rev.png", run));
+  c3_2_rev->Print(Form("Run%dsum_s4GoodHits_rev.pdf", run));
+  TCanvas *c3_3_rev = new TCanvas("c3_3_rev");
+  goodHitsDiff_rev->Draw("colz");
+  c3_3_rev->Print(Form("Run%dsum_GoodHitsDiff_rev.png", run));
+  c3_3_rev->Print(Form("Run%dsum_GoodHitsDiff_rev.pdf", run));  
 } // runSum
