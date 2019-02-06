@@ -25,11 +25,19 @@ void bkgSub (const char* saveDir,
   // Most runs were in this configuration so don't need to use necessarily
   const double start4Block = 1536537600; 
   const double end4Block   = 1536669600;
+  // Timing cuts
+  const double piLow  = 80.;
+  const double piHi   = 95.;
+  const double proLow = 106.;
+  const double proHi  = 134.;
 
+  TFile *fout = new TFile(Form("%s/bkgSubPlots.root", saveDir), "recreate");
 
   // Find the appropriate dtof files
   for (int nBlocks=firstBlock; nBlocks <= lastBlock; nBlocks++) {
 
+    int nP  = 0;
+    int nPi = 0;
     // Define signal and background functions to be fitted
     // Signals are gaussians
     TF1 *sPro = new TF1("sPro", "gaus", 106, 140);
@@ -45,7 +53,7 @@ void bkgSub (const char* saveDir,
 
     TF1 *fSplusB    = new TF1("signal+bkg", "gaus(0)+gaus(3)+[6]", 70, 180);
     TF1 *fSplusBLin = new TF1("signal+bkg lin", "gaus(0)+gaus(3)+[6]+[7]*x", 70, 200);
-    TF1 *fSplusBExp = new TF1("signal+bkg lin", "gaus(0)+gaus(3)+expo(6)", 70, 200);
+    TF1 *fSplusBExp = new TF1("signal+bkg exp", "gaus(0)+gaus(3)+expo(6)", 70, 200);
     fSplusB->SetParNames("const 1", "mean 1", "sigma 1",
 			 "const 2", "mean 2", "sigma 2",
 			 "bkg");
@@ -63,7 +71,17 @@ void bkgSub (const char* saveDir,
     int nSpillsTrue = 0;
     double lastSpill = 0.;
     
+    TH1D *hproHitsDstofVert = new TH1D(Form("hpiHitsDstofVert_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; Bar; Protons",nBlocks), 10, 0.5, 10.5);
+    TH1D *hpiHitsDstofVert = new TH1D(Form("hproHitsDstofVert_%d",nBlocks), Form("Number of MIPs, %d blocks; Bar; MIPs",nBlocks), 10, 0.5, 10.5);
+    hproHitsDstofVert->Sumw2();
+    hpiHitsDstofVert->Sumw2();
+    TH1D *hproHitsDstofHorz = new TH1D(Form("hpiHitsDstofHorz_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; x / cm; Protons",nBlocks), 20, 0., 140.);
+    TH1D *hpiHitsDstofHorz = new TH1D(Form("hproHitsDstofHorz_%d",nBlocks), Form("Number of MIPs, %d blocks; x / cm; MIPs",nBlocks), 20, 0., 140.);
+    hproHitsDstofHorz->Sumw2();
+    hpiHitsDstofHorz->Sumw2();
+
     TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 260, 70, 200);
+    TH1D *hdtof1d_raw = new TH1D(Form("hdtof1d_raw_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 260, 70, 200);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -156,7 +174,22 @@ void bkgSub (const char* saveDir,
 	double tofCalc = dstofHitT - tofCoin->usTofSignal;
 	if (tofCalc < 200. && tofCalc > 70.) {
 	  hdtof1d->Fill(tofCalc);
-	} // if (tofCalc < 180. && tofCalc > 50.) 
+	} // if (tofCalc < 200. && tofCalc > 50.) 
+	// Calculate position of the protons and pions with exponential bkg subtracted
+	if (tofCalc > piLow && tofCalc < piHi) {
+	  if (tofCoin->bar != 10) {
+	    hpiHitsDstofVert->Fill(tofCoin->bar);
+	    hpiHitsDstofHorz->Fill((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.)+70.);
+	    nPi++;
+	  } // if (tof1Coin->bar != 10)
+	} // if (tofCalc > piLow && tofCalc < piHi) 
+	else if (tofCalc > proLow && tofCalc < proHi) {
+	  if (tofCoin->bar != 10) {
+	    hproHitsDstofVert->Fill(tofCoin->bar);
+	    hproHitsDstofHorz->Fill((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.)+70.);
+	    nP++;
+	  } // if (tof1Coin->bar != 10) 
+	} // else if (tofCalc > proLow && tofCalc < proHi) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
     } // for (int itdc=0; itdc<2; itdc++)
 
@@ -176,8 +209,8 @@ void bkgSub (const char* saveDir,
       hdtof1d->SetLineColor(kMagenta);
     }
 
-    hdtof1d->Scale(1./ (double)nSpillsTrue);
-
+    //  hdtof1d->Scale(1./ (double)nSpillsTrue);
+    fout->cd(0);
     TCanvas *c2d = new TCanvas(Form("%d_c2d",nBlocks));
     c2d->SetLogy();
     hdtof1d->Fit(sPi, "R");
@@ -211,6 +244,7 @@ void bkgSub (const char* saveDir,
     hdtof1d->Fit(fSplusBLin, "R");
 
     hdtof1d->Draw("hist");
+
     sPro->Draw("same");
     sPi->Draw("same");
     fBkgLin->Draw("same");
@@ -228,8 +262,8 @@ void bkgSub (const char* saveDir,
     fBkgExp->GetParameters(&parExp[6]);
     fSplusBExp->SetParameters(parExp);
     hdtof1d->Fit(fSplusBExp, "R");
-
     hdtof1d->Draw("hist");
+    hdtof1d->Write();
     //    sPro->Draw("same");
     //    sPi->Draw("same");
     //    fBkgLin->Draw("same");
@@ -237,6 +271,59 @@ void bkgSub (const char* saveDir,
 
     c2d_exp->Print(Form("%s/%d_dtofFittedExp.png",saveDir,nBlocks));
     c2d_exp->Print(Form("%s/%d_dtofFittedExp.pdf",saveDir,nBlocks));
+
+    // Now we have the fit values, loop over again and subtract the background
+    // For each bin, find the fraction of each particle type which are background and 
+    // this fraction from the bin
+    TF1 *fSub = new TF1("fSub", "exp([0]+[1]*x)", 70, 200);
+    fSub->SetParameter(0, fSplusBExp->GetParameter("bkgconst"));  
+    fSub->SetParameter(1, fSplusBExp->GetParameter("bkgdecay"));
+    // Background subtracted tof spectrum
+    TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
+    hdtof1d_sub->Add(fSub, -1.);
+    TCanvas *cdtof_sub = new TCanvas(Form("cdtof_sub_%d",nBlocks));
+    hdtof1d_sub->Draw("hist");
+    hdtof1d_sub->Write();    
+    cdtof_sub->Print(Form("dtof1d_sub_%d.png",nBlocks));
+    cdtof_sub->Print(Form("dtof1d_sub_%d.pdf",nBlocks));
+
+    double proSubFrac = fSub->Integral(proLow, proHi) / nP;
+    double piSubFrac  = fSub->Integral(piLow, piHi) / nPi;
+    cout<<"Pro bkg frac "<<proSubFrac<<" Pi bkg frac "<<piSubFrac<<endl;
+    for (int i=0; i <= hproHitsDstofVert->GetNbinsX(); i++) {
+      hproHitsDstofVert->SetBinContent(i, hproHitsDstofVert->GetBinContent(i) * (1. - proSubFrac));
+      hpiHitsDstofVert->SetBinContent(i, hpiHitsDstofVert->GetBinContent(i) * (1. - piSubFrac));
+    } // for (int i=0; i <= hproHitsDstofVert->GetNBins(); i++) 
+    for (int j=0; j <= hproHitsDstofHorz->GetNbinsX(); j++) {
+      hproHitsDstofHorz->SetBinContent(j, hproHitsDstofHorz->GetBinContent(j) * (1. - proSubFrac));
+      hpiHitsDstofHorz->SetBinContent(j, hpiHitsDstofHorz->GetBinContent(j) * (1. - piSubFrac));
+    } // for (int j=0; j <= hproHitsDstofHorz->GetNBins(); j++) 
+    
+    TH1D *hproPiRatioHorz = new TH1D(Form("hproPiRatioHorz_%d",nBlocks), Form("Proton/MIP, %d blocks; x / cm; Proton/MIP",nBlocks), 20, 0., 140.);
+    TH1D *hproPiRatioVert = new TH1D(Form("hproPiRatioVert_%d",nBlocks), Form("Proton/MIP, %d blocks; Bar; Proton/MIP",nBlocks), 10, 0.5, 10.5);
+    hproPiRatioHorz->Divide(hproHitsDstofHorz, hpiHitsDstofHorz, 1., 1., "B");
+    hproPiRatioVert->Divide(hproHitsDstofVert, hpiHitsDstofVert, 1., 1., "B");
+
+    fout->cd(0);
+    new TCanvas;
+    hproPiRatioHorz->Draw("hist e");
+    hproPiRatioHorz->Write();
+    new TCanvas;
+    hproPiRatioVert->Draw("hist e");
+    hproPiRatioVert->Write();
+
+    new TCanvas;
+    hproHitsDstofHorz->Draw("hist e");
+    hproHitsDstofHorz->Write();
+    new TCanvas;
+    hproHitsDstofVert->Draw("hist e");
+    hproHitsDstofVert->Write();
+    new TCanvas;
+    hpiHitsDstofHorz->Draw("hist e");
+    hpiHitsDstofHorz->Write();
+    new TCanvas;
+    hpiHitsDstofVert->Draw("hist e");
+    hpiHitsDstofVert->Write();
 
   } // nBlocks
 
