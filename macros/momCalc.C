@@ -209,8 +209,11 @@ void momCalc(const char* saveDir, const double mass,
 	} // for (int t=0; t<tofTree->GetEntries(); t++)
 	delete tof;
 	delete tofCoin;
+	delete tofTree;
 	delete tofCoinTree;
 	delete ustofTree;
+	tofFile->Close();
+	tofCoinFile->Close();
       } // for (int irun=runMin; irun<runMax+1; irun++)
     } // for (int itdc=0; itdc<2; itdc++) 
 
@@ -294,6 +297,8 @@ void momCalc(const char* saveDir, const double mass,
     hdtof1d->Draw("hist");
     fSplusBExp->Draw("same");
     hdtof1d->Write();
+    c2d_exp->Print(Form("%s/%d_dtof1d.png",saveDir,nBlocks));
+    c2d_exp->Print(Form("%s/%d_dtof1d.pdf",saveDir,nBlocks));
 
     TCanvas *cmom = new TCanvas(Form("%d_cmom",nBlocks));
     cmom->SetLogy();
@@ -305,12 +310,11 @@ void momCalc(const char* saveDir, const double mass,
     // Now we have the fit values, loop over again and subtract the background
     // For each bin, find the fraction of each particle type which are background and 
     // this fraction from the bin
-    /*    
-    TF1 *fSub = new TF1("fSub", "exp([0]+[1]*x)", 70, 200);
+    TF1 *fSub = new TF1("fSub", "exp([0]+[1]*x)", 30, 160);
     fSub->SetParameter(0, fSplusBExp->GetParameter("bkgconst"));  
     fSub->SetParameter(1, fSplusBExp->GetParameter("bkgdecay"));
     // Background subtracted tof spectrum
-    TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("%d_hdtof1d_sub",nBlocks));
+    TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
     hdtof1d_sub->Add(fSub, -1.);
     // If the bin content drops below 0, set to 0
     for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
@@ -322,7 +326,9 @@ void momCalc(const char* saveDir, const double mass,
     cdtof_sub->SetLogy();
     hdtof1d_sub->Draw("hist");
     hdtof1d_sub->Write();
-    */
+    cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.png",saveDir,nBlocks));
+    cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.pdf",saveDir,nBlocks));
+    
 
   } // for (int nBlocks=firstBlock; nBlocks <= lastBlock; nBlocks++)
 
