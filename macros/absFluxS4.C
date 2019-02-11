@@ -36,9 +36,13 @@ void absFluxS4 (const char* saveDir,
   const double dstofShift = 40.;
 
   TFile *fout = new TFile(Form("%s/absFluxS4Plots.root", saveDir), "recreate");
-  THStack *hs = new THStack("hs","Absolute particle flux in S4; x / m; Events / spill");
-  THStack *hsXPrime = new THStack("hsXPrime","Absolute particle flux in S4; x / m; Events / spill");
-  THStack *hsAngle = new THStack("hs","Absolute particle flux in S4; #theta / degrees; Events / spill");
+  THStack *hs = new THStack("hsX","Absolute particle flux in S4; x / m; Events / spill");
+  //  hs->SetOption("nostack");
+  //  THStack *hsXPrime = new THStack("hsXPrime","Absolute particle flux in S4; x / m; Events / spill");
+  //  hsXPrime->SetOption("nostack")
+  THStack *hsAngle = new THStack("hsAngle","Absolute particle flux in S4; #theta / degrees; Events / spill");
+  //  hsAngle->SetOption("nostack");
+
   TLegend *legHorz = new TLegend(0.6, 0.8, 0.85, 0.6);
   
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
@@ -48,9 +52,10 @@ void absFluxS4 (const char* saveDir,
     double lastSpill = 0.;
 
     TH1D *habsFluxX = new TH1D(Form("habsFluxX%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x / m; Events / spill", nBlocks), 20, 0., 1.4);
+    habsFluxX->Sumw2();
     //    TH1D *habsFluxXPrime = new TH1D(Form("habsFluxXPrime%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x' / m; Events / spill", nBlocks), 20, 0., 1.4);
     TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 40, 0, 6.);
-
+    habsFluxXAngle->Sumw2();
     // Find the correct dstof files
     Int_t runMin=-1;
     Int_t runMax=-1;
@@ -157,17 +162,32 @@ void absFluxS4 (const char* saveDir,
     
     // Save all of these flux plots individually
     fout->cd();
-    TCanvas *c1 = new TCanvas("c1");
+    TCanvas *c1 = new TCanvas(Form("c1_%d",nBlocks));
+    // Want to know what the flux is at theta = x = 0
+    // Fit to the curves but only between x = 0.4 and x = 1.2
+    // theta = 1.9 and theta = 5.2
+    const double cutXLow = 0.4;
+    const double cutXHi  = 1.2;
+    const double cutThetaLow = 1.9;
+    const double cutThetaHi  = 5.2;
+    TF1 *fX = new TF1(Form("fX%d", nBlocks),"pol1", cutXLow, cutXHi);
     habsFluxX->Scale(1. / nSpillsTrue);
-    habsFluxX->Draw("hist");
+    habsFluxX->Draw("hist e");
+    habsFluxX->Fit(fX,"R");
+    fX->Draw("same");
     habsFluxX->Write();
+    fX->Write();
     c1->Print(Form("%s/%d_absFluxX.png", saveDir, nBlocks));
     c1->Print(Form("%s/%d_absFluxX.pdf", saveDir, nBlocks));
 
-    TCanvas *c2 = new TCanvas("c2");
+    TCanvas *c2 = new TCanvas(Form("c2_%d",nBlocks));
+    TF1 *fTheta = new TF1(Form("fTheta%d", nBlocks),"pol1", cutThetaLow, cutThetaHi);
     habsFluxXAngle->Scale(1. / nSpillsTrue);
-    habsFluxXAngle->Draw("hist");
+    habsFluxXAngle->Draw("hist e");
+    habsFluxXAngle->Fit(fTheta,"R");
+    fTheta->Draw("same");
     habsFluxXAngle->Write();
+    fTheta->Write();
     c2->Print(Form("%s/%d_absFluxXAngle.png", saveDir, nBlocks));
     c2->Print(Form("%s/%d_absFluxXAngle.pdf", saveDir, nBlocks));
     // And do them all together in different colours
@@ -202,7 +222,7 @@ void absFluxS4 (const char* saveDir,
       hs->Add(habsFluxX);
     }
     hsAngle->Add(habsFluxXAngle);
-    hsXPrime->Add(habsFluxXPrime);
+    //    hsXPrime->Add(habsFluxXPrime);
 } // nBlocks
   TCanvas *cs = new TCanvas("cs");
   hs->Draw("hist nostack");
