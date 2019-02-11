@@ -89,6 +89,7 @@ void absFluxS4 (const char* saveDir,
       TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
       RawDsTofCoincidence *tofCoinTemp = NULL;
       TTree *tree = (TTree*) fin->Get("tofCoinTree");
+      tree->SetDirectory(0);
       tree->SetBranchAddress("tofCoin", &tofCoinTemp);
       tree->GetEntry(0);
       UInt_t firstTemp = tofCoinTemp->unixTime[0];
@@ -122,7 +123,9 @@ void absFluxS4 (const char* saveDir,
 	TFile *tofCoinFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
 	TFile *tofFile     = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
 	TTree *tofCoinTree = (TTree*)tofCoinFile->Get("tofCoinTree");
+	tofCoinTree->SetDirectory(0);
 	TTree *tofTree = (TTree*)tofFile->Get("tofTree");
+	tofTree->SetDirectory(0);
 	RawDsTofCoincidence *tofCoin = NULL;
 	RawDsTofHeader *tof = NULL;
 	tofCoinTree->SetBranchAddress("tofCoin", &tofCoin);
