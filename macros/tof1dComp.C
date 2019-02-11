@@ -20,8 +20,8 @@ void tof1dComp (const char* saveDir,
   const double end3Block   = 1535795300;
   // 0.8GeV/c, 4 block
   // Most runs were in this configuration so don't need to use necessarily
-  const double start4Block = 1536537600; 
-  const double end4Block   = 1536669600;
+  const double start4Block = 1535836129;
+  const double end4Block   = 1535879634;
 
   TCanvas *cd = new TCanvas("cd");
   cd->SetLogy();
@@ -39,8 +39,8 @@ void tof1dComp (const char* saveDir,
     int nSpillsTrue = 0;
     double lastSpill = 0.;
     
-    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 220, 70, 180);
-    TH1D *hutof1d = new TH1D(Form("hutof1d_%d",nBlocks), Form("Time of flight, %d blocks; S3 - S1 / ns; Events / spill", nBlocks), 220, -40, 70);
+    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 260, 70, 200);
+    TH1D *hutof1d = new TH1D(Form("hutof1d_%d",nBlocks), Form("Time of flight, %d blocks; S3 - S1 / ns; Events / spill", nBlocks), 260, -40, 90);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -69,7 +69,7 @@ void tof1dComp (const char* saveDir,
       endTime   = end4Block;
     }
 
-    TH2D *hdtof2d = new TH2D(Form("hdtof2d_%d",nBlocks), Form("Time of flight across run length, %d blocks; S4 - S1 / ns; Unix time / s",nBlocks), 220, 70, 180, 400, startTime, endTime);
+    TH2D *hdtof2d = new TH2D(Form("hdtof2d_%d",nBlocks), Form("Time of flight across run length, %d blocks; S4 - S1 / ns; Unix time / s",nBlocks), 260, 70, 200, 400, startTime, endTime);
 
     for (int irun=950; irun<1400; irun++){
       TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
@@ -95,6 +95,7 @@ void tof1dComp (const char* saveDir,
       if (firstTemp<endTime && lastTemp>endTime){
 	runMax = irun;
       }   
+      delete tofCoinTemp;
     }
     
     cout << "Min and max runs are " << runMin << " " << runMax << endl;
@@ -133,11 +134,12 @@ void tof1dComp (const char* saveDir,
 	double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
 	double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
 	double tofCalc = dstofHitT - tofCoin->usTofSignal;
-	if (tofCalc < 180. && tofCalc > 70.) {
+	if (tofCalc < 200. && tofCalc > 70.) {
 	  hdtof1d->Fill(tofCalc);
 	  hdtof2d->Fill(tofCalc, tofCoin->unixTime[0]);
-	} // if (tofCalc < 180. && tofCalc > 50.) 
+	} // if (tofCalc < 200. && tofCalc > 70.) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
+      delete tofCoin;
     } // for (int itdc=0; itdc<2; itdc++)
 
     if (nBlocks==0) {
@@ -176,7 +178,7 @@ void tof1dComp (const char* saveDir,
     else if (nBlocks==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
     else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
     else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
-    else if (nBlocks==4) nustof = Form("%sData_2018_8_30_b1.root", ustofDir);
+    else if (nBlocks==4) nustof = Form("%sData_2018_9_1_b8_800MeV_4block_bend4cm.root", ustofDir);
 
     TFile *futof = new TFile(nustof, "read");
 
