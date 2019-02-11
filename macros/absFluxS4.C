@@ -22,7 +22,7 @@ void absFluxS4 (const char* saveDir,
   // 0.8GeV/c, 4 block
   // 4 moderator blocks with -4cm bend
   const double start4Block = 1535836129;
-  const double end4Block   = 1535849634;
+  const double end4Block   = 1535879634;
   // Long sample of 4 moderator block with +5cm bend 
   //  const double start4Block = 1536537600; 
   //  const double end4Block   = 1536669600;
@@ -34,14 +34,12 @@ void absFluxS4 (const char* saveDir,
   const double s4OffAxisEndX   = 1.4224;
   // Shift in ns required to to pion peak at speed of light
   const double dstofShift = 40.;
+  // Ustof-dstof cable delay
+  const double ustofDelay = 184.7;
 
   TFile *fout = new TFile(Form("%s/absFluxS4Plots.root", saveDir), "recreate");
   THStack *hs = new THStack("hsX","Absolute particle flux in S4; x / m; Events / spill");
-  //  hs->SetOption("nostack");
-  //  THStack *hsXPrime = new THStack("hsXPrime","Absolute particle flux in S4; x / m; Events / spill");
-  //  hsXPrime->SetOption("nostack")
   THStack *hsAngle = new THStack("hsAngle","Absolute particle flux in S4; #theta / degrees; Events / spill");
-  //  hsAngle->SetOption("nostack");
 
   TLegend *legHorz = new TLegend(0.6, 0.8, 0.85, 0.6);
   
@@ -51,9 +49,13 @@ void absFluxS4 (const char* saveDir,
     int nSpillsTrue = 0;
     double lastSpill = 0.;
 
+    TH1D *hCoins = new TH1D(Form("hCoins%d",nBlocks), Form("Coincidences in S4 bars, %d blocks; Bar in S4; Events", nBlocks), 10, 0.5, 10.5);
+    hCoins->Sumw2();
+    TH1D *hHits  = new TH1D(Form("hHits%d",nBlocks), Form("Hits in S4 bars, %d blocks; Bar in S4; Events", nBlocks), 10, 0.5, 10.5);
+    hHits->Sumw2();
+    TH1D *hEff   = new TH1D(Form("hEff%d",nBlocks), Form("Efficiencies of S4 bars, %d blocks; Bar in S4; Efficiency", nBlocks), 10, 0.5, 10.5);
     TH1D *habsFluxX = new TH1D(Form("habsFluxX%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x / m; Events / spill", nBlocks), 20, 0., 1.4);
     habsFluxX->Sumw2();
-    //    TH1D *habsFluxXPrime = new TH1D(Form("habsFluxXPrime%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x' / m; Events / spill", nBlocks), 20, 0., 1.4);
     TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 40, 0, 6.);
     habsFluxXAngle->Sumw2();
     // Find the correct dstof files
@@ -107,57 +109,154 @@ void absFluxS4 (const char* saveDir,
       if (firstTemp<endTime && lastTemp>endTime){
 	runMax = irun;
       }   
-      delete tofCoinTemp;
     } // for (int irun=950; irun<1400; irun++)
     
     cout << "Min and max runs are " << runMin << " " << runMax << endl;
-    
+
+    // Loop to calculate efficiencies    
+    for (int itdc=0; itdc<2; itdc++) {
+      double tempUstof;
+      double ustofNs;
+      for (int irun=runMin; irun<runMax+1; irun++){
+	// Load input files
+	TFile *tofCoinFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+	TFile *tofFile     = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+	TTree *tofCoinTree = (TTree*)tofCoinFile->Get("tofCoinTree");
+	TTree *tofTree = (TTree*)tofFile->Get("tofTree");
+	RawDsTofCoincidence *tofCoin = NULL;
+	RawDsTofHeader *tof = NULL;
+	tofCoinTree->SetBranchAddress("tofCoin", &tofCoin);
+	tofTree->SetBranchAddress("tof", &tof);
+	// Create new TTree for ustof signals
+	TTree *ustofTree = new TTree("ustofTree", "ustof");;
+	ustofTree->SetDirectory(0);
+	ustofTree->Branch("ustofNs", &ustofNs, "ustofNs/D");
+	tempUstof=0;
+	// Build tree of all the ustof hit times
+	for (int i=0; i<tofTree->GetEntries(); i++) {
+	  tofTree->GetEntry(i);
+	  if (tof->unixTime < startTime) continue;
+	  if (tof->unixTime > endTime) break;
+
+	  if (tof->channel == 13) {
+	    ustofNs = tof->fakeTimeNs - ustofDelay;
+	    // ustof signals shouldn't be coming closer than 500ns
+	    if ( (ustofNs - tempUstof) < 500.) continue;
+	    ustofTree->Fill();
+	    tempUstof = ustofNs;
+	  } // if (tof->channel == 13) 
+	} // for (int i=0; i<tof->GetEntries(); i++)
+	ustofTree->BuildIndex("ustofNs");
+	// Now loop over coincidence file to find number of coincidences for each bar
+	for (int t=0; t<tofCoinTree->GetEntries(); t++) {
+	  tofCoinTree->GetEntry(t);
+	  if (tofCoin->unixTime[0] < startTime) continue;
+	  if (tofCoin->unixTime[0] > endTime) break;
+	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
+	  double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
+	  double tofCalc = dstofHitT - tofCoin->usTofSignal;
+	  if (tofCalc > 70. && tofCalc < 200. && tofCoin->bar != 10) {
+	    hCoins->Fill(tofCoin->bar);
+	  } // if (tofCalc > 70. && tofCalc < 200.)
+	} // for (int t=0; t<tofTree->GetEntries(); t++) 
+	// Loop over hit file to find number of hits in coincidence 
+	for (int t=0; t<tofTree->GetEntries(); t++) {
+	  tofTree->GetEntry(t);
+	  if (tof->unixTime < startTime) continue;
+	  if (tof->unixTime > endTime) break;
+	  if (tof->channel > 10 || tof->channel == 0) continue;
+	  int ustofEntry = ustofTree->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
+	  ustofTree->GetEntry(ustofEntry);
+	  if (tof->fakeTimeNs - ustofNs < 260. && tof->fakeTimeNs - ustofNs > 130.) {
+	    if (itdc == 0) { // TDC1
+	      if (tof->channel % 2 == 1) { // PMT B
+		hHits->Fill(((tof->channel + 1)/ -2) + 11);
+	      } // if (tof->channel % 2 == 1)
+	      else { // PMT A
+		hHits->Fill((tof->channel / -2) + 11);
+	      }
+	    } // TDC 1
+	    else { // TDC 2
+	      if (tof->channel % 2 == 1) { // PMT B
+		hHits->Fill(((tof->channel + 1)/ -2) + 6);
+	      } // if (tof->channel % 2 == 1)
+	      else { // PMT A
+		hHits->Fill((tof->channel / -2) + 6);
+	      }
+	    } // TDC 2
+	  } // if (tof->fakeTimeNs - ustofNs < 260. && tof->fakeTimeNs - ustofNs > 130.) 
+	} // for (int t=0; t<tofTree->GetEntries(); t++)
+	tofFile->Close();
+	tofCoinFile->Close();
+	delete tofFile;
+	delete tofCoinFile;
+	delete ustofTree;
+      } // for (int irun=runMin; irun<runMax+1; irun++)
+    } // for (int itdc=0; itdc<2; itdc++) 
+
+    fout->cd(0);
+    TCanvas *cHits = new TCanvas(Form("cHits_%d",nBlocks));
+    hHits->Draw("hist e");
+    hHits->Write();
+    cHits->Print(Form("%s/%d_barHits.png",saveDir,nBlocks));
+    cHits->Print(Form("%s/%d_barHits.pdf",saveDir,nBlocks));
+    TCanvas *cCoins = new TCanvas(Form("cCoins_%d",nBlocks));
+    hCoins->Draw("hist e");
+    hCoins->Write();
+    cCoins->Print(Form("%s/%d_barCoins.png",saveDir,nBlocks));
+    cCoins->Print(Form("%s/%d_barCoins.pdf",saveDir,nBlocks));
+    TCanvas *cEff = new TCanvas(Form("cEff_%d",nBlocks));
+    hHits->Add(hCoins, -1.);
+    hEff->Divide(hCoins, hHits, 1., 1., "B");
+    hEff->Draw("hist e");
+    hEff->Write();
+    cEff->Print(Form("%s/%d_barEff.png",saveDir,nBlocks));
+    cEff->Print(Form("%s/%d_barEff.pdf",saveDir,nBlocks));
 
     for (int itdc=0; itdc<2; itdc++) {
+      //for (int irun=runMin; irun<runMax+1; irun++){
+      TChain *tofCoinChain = new TChain("tofCoinTree");
       for (int irun=runMin; irun<runMax+1; irun++){
-	TChain *tofCoinChain = new TChain("tofCoinTree");
-	for (int irun=runMin; irun<runMax+1; irun++){
-	  tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
-	  
-	  RawDsTofCoincidence *tofCoin = NULL;
-	  tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
-	  for (int h=0; h<tofCoinChain->GetEntries(); h++) {
-	    tofCoinChain->GetEntry(h);
+	tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+      }
+      RawDsTofCoincidence *tofCoin = NULL;
+      tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+      for (int h=0; h<tofCoinChain->GetEntries(); h++) {
+	tofCoinChain->GetEntry(h);
+	if (tofCoin->unixTime[0]<startTime) continue;
+	if (tofCoin->unixTime[0]>endTime) break;
+	if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
+	  lastSpill = tofCoin->lastDelayedBeamSignal;
+	  nSpills++;	      
+	  for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) {
+	    tofCoinChain->GetEntry(sp);
 	    if (tofCoin->unixTime[0]<startTime) continue;
 	    if (tofCoin->unixTime[0]>endTime) break;
-	    if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
-	      lastSpill = tofCoin->lastDelayedBeamSignal;
-	      nSpills++;	      
-	      for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) {
-		tofCoinChain->GetEntry(sp);
-		if (tofCoin->unixTime[0]<startTime) continue;
-		if (tofCoin->unixTime[0]>endTime) break;
-		
-		if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. &&
-		    (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
-		    (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
-		    (tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
-		  nSpillsTrue++;
-		  break;
-		}
-	      } // for (int sp=ientry; sp<tof1CoinChain->GetEntries(); sp++) 
-	    } // if (tof1Coin->lastDelayedBeamSignal != lastSpill && itdc == 0)
-	    // Check if this coincidence is within a spill
-	    if (tofCoin->inSpill) {
-	      double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
-	      double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
-	      // For true x, y position (relative to beam axis) interpolate between two 
-	      // measured positions of the ToF (see survey data)
-	      double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
-	      double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
-	      habsFluxX->Fill(positionX);
-	      //	      habsFluxXPrime->Fill(((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.);
-	      double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
-	      habsFluxXAngle->Fill(angleOffAxis);
-	    } // if (tofCoin->inSpill)
-	  } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
-	} // for (int irun=runMin; irun<runMax+1; irun++)
-      } // for (int irun=runMin; irun<runMax+1; irun++)
+	    
+	    if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. &&
+		(tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
+		(tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
+	      nSpillsTrue++;
+	      break;
+	    }
+	  } // for (int sp=ientry; sp<tof1CoinChain->GetEntries(); sp++) 
+	} // if (tof1Coin->lastDelayedBeamSignal != lastSpill && itdc == 0)
+	// Check if this coincidence is within a spill
+	if (tofCoin->inSpill && tofCoin->bar != 10) {
+	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
+	  double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
+	  // For true x, y position (relative to beam axis) interpolate between two 
+	  // measured positions of the ToF (see survey data)
+	  double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
+	  double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
+	  habsFluxX->Fill(positionX, 1. / hEff->GetBinContent(tofCoin->bar));
+	  double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
+	  habsFluxXAngle->Fill(angleOffAxis, 1. / hEff->GetBinContent(tofCoin->bar));
+	} // if (tofCoin->inSpill)
+      } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
+      delete tofCoin;
+      delete tofCoinChain;
     } // for (int itdc=0; itdc<2; itdc++)
     
     // Save all of these flux plots individually
