@@ -81,21 +81,21 @@ void bkgSub (const char* saveDir,
     int nSpillsTrue = 0;
     double lastSpill = 0.;
     
-    TH1D *hproHitsDstofVert = new TH1D(Form("hpiHitsDstofVert_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; Bar; Protons",nBlocks), 10, 0.5, 10.5);
-    TH1D *hpiHitsDstofVert = new TH1D(Form("hproHitsDstofVert_%d",nBlocks), Form("Number of MIPs, %d blocks; Bar; MIPs",nBlocks), 10, 0.5, 10.5);
+    TH1D *hproHitsDstofVert = new TH1D(Form("hproHitsDstofVert_%d",nBlocks), Form("Number of protons in S4, %d blocks; Bar; Protons",nBlocks), 10, 0.5, 10.5);
+    TH1D *hpiHitsDstofVert  = new TH1D(Form("hpiHitsDstofVert_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; Bar; MIPs",nBlocks), 10, 0.5, 10.5);
     hproHitsDstofVert->Sumw2();
     hpiHitsDstofVert->Sumw2();
-    TH1D *hproHitsDstofHorz = new TH1D(Form("hpiHitsDstofHorz_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; x / cm; Protons",nBlocks), 20, 0., 140.);
-    TH1D *hpiHitsDstofHorz = new TH1D(Form("hproHitsDstofHorz_%d",nBlocks), Form("Number of MIPs, %d blocks; x / cm; MIPs",nBlocks), 20, 0., 140.);
+    TH1D *hproHitsDstofHorz = new TH1D(Form("hproHitsDstofHorz_%d",nBlocks), Form("Number of protons in S4, %d blocks; x / cm; Protons",nBlocks), 20, 0., 140.);
+    TH1D *hpiHitsDstofHorz  = new TH1D(Form("hpiHitsDstofHorz_%d",nBlocks), Form("Number of MIPs in S4, %d blocks; x / cm; MIPs",nBlocks), 20, 0., 140.);
     hproHitsDstofHorz->Sumw2();
     hpiHitsDstofHorz->Sumw2();
     // No efficiency
-    TH1D *hproHitsDstofVert_noeff = new TH1D(Form("hpiHitsDstofVert_noeff_%d",nBlocks), Form("Number of MIPs in S4, %d blocks (no efficiency); Bar; Protons",nBlocks), 10, 0.5, 10.5);
-    TH1D *hpiHitsDstofVert_noeff = new TH1D(Form("hproHitsDstofVert_noeff_%d",nBlocks), Form("Number of MIPs, %d blocks (no efficiency); Bar; MIPs",nBlocks), 10, 0.5, 10.5);
+    TH1D *hproHitsDstofVert_noeff = new TH1D(Form("hproHitsDstofVert_noeff_%d",nBlocks), Form("Number of protons in S4, %d blocks (no efficiency); Bar; Protons",nBlocks), 10, 0.5, 10.5);
+    TH1D *hpiHitsDstofVert_noeff  = new TH1D(Form("hpiHitsDstofVert_noeff_%d",nBlocks), Form("Number of MIPs in S4, %d blocks (no efficiency); Bar; MIPs",nBlocks), 10, 0.5, 10.5);
     hproHitsDstofVert_noeff->Sumw2();
     hpiHitsDstofVert_noeff->Sumw2();
-    TH1D *hproHitsDstofHorz_noeff = new TH1D(Form("hpiHitsDstofHorz_noeff_%d",nBlocks), Form("Number of MIPs in S4, %d blocks (no efficiency); x / cm; Protons",nBlocks), 20, 0., 140.);
-    TH1D *hpiHitsDstofHorz_noeff = new TH1D(Form("hproHitsDstofHorz_noeff_%d",nBlocks), Form("Number of MIPs, %d blocks (no efficiency); x / cm; MIPs",nBlocks), 20, 0., 140.);
+    TH1D *hproHitsDstofHorz_noeff = new TH1D(Form("hproHitsDstofHorz_noeff_%d",nBlocks), Form("Number of protons in S4, %d blocks (no efficiency); x / cm; Protons",nBlocks), 20, 0., 140.);
+    TH1D *hpiHitsDstofHorz_noeff  = new TH1D(Form("hpiHitsDstofHorz_noeff_%d",nBlocks), Form("Number of MIPs in S4, %d blocks (no efficiency); x / cm; MIPs",nBlocks), 20, 0., 140.);
     hproHitsDstofHorz_noeff->Sumw2();
     hpiHitsDstofHorz_noeff->Sumw2();
 
