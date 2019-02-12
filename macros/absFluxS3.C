@@ -25,6 +25,7 @@ void absFluxS3(const char* saveDir,
   THStack *hsXAngleS1S2 = new THStack("hsXAngleS1S2", "Angular distribution of S3 hits with S1 & S2; #theta / degrees; Events / spill");
   THStack *hsXS1 = new THStack("hsXS1", "x distribution of S3 hits with S1 trigger only; x / m; Events / spill");
   THStack *hsXS1S2 = new THStack("hsXS1S2", "x distribution of S3 hits with S1 & S2; x / m; Events / spill");
+  TLegend *leg = new TLegend(0.65, 0.6, 0.88, 0.8);
 
   for (int nBlocks = 0; nBlocks <=4; nBlocks++) {
     int nSpills = 0;
@@ -95,8 +96,6 @@ void absFluxS3(const char* saveDir,
     delete fin;
     fout->cd();
 
-
-
     TCanvas *cXS1S2 = new TCanvas(Form("cXS1S2_%d", nBlocks));
     hXS1S2->Scale(1. / nSpills);
     hXS1S2->Draw("hist");
@@ -129,30 +128,35 @@ void absFluxS3(const char* saveDir,
       hXAngleS1->SetLineColor(kBlue);
       hXS1S2->SetLineColor(kBlue);
       hXS1->SetLineColor(kBlue);
+      leg->AddEntry(hXAngleS1S2, "0 blocks", "l");
     }
     else if (nBlocks == 1) {
       hXAngleS1S2->SetLineColor(kRed);
       hXAngleS1->SetLineColor(kRed);
       hXS1S2->SetLineColor(kRed);
       hXS1->SetLineColor(kRed);
+      leg->AddEntry(hXAngleS1S2, "1 block", "l");
     }
     else if (nBlocks == 2) {
       hXAngleS1S2->SetLineColor(kBlack);
       hXAngleS1->SetLineColor(kBlack);
       hXS1S2->SetLineColor(kBlack);
       hXS1->SetLineColor(kBlack);
+      leg->AddEntry(hXAngleS1S2, "2 blocks", "l");
     }
     else if (nBlocks == 3){
       hXAngleS1S2->SetLineColor(kGreen+2);
       hXAngleS1->SetLineColor(kGreen+2);
       hXS1S2->SetLineColor(kGreen+2);
       hXS1->SetLineColor(kGreen+2);
+      leg->AddEntry(hXAngleS1S2, "3 blocks", "l");
     }
     else {
       hXAngleS1S2->SetLineColor(kMagenta);
       hXAngleS1->SetLineColor(kMagenta);
       hXS1S2->SetLineColor(kMagenta);
       hXS1->SetLineColor(kMagenta);
+      leg->AddEntry(hXAngleS1S2, "4 blocks", "l");
     }
     hsXAngleS1S2->Add(hXAngleS1S2);
     hsXAngleS1->Add(hXAngleS1);
@@ -160,22 +164,33 @@ void absFluxS3(const char* saveDir,
     hsXS1->Add(hXS1);
 
   } // for (int nBlocks = 0; nBlocks <=4; nBlocks++)
-  new TCanvas;
+  fout->cd();
+
+  TCanvas *cXAngleS1S2 = new TCanvas("cXAngleS1S2");
   hsXAngleS1S2->Draw("hist nostack");
-  gPad->Print(Form("%s/absFluxXAngleS123.png", saveDir));
-  gPad->Print(Form("%s/absFluxXAngleS123.pdf", saveDir));
-  new TCanvas;
+  leg->Draw();
+  hsXAngleS1S2->Write();
+  leg->Write();
+  cXAngleS1S2->Print(Form("%s/absFluxXAngleS123.png", saveDir));
+  cXAngleS1S2->Print(Form("%s/absFluxXAngleS123.pdf", saveDir));
+  TCanvas *cXAngleS1 = new TCanvas("cXAngleS1");
   hsXAngleS1->Draw("hist nostack");
-  gPad->Print(Form("%s/absFluxXAngleS13.png", saveDir));
-  gPad->Print(Form("%s/absFluxXAngleS13.pdf", saveDir));
-  new TCanvas;
+  leg->Draw();
+  hsXAngleS1->Write();
+  cXAngleS1->Print(Form("%s/absFluxXAngleS13.png", saveDir));
+  cXAngleS1->Print(Form("%s/absFluxXAngleS13.pdf", saveDir));
+  TCanvas *cXS1S2 = new TCanvas("cXS1S2");
   hsXS1S2->Draw("hist nostack");
-  gPad->Print(Form("%s/absFluxXS123.png", saveDir));
-  gPad->Print(Form("%s/absFluxXS123.pdf", saveDir));
-  new TCanvas;
+  leg->Draw();
+  hsXS1S2->Write();
+  cXS1S2->Print(Form("%s/absFluxXS123.png", saveDir));
+  cXS1S2->Print(Form("%s/absFluxXS123.pdf", saveDir));
+  TCanvas *cXS1 = new TCanvas("cXS1");
   hsXS1->Draw("hist nostack");
-  gPad->Print(Form("%s/absFluxXS13.png", saveDir));
-  gPad->Print(Form("%s/absFluxXS13.pdf", saveDir));
+  leg->Draw();
+  hsXS1->Write();
+  cXS1->Print(Form("%s/absFluxXS13.png", saveDir));
+  cXS1->Print(Form("%s/absFluxXS13.pdf", saveDir));
 
   fout->Close();
 }
