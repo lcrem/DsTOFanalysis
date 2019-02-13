@@ -40,6 +40,7 @@ void absFluxS4 (const char* saveDir,
   TFile *fout = new TFile(Form("%s/absFluxS4Plots.root", saveDir), "recreate");
   THStack *hs = new THStack("hsX","Absolute particle flux in S4; x / m; Events / spill");
   THStack *hsAngle = new THStack("hsAngle","Absolute particle flux in S4; #theta / degrees; Events / spill");
+  //  THStack *hsCosmics = new THStack("hsCosmics", "Cosmic flux in S4 across detector; x / cm; Events / s");
 
   TLegend *legHorz = new TLegend(0.6, 0.8, 0.85, 0.6);
   
@@ -58,6 +59,12 @@ void absFluxS4 (const char* saveDir,
     habsFluxX->Sumw2();
     TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 40, 0, 6.);
     habsFluxXAngle->Sumw2();
+
+    TH2D *h2Cosmics = new TH2D(Form("h2Cosmics%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Bar; Hz",nBlocks), 40, 0, 140, 10, 0.5, 10.5);
+    TH1D *hCosmicsVert = new TH1D(Form("hCosmicsVert%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Hz",nBlocks), 10, 0.5, 10.5);
+    hCosmicsVert->Sumw2();
+    TH1D *hCosmicsHorz = new TH1D(Form("hCosmicsHorz%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Hz",nBlocks), 40, 0, 140);
+    hCosmicsHorz->Sumw2();
     // Find the correct dstof files
     Int_t runMin=-1;
     Int_t runMax=-1;
@@ -113,6 +120,90 @@ void absFluxS4 (const char* saveDir,
     } // for (int irun=950; irun<1400; irun++)
     
     cout << "Min and max runs are " << runMin << " " << runMax << endl;
+
+    // Calculating cosmic fluxes
+    // Two different cases -- 0 block data with only 3 bars amplified
+    // Everything else -- all bars apart from 1, 2, and 10 amplified
+    cout<<"Calculating cosmic flux"<<endl;
+    int cosmicRunMin = -1;
+    int cosmicRunMax = -1;
+    if (nBlocks == 0) {
+      cosmicRunMin = 999;
+      cosmicRunMax = 1019;
+    }
+    else {
+      cosmicRunMin = 1035;
+      cosmicRunMax = 1045;
+    }
+    // Now loop over these files and find the cosmic fluxes
+    int nSpillsCos = 0;    
+    for (int itdc=0; itdc<2; itdc++) {
+      nSpillsCos = 0;
+      double lastSpillCos = 0.;
+      //for (int irun=runMin; irun<runMax+1; irun++){
+      TChain *tofCoinChain = new TChain("tofCoinTree");
+      for (int run = cosmicRunMin; run < cosmicRunMin+1; run++) {
+	tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, run, run, itdc+1));
+      }
+      RawDsTofCoincidence *tofCoin = NULL;
+      tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+      for (int t = 0; t < tofCoinChain->GetEntries(); t++) {
+	tofCoinChain->GetEntry(t);
+	// Look at the distribution of cosmics that register as hits (out of spill)
+	if (!tofCoin->inSpill) {
+	  double cosmicPosition = (tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.;
+	  h2Cosmics->Fill(cosmicPosition, tofCoin->bar);
+	  hCosmicsVert->Fill(tofCoin->bar);
+	  hCosmicsHorz->Fill(cosmicPosition);
+	} // if (!tofCoin->inSpill)
+      } // for (int t = 0; t < tofCoinChain->GetEntries(); t++) 
+      delete tofCoin;
+      delete tofCoinChain;
+      if (lastSpillCos != tofCoin->lastDelayedBeamSignal && tofCoin->lastDelayedBeamSignal - lastSpillCos > 1e9) {
+	lastSpillCos = tofCoin->lastDelayedBeamSignal;
+	nSpillsCos++;
+      }
+    } // for (int itdc=0; itdc<2; itdc++)
+
+    // Scale by running time
+    h2Cosmics->Scale( 1. / ((cosmicRunMax - cosmicRunMin)*3600. - nSpillsCos) );    
+    hCosmicsVert->Scale( 1. / ((cosmicRunMax - cosmicRunMin)*3600. - nSpillsCos) );    
+    hCosmicsHorz->Scale( 1. / ((cosmicRunMax - cosmicRunMin)*3600. - nSpillsCos) );    
+    fout->cd();
+
+    TCanvas *c2c = new TCanvas(Form("c2c_%d",nBlocks));
+    c2c->SetRightMargin(0.13);
+    gStyle->SetPalette(55);
+    h2Cosmics->Draw("colz");
+    h2Cosmics->Write();
+    c2c->Print(Form("%s/%d_cosmics.png", saveDir, nBlocks));
+    c2c->Print(Form("%s/%d_cosmics.pdf", saveDir, nBlocks));
+    TCanvas *ccvert = new TCanvas(Form("ccvert_%d",nBlocks));
+    hCosmicsVert->Draw("hist e");
+    hCosmicsVert->Write();
+    ccvert->Print(Form("%s/%d_cosmicsVert.png", saveDir, nBlocks));
+    ccvert->Print(Form("%s/%d_cosmicsVert.pdf", saveDir, nBlocks));
+    TCanvas *cchorz = new TCanvas(Form("cchorz_%d",nBlocks));
+    hCosmicsHorz->Draw("hist e");
+    hCosmicsHorz->Write();
+    cchorz->Print(Form("%s/%d_cosmicsHorz.png", saveDir, nBlocks));
+    cchorz->Print(Form("%s/%d_cosmicsHorz.pdf", saveDir, nBlocks));
+
+    TH1D *hCosEff = (TH1D*)hCosmicsHorz->Clone("hCosEff");
+    hCosEff->Scale(1. / hCosEff->GetBinContent(hCosEff->GetMaximumBin()));
+    hCosEff->Write();
+
+    TH1D *h2CosEff = (TH1D*)h2Cosmics->Clone("h2CosEff");
+    h2CosEff->Scale(1. / h2CosEff->GetBinContent(h2CosEff->GetMaximumBin()));
+    h2CosEff->Write();
+    for (int i = 0; i < h2CosEff->GetNbinsX(); i++) {
+      for (int j = 0; j < h2CosEff->GetNbinsY(); j++) {
+	if (h2CosEff->GetBinContent(i, j) == 0) {
+	  h2CosEff->SetBinContent(i, j, 1);
+	}
+      }
+    }
+
 
     // Loop to calculate efficiencies    
     for (int itdc=0; itdc<2; itdc++) {
@@ -250,10 +341,11 @@ void absFluxS4 (const char* saveDir,
 	  // For true x, y position (relative to beam axis) interpolate between two 
 	  // measured positions of the ToF (see survey data)
 	  double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
+	  double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	  double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
 	  habsFluxX->Fill(positionX, 1. / hEff->GetBinContent(tofCoin->bar));
 	  double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
-	  habsFluxXAngle->Fill(angleOffAxis, 1. / hEff->GetBinContent(tofCoin->bar));
+	  habsFluxXAngle->Fill(angleOffAxis, 1. / h2CosEff->GetBinContent( h2CosEff->FindBin(positionXP, tofCoin->bar)) /*(hEff->GetBinContent(tofCoin->bar) * hCosEff->GetBinContent( hCosEff->GetXaxis()->FindBin(positionXP)) )*/);
 	} // if (tofCoin->inSpill)
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
       delete tofCoin;
@@ -280,16 +372,18 @@ void absFluxS4 (const char* saveDir,
     c1->Print(Form("%s/%d_absFluxX.png", saveDir, nBlocks));
     c1->Print(Form("%s/%d_absFluxX.pdf", saveDir, nBlocks));
 
+    
     TCanvas *c2 = new TCanvas(Form("c2_%d",nBlocks));
     TF1 *fTheta = new TF1(Form("fTheta%d", nBlocks),"pol1", cutThetaLow, cutThetaHi);
     habsFluxXAngle->Scale(1. / nSpillsTrue);
-    habsFluxXAngle->Draw("hist e");
-    habsFluxXAngle->Fit(fTheta,"R");
-    fTheta->Draw("same");
-    habsFluxXAngle->Write();
-    fTheta->Write();
+    habsFluxXAngle->Draw("hist");
+    //    habsFluxXAngle->Fit(fTheta,"R");
+    //fTheta->Draw("same");
+    //habsFluxXAngle->Write();
+    //    fTheta->Write();
     c2->Print(Form("%s/%d_absFluxXAngle.png", saveDir, nBlocks));
     c2->Print(Form("%s/%d_absFluxXAngle.pdf", saveDir, nBlocks));
+    
     // And do them all together in different colours
     if (nBlocks == 0) {
       habsFluxX->SetLineColor(kBlue);
@@ -322,7 +416,9 @@ void absFluxS4 (const char* saveDir,
       hs->Add(habsFluxX);
     }
     hsAngle->Add(habsFluxXAngle);
-    //    hsXPrime->Add(habsFluxXPrime);
+
+    cout<<"Total of "<<nSpills<<" ("<<nSpillsTrue<<" true) for "<<nBlocks<<" blocks"<<endl;
+
   } // nBlocks
   TCanvas *cs = new TCanvas("cs");
   hs->Draw("hist nostack");
@@ -336,10 +432,5 @@ void absFluxS4 (const char* saveDir,
   hsAngle->Write();
   csAngle->Print(Form("%s/absFluxXAngle.png", saveDir));
   csAngle->Print(Form("%s/absFluxXAngle.pdf", saveDir));
-  /*
-  TCanvas *cXPrime = new TCanvas("cXPrime");
-  hsXPrime->Draw("hist nostack");
-  cXPrime->Print(Form("%s/absFluxXPrime.png", saveDir));
-  cXPrime->Print(Form("%s/absFluxXPrime.pdf", saveDir));
-  */
+
 } // absFluxS4
