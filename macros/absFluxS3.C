@@ -69,7 +69,7 @@ void absFluxS3(const char* saveDir,
 	// There is an S1 and S2 hit associated with this event
 	if (tTrig != 0) {
 	  double positionX = ((xToF[n] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;
-	  double positionY =((yToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+	  double positionY = ((xToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
 	  hXS1S2->Fill(positionX);
 	  double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
 	  hXAngleS1S2->Fill(angleOffAxis);
@@ -162,6 +162,8 @@ void absFluxS3(const char* saveDir,
     hsXAngleS1->Add(hXAngleS1);
     hsXS1S2->Add(hXS1S2);
     hsXS1->Add(hXS1);
+
+    cout<<"Total of "<<nSpills<<" for "<<nBlocks<<" blocks"<<endl;
 
   } // for (int nBlocks = 0; nBlocks <=4; nBlocks++)
   fout->cd();
