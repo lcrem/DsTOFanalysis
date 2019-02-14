@@ -57,7 +57,7 @@ void absFluxS4 (const char* saveDir,
     TH1D *hEff   = new TH1D(Form("hEff%d",nBlocks), Form("Efficiencies of S4 bars, %d blocks; Bar in S4; Efficiency", nBlocks), 10, 0.5, 10.5);
     TH1D *habsFluxX = new TH1D(Form("habsFluxX%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x / m; Events / spill", nBlocks), 20, 0., 1.4);
     habsFluxX->Sumw2();
-    TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 40, 0, 6.);
+    TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
     habsFluxXAngle->Sumw2();
 
     TH2D *h2Cosmics = new TH2D(Form("h2Cosmics%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Bar; Hz",nBlocks), 40, 0, 140, 10, 0.5, 10.5);
@@ -345,7 +345,7 @@ void absFluxS4 (const char* saveDir,
 	  double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
 	  habsFluxX->Fill(positionX, 1. / hEff->GetBinContent(tofCoin->bar));
 	  double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
-	  habsFluxXAngle->Fill(angleOffAxis, 1. / h2CosEff->GetBinContent( h2CosEff->FindBin(positionXP, tofCoin->bar)) /*(hEff->GetBinContent(tofCoin->bar) * hCosEff->GetBinContent( hCosEff->GetXaxis()->FindBin(positionXP)) )*/);
+	  habsFluxXAngle->Fill(angleOffAxis, 1. / /*h2CosEff->GetBinContent( h2CosEff->FindBin(positionXP, tofCoin->bar)) (*/hEff->GetBinContent(tofCoin->bar) /** hCosEff->GetBinContent( hCosEff->GetXaxis()->FindBin(positionXP)) )*/);
 	} // if (tofCoin->inSpill)
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
       delete tofCoin;
@@ -377,6 +377,7 @@ void absFluxS4 (const char* saveDir,
     TF1 *fTheta = new TF1(Form("fTheta%d", nBlocks),"pol1", cutThetaLow, cutThetaHi);
     habsFluxXAngle->Scale(1. / nSpillsTrue);
     habsFluxXAngle->Draw("hist");
+    habsFluxXAngle->Write();
     //    habsFluxXAngle->Fit(fTheta,"R");
     //fTheta->Draw("same");
     //habsFluxXAngle->Write();
