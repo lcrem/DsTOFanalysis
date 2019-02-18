@@ -55,16 +55,21 @@ void angularDistS4(const char* saveDir,
   THStack *hsBkgSub = new THStack("hsBkgSub", "Background subtracted and efficiency corrected S4 ToF spectrum; S4 - S1 / ns; Events / spill");
   THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; S4 - S1 / ns; Events / spill");
 
-  THStack *hsProS4Vert = new THStack("hsProS4Vert", "S4 angular distribution of proton hits; #phi / degrees; Events / spill");
-  THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S4 angular distribution of MIP hits; #phi / degrees; Events / spill");
-  THStack *hsProS4Horz = new THStack("hsProS4Horz", "S4 angular distribution of proton hits; #theta / degrees; Events / spill");
-  THStack *hsPiS4Horz  = new THStack("hsPiS4Horz", "S4 angular distribution of MIP hits; #theta / degrees; Events / spill");
-  THStack *hsRatioS4Vert = new THStack("hsRatioS4Vert", "S4 angular distribution of proton/MIP ratio; #phi / degrees; Protons/MIPs");
-  THStack *hsRatioS4Horz = new THStack("hsRatioS4Horz", "S4 angular distribution of proton/MIP ratio; #theta / degrees; Protons/MIPs");
+  THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #times S2 #times S4 angular distribution of proton hits; #phi / degrees; Events / spill");
+  THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S1 #times S2 #times S4 angular distribution of MIP hits; #phi / degrees; Events / spill");
+  THStack *hsProS4Horz = new THStack("hsProS4Horz", "S1 #times S2 #times S4 angular distribution of proton hits; #theta / degrees; Events / spill");
+  THStack *hsPiS4Horz  = new THStack("hsPiS4Horz", "S1 #times S2 #times S4 angular distribution of MIP hits; #theta / degrees; Events / spill");
+  THStack *hsRatioS4Vert = new THStack("hsRatioS4Vert", "S1 #times S2 #times S4 angular distribution of proton/MIP ratio; #phi / degrees; Protons/MIPs");
+  THStack *hsRatioS4Horz = new THStack("hsRatioS4Horz", "S1 #times S2 #times S4 angular distribution of proton/MIP ratio; #theta / degrees; Protons/MIPs");
 
-  TLegend *leg = new TLegend(0.65, 0.65, 0.85, .85);
+  TLegend *leg = new TLegend(0.65, 0.55, 0.85, .85);
 
-  for (int nBlocks = 0; nBlocks < 4; nBlocks++) {
+  TLegend *legProS4Horz = new TLegend(0.55, 0.55, 0.88, .85);
+  TLegend *legPiS4Horz  = new TLegend(0.55, 0.55, 0.88, .85);
+  TLegend *legProS4Vert = new TLegend(0.60, 0.55, 0.88, .85);
+  TLegend *legPiS4Vert  = new TLegend(0.60, 0.55, 0.88, .85);
+
+  for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     // Number of signal particles using just cut and count
     double nP  = 0.;
     double nPi = 0.;
@@ -254,11 +259,11 @@ void angularDistS4(const char* saveDir,
 
     // 1D histograms in the horizontal and vertical direction of S4
     // Horizontal
-    TH1D *hProS4Horz = new TH1D(Form("hProS4Horz%d",nBlocks), Form("Horizontal angular distribution of proton hits in S4, %d blocks; #theta / degrees; Events / spill",nBlocks), 40, 0, 6.);
+    TH1D *hProS4Horz = new TH1D(Form("hProS4Horz%d",nBlocks), Form("Horizontal angular distribution of proton hits in S4, %d blocks; #theta / degrees; Events / spill",nBlocks), 20, 0., 6.);
     hProS4Horz->Sumw2();
-    TH1D *hPiS4Horz  = new TH1D(Form("hPiS4Horz%d",nBlocks), Form("Horizontal angular distribution of MIP hits in S4, %d blocks; #theta / degrees; Events / spill",nBlocks), 40, 0, 6);
+    TH1D *hPiS4Horz  = new TH1D(Form("hPiS4Horz%d",nBlocks), Form("Horizontal angular distribution of MIP hits in S4, %d blocks; #theta / degrees; Events / spill",nBlocks), 20, 0., 6.);
     hPiS4Horz->Sumw2();
-    TH1D *hProPiRatioS4Horz  = new TH1D(Form("hProPiRatioS4Horz%d",nBlocks), Form("Horizontal angular distribution of proton/MIP ratio in S4, %d blocks; #theta / degrees; Protons/MIPs",nBlocks), 40, 0, 6);
+    TH1D *hProPiRatioS4Horz  = new TH1D(Form("hProPiRatioS4Horz%d",nBlocks), Form("Horizontal angular distribution of proton/MIP ratio in S4, %d blocks; #theta / degrees; Protons/MIPs",nBlocks), 20, 0., 6.);
     // Vertical
     TH1D *hProS4Vert = new TH1D(Form("hProS4Vert%d",nBlocks), Form("Vertical angular distribution of proton hits in S4, %d blocks; #phi / degrees; Events / spill",nBlocks), 10, -1.5, 1.8);
     hProS4Vert->Sumw2();
@@ -401,8 +406,8 @@ void angularDistS4(const char* saveDir,
     cRatioS4Vert->Print(Form("%s/%d_proPiS4Vert.pdf", saveDir,nBlocks));
     TCanvas *cRatioS4Horz = new TCanvas(Form("cRatioS4Horz%d",nBlocks));
     hProPiRatioS4Horz->Divide(hProS4Horz, hPiS4Horz, 1., 1., "B");
-    hProPiRatioS4Horz->SetBinContent(39, 0);
-    hProPiRatioS4Horz->SetBinContent(40, 0);
+    //    hProPiRatioS4Horz->SetBinContent(39, 0);
+    hProPiRatioS4Horz->SetBinContent(20, 0);
     hProPiRatioS4Horz->Draw("hist e");
     cRatioS4Horz->Print(Form("%s/%d_proPiS4Horz.png", saveDir,nBlocks));
     cRatioS4Horz->Print(Form("%s/%d_proPiS4Horz.pdf", saveDir,nBlocks));
@@ -417,6 +422,10 @@ void angularDistS4(const char* saveDir,
       hPiS4Horz->SetLineColor(kBlue);
       hPiS4Vert->SetLineColor(kBlue);
       leg->AddEntry(hdtof1d, "0 blocks", "l");     
+      double intProS4Horz = hProS4Horz->Integral();
+      double intPiS4Horz  = hPiS4Horz->Integral();
+      legProS4Horz->AddEntry(hProS4Horz, Form("0 blocks - %d per spill", (int)intProS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("0 blocks - %d per spill", (int)intPiS4Horz), "l");     
     }
     else if (nBlocks == 1) {
       hdtof1d_sub->SetLineColor(kRed);
@@ -428,6 +437,10 @@ void angularDistS4(const char* saveDir,
       hPiS4Horz->SetLineColor(kRed);
       hPiS4Vert->SetLineColor(kRed);
       leg->AddEntry(hdtof1d, "1 block", "l");
+      double intProS4Horz = hProS4Horz->Integral();
+      double intPiS4Horz  = hPiS4Horz->Integral();
+      legProS4Horz->AddEntry(hProS4Horz, Form("1 block - %d per spill", (int)intProS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("1 block - %d per spill", (int)intPiS4Horz), "l");     
     }
     else if (nBlocks == 2) {
       hdtof1d_sub->SetLineColor(kBlack);
@@ -439,6 +452,10 @@ void angularDistS4(const char* saveDir,
       hPiS4Horz->SetLineColor(kBlack);
       hPiS4Vert->SetLineColor(kBlack);
       leg->AddEntry(hdtof1d, "2 blocks", "l");
+      double intProS4Horz = hProS4Horz->Integral();
+      double intPiS4Horz  = hPiS4Horz->Integral();
+      legProS4Horz->AddEntry(hProS4Horz, Form("2 blocks - %d per spill", (int)intProS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("2 blocks - %d per spill", (int)intPiS4Horz), "l");     
     }
     else if (nBlocks == 3) {
       hdtof1d_sub->SetLineColor(kGreen+2);
@@ -450,6 +467,10 @@ void angularDistS4(const char* saveDir,
       hPiS4Horz->SetLineColor(kGreen+2);
       hPiS4Vert->SetLineColor(kGreen+2);
       leg->AddEntry(hdtof1d, "3 blocks", "l");
+      double intProS4Horz = hProS4Horz->Integral();
+      double intPiS4Horz  = hPiS4Horz->Integral();
+      legProS4Horz->AddEntry(hProS4Horz, Form("3 blocks - %d per spill", (int)intProS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("3 blocks - %d per spill", (int)intPiS4Horz), "l");     
     }
     else if (nBlocks ==4) {
       hdtof1d_sub->SetLineColor(kMagenta);
@@ -461,6 +482,10 @@ void angularDistS4(const char* saveDir,
       hPiS4Horz->SetLineColor(kMagenta);
       hPiS4Vert->SetLineColor(kMagenta);
       leg->AddEntry(hdtof1d, "4 blocks", "l");
+      double intProS4Horz = hProS4Horz->Integral();
+      double intPiS4Horz  = hPiS4Horz->Integral();
+      legProS4Horz->AddEntry(hProS4Horz, Form("4 blocks - %d per spill", (int)intProS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("4 blocks - %d per spill", (int)intPiS4Horz), "l");     
     }
     hdtof1d->Scale(1. / nSpillsTrue);
     hdtof1d_sub->Scale(1. / nSpillsTrue);
@@ -500,38 +525,65 @@ void angularDistS4(const char* saveDir,
   csBkgSub->Print(Form("%s/s4BkgSub.pdf", saveDir));
 
   TCanvas *cspros4vert = new TCanvas("cspros4vert");
-  hsProS4Vert->Draw("hist nostack");
+  hsProS4Vert->Draw("hist e nostack");
+  hsProS4Vert->GetXaxis()->SetLabelSize(0.04);
+  hsProS4Vert->GetYaxis()->SetLabelSize(0.04);
+  hsProS4Vert->GetXaxis()->SetTitleSize(0.04);
+  hsProS4Vert->GetYaxis()->SetTitleSize(0.04);
   leg->Draw();
   hsProS4Vert->Write();
   cspros4vert->Print(Form("%s/proS4Vert.png",saveDir));
   cspros4vert->Print(Form("%s/proS4Vert.pdf",saveDir));
   TCanvas *cspis4vert  = new TCanvas("cspis4vert");
-  hsPiS4Vert->Draw("hist nostack");
+  hsPiS4Vert->Draw("hist e nostack");
+  hsPiS4Vert->GetXaxis()->SetLabelSize(0.04);
+  hsPiS4Vert->GetYaxis()->SetLabelSize(0.04);
+  hsPiS4Vert->GetXaxis()->SetTitleSize(0.04);
+  hsPiS4Vert->GetYaxis()->SetTitleSize(0.04);
   leg->Draw();
   hsPiS4Vert->Write();
   cspis4vert->Print(Form("%s/piS4Vert.png",saveDir));
   cspis4vert->Print(Form("%s/piS4Vert.pdf",saveDir));
   TCanvas *cspros4horz = new TCanvas("cspros4horz");
-  hsProS4Horz->Draw("hist nostack");
-  leg->Draw();
+  hsProS4Horz->Draw("hist e nostack");
+  hsProS4Horz->GetXaxis()->SetLabelSize(0.04);
+  hsProS4Horz->GetYaxis()->SetLabelSize(0.04);
+  hsProS4Horz->GetXaxis()->SetTitleSize(0.04);
+  hsProS4Horz->GetYaxis()->SetTitleSize(0.04);
+  legProS4Horz->Draw();
+  legProS4Horz->Write("legproS4Horz");
   hsProS4Horz->Write();
   cspros4horz->Print(Form("%s/proS4Horz.png",saveDir));
   cspros4horz->Print(Form("%s/proS4Horz.pdf",saveDir));
   TCanvas *cspis4horz  = new TCanvas("cspis4horz");
-  hsPiS4Horz->Draw("hist nostack");
-  leg->Draw();
+  hsPiS4Horz->Draw("hist e nostack");
+  hsPiS4Horz->GetXaxis()->SetLabelSize(0.04);
+  hsPiS4Horz->GetYaxis()->SetLabelSize(0.04);
+  hsPiS4Horz->GetXaxis()->SetTitleSize(0.04);
+  hsPiS4Horz->GetYaxis()->SetTitleSize(0.04);
+  legPiS4Horz->Draw();
+  legPiS4Horz->Write("legpiS4Horz");
   hsPiS4Horz->Write();
   cspis4horz->Print(Form("%s/piS4Horz.png",saveDir));
   cspis4horz->Print(Form("%s/piS4Horz.pdf",saveDir));
 
   TCanvas *csratios4vert = new TCanvas("csratios4vert");
-  hsRatioS4Vert->Draw("hist nostack");
+  hsRatioS4Vert->Draw("hist e nostack");
+  hsRatioS4Vert->GetXaxis()->SetLabelSize(0.04);
+  hsRatioS4Vert->GetYaxis()->SetLabelSize(0.04);
+  hsRatioS4Vert->GetXaxis()->SetTitleSize(0.04);
+  hsRatioS4Vert->GetYaxis()->SetTitleSize(0.04);
   leg->Draw();
+  leg->Write("legOrdinary");
   hsRatioS4Vert->Write();
   csratios4vert->Print(Form("%s/ratioS4Vert.png", saveDir));
   csratios4vert->Print(Form("%s/ratioS4Vert.pdf", saveDir));
   TCanvas *csratios4horz = new TCanvas("csratios4horz");
   hsRatioS4Horz->Draw("hist nostack");
+  hsRatioS4Horz->GetXaxis()->SetLabelSize(0.04);
+  hsRatioS4Horz->GetYaxis()->SetLabelSize(0.04);
+  hsRatioS4Horz->GetXaxis()->SetTitleSize(0.04);
+  hsRatioS4Horz->GetYaxis()->SetTitleSize(0.04);
   leg->Draw();
   hsRatioS4Horz->Write();
   csratios4horz->Print(Form("%s/ratioS4Horz.png", saveDir));
