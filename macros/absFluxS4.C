@@ -36,13 +36,16 @@ void absFluxS4 (const char* saveDir,
   const double dstofShift = 40.;
   // Ustof-dstof cable delay
   const double ustofDelay = 184.7;
+  // S4 solid angle coverage
+  const double s4SolidAngle = 0.00557;
 
   TFile *fout = new TFile(Form("%s/absFluxS4Plots.root", saveDir), "recreate");
   THStack *hs = new THStack("hsX","Absolute particle flux in S4; x / m; Events / spill");
-  THStack *hsAngle = new THStack("hsAngle","Absolute particle flux in S4; #theta / degrees; Events / spill");
+  THStack *hsAngle = new THStack("hsAngle","Absolute particle flux in S4; #theta / degrees; Events / spill / sr");
   //  THStack *hsCosmics = new THStack("hsCosmics", "Cosmic flux in S4 across detector; x / cm; Events / s");
 
   TLegend *legHorz = new TLegend(0.6, 0.8, 0.85, 0.6);
+  TLegend *legAngle = new TLegend(0.58, 0.88, 0.88, 0.6);
   
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     cout<<"Block "<<nBlocks<<endl;
@@ -57,7 +60,7 @@ void absFluxS4 (const char* saveDir,
     TH1D *hEff   = new TH1D(Form("hEff%d",nBlocks), Form("Efficiencies of S4 bars, %d blocks; Bar in S4; Efficiency", nBlocks), 10, 0.5, 10.5);
     TH1D *habsFluxX = new TH1D(Form("habsFluxX%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; x / m; Events / spill", nBlocks), 20, 0., 1.4);
     habsFluxX->Sumw2();
-    TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    TH1D *habsFluxXAngle = new TH1D(Form("habsFluxXAngle%d",nBlocks), Form("Absolute particle flux in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 20, 0., 6.);
     habsFluxXAngle->Sumw2();
 
     TH2D *h2Cosmics = new TH2D(Form("h2Cosmics%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Bar; Hz",nBlocks), 40, 0, 140, 10, 0.5, 10.5);
@@ -204,12 +207,15 @@ void absFluxS4 (const char* saveDir,
       }
     }
 
-
+    int nUtofHits = 0;
     // Loop to calculate efficiencies    
     for (int itdc=0; itdc<2; itdc++) {
       double tempUstof;
+      double tempBeam;
       double ustofNs;
+      double beamNs;
       for (int irun=runMin; irun<runMax+1; irun++){
+	double lastBeam = 0.;
 	// Load input files
 	TFile *tofCoinFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
 	TFile *tofFile     = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
@@ -220,9 +226,13 @@ void absFluxS4 (const char* saveDir,
 	tofCoinTree->SetBranchAddress("tofCoin", &tofCoin);
 	tofTree->SetBranchAddress("tof", &tof);
 	// Create new TTree for ustof signals
-	TTree *ustofTree = new TTree("ustofTree", "ustof");;
+	TTree *ustofTree = new TTree("ustofTree", "ustof");
 	ustofTree->SetDirectory(0);
 	ustofTree->Branch("ustofNs", &ustofNs, "ustofNs/D");
+	//	TTree *beamTree = new TTree("beamTree", "beam");
+	//	beamTree->SetDirectory(0);
+	//	beamTree->Branch("beamNs", &beamNs, "beamNs/D");
+	//	tempBeam=0;
 	tempUstof=0;
 	// Build tree of all the ustof hit times
 	for (int i=0; i<tofTree->GetEntries(); i++) {
@@ -236,7 +246,14 @@ void absFluxS4 (const char* saveDir,
 	    if ( (ustofNs - tempUstof) < 500.) continue;
 	    ustofTree->Fill();
 	    tempUstof = ustofNs;
+	    // Is in spill
+	    if ((ustofNs - lastBeam) < 1e9 && (ustofNs - lastBeam) > 0.) {
+	      nUtofHits++;
+	    }
 	  } // if (tof->channel == 13) 
+	  else if (tof->channel == 14) {
+	    lastBeam = tof->fakeTimeNs;
+	  } // else if (tof->channel == 14)
 	} // for (int i=0; i<tof->GetEntries(); i++)
 	ustofTree->BuildIndex("ustofNs");
 	// Now loop over coincidence file to find number of coincidences for each bar
@@ -375,7 +392,7 @@ void absFluxS4 (const char* saveDir,
     
     TCanvas *c2 = new TCanvas(Form("c2_%d",nBlocks));
     TF1 *fTheta = new TF1(Form("fTheta%d", nBlocks),"pol1", cutThetaLow, cutThetaHi);
-    habsFluxXAngle->Scale(1. / nSpillsTrue);
+    habsFluxXAngle->Scale(1. / (nSpillsTrue));
     habsFluxXAngle->Draw("hist");
     habsFluxXAngle->Write();
     //    habsFluxXAngle->Fit(fTheta,"R");
@@ -391,34 +408,46 @@ void absFluxS4 (const char* saveDir,
       habsFluxXAngle->SetLineColor(kBlue);
       legHorz->AddEntry(habsFluxX, "0 blocks", "l");
       hs->Add(habsFluxX);
+      double intAngle = habsFluxXAngle->Integral();
+      legAngle->AddEntry(habsFluxXAngle, Form("0 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 1) {
       habsFluxX->SetLineColor(kRed);
       habsFluxXAngle->SetLineColor(kRed);
       legHorz->AddEntry(habsFluxX, "1 block", "l");
       hs->Add(habsFluxX);
+      double intAngle = habsFluxXAngle->Integral();
+      legAngle->AddEntry(habsFluxXAngle, Form("1 block - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 2) {
       habsFluxX->SetLineColor(kBlack);
       habsFluxXAngle->SetLineColor(kBlack);
       legHorz->AddEntry(habsFluxX, "2 blocks", "l");
       hs->Add(habsFluxX);
+      double intAngle = habsFluxXAngle->Integral();
+      legAngle->AddEntry(habsFluxXAngle, Form("2 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 3){
       habsFluxX->SetLineColor(kGreen+2);
       habsFluxXAngle->SetLineColor(kGreen+2);
       legHorz->AddEntry(habsFluxX, "3 blocks", "l");
       hs->Add(habsFluxX);
+      double intAngle = habsFluxXAngle->Integral();
+      legAngle->AddEntry(habsFluxXAngle, Form("3 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else {
       habsFluxX->SetLineColor(kMagenta);
       habsFluxXAngle->SetLineColor(kMagenta);
       legHorz->AddEntry(habsFluxX, "4 blocks", "l");
       hs->Add(habsFluxX);
+      double intAngle = habsFluxXAngle->Integral();
+      legAngle->AddEntry(habsFluxXAngle, Form("4 blocks - %d per spill", (int)intAngle), "l"); 
     }
     hsAngle->Add(habsFluxXAngle);
 
     cout<<"Total of "<<nSpills<<" ("<<nSpillsTrue<<" true) for "<<nBlocks<<" blocks"<<endl;
+    double UtofPerSpill = (double)nUtofHits / (double)nSpillsTrue;
+    cout<<UtofPerSpill<<" S1 x S2 hits per spill"<<endl;
 
   } // nBlocks
   TCanvas *cs = new TCanvas("cs");
@@ -428,8 +457,13 @@ void absFluxS4 (const char* saveDir,
   cs->Print(Form("%s/absFluxX.png", saveDir));
   cs->Print(Form("%s/absFluxX.pdf", saveDir));
   TCanvas *csAngle = new TCanvas("csAngle");
-  hsAngle->Draw("hist nostack");
-  legHorz->Draw();
+  hsAngle->Draw("hist e nostack");
+  hsAngle->GetXaxis()->SetLabelSize(0.04);
+  hsAngle->GetYaxis()->SetLabelSize(0.04);
+  hsAngle->GetXaxis()->SetTitleSize(0.04);
+  hsAngle->GetYaxis()->SetTitleSize(0.04);
+  legAngle->Draw();
+  legAngle->Write("legAngle");
   hsAngle->Write();
   csAngle->Print(Form("%s/absFluxXAngle.png", saveDir));
   csAngle->Print(Form("%s/absFluxXAngle.pdf", saveDir));

@@ -36,7 +36,7 @@ void momCalc(const char* saveDir, const double mass,
   const double piLow  = 80.;
   const double piHi   = 95.;
   const double proLow = 106.;
-  const double proHi  = 134.;
+  const double proHi  = 140.;
   // S1 -> S4 baseline length
   const double baselineS1S4 = 13.97;
   const double baselineS1S3 = 10.9;
@@ -69,8 +69,8 @@ void momCalc(const char* saveDir, const double mass,
     int nSpillsTrue = 0;
     double lastSpill = 0.;
 
-    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 260, 30, 160);
-    TH1D *hpromom = new TH1D(Form("hpromom_%d",nBlocks), Form("Proton momentum in S4, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 300, 0., 1);
+    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events", nBlocks), 260, 30, 160);
+    TH1D *hpromom = new TH1D(Form("hpromom_%d",nBlocks), Form("Proton momentum in S4, %d blocks; Proton momentum [GeV/c]; Events", nBlocks), 300, 0., 1);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -205,7 +205,7 @@ void momCalc(const char* saveDir, const double mass,
 		hHits->Fill((tof->channel / -2) + 6);
 	      }
 	    } // TDC 2
-	  } // if (tof->fakeTimeNs - ustofNs < 260. && tof->fakeTimeNs - ustofNs > 130.) 
+	  } // if (tof->fakeTimeNs - ustofNs < 260. && tof->fakeTimeNs - ustofNs > 130.)
 	} // for (int t=0; t<tofTree->GetEntries(); t++)
 	delete tof;
 	delete tofCoin;
@@ -235,6 +235,7 @@ void momCalc(const char* saveDir, const double mass,
     hEff->Write();
     cEff->Print(Form("%s/%d_barEff.png",saveDir,nBlocks));
     cEff->Print(Form("%s/%d_barEff.pdf",saveDir,nBlocks));
+
 
     for (int itdc=0; itdc<2; itdc++) {
       TChain *tofCoinChain = new TChain("tofCoinTree");
@@ -273,7 +274,7 @@ void momCalc(const char* saveDir, const double mass,
 	double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
 	if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	  hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
-	  if (tofCalc > proLow - dstofShift && tofCalc < proHi - dstofShift) {
+	  if (tofCalc > proLow - dstofShift-5 && tofCalc < proHi - dstofShift) {
 	    hpromom->Fill(momFromTime(0.938, baselineS1S4, tofCalc), 1. / hEff->GetBinContent(tofCoin->bar));
 	  }
 	} // if (tofCalc < 200. && tofCalc > 70.) 
