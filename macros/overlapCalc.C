@@ -1,6 +1,6 @@
 // overlapCalc.C
 
-void overlapCalc()
+void overlapCalc(const char* saveDir)
 {
   gSystem->Load("libPhysics.so");
   
@@ -140,8 +140,17 @@ void overlapCalc()
   mg_noProj->Add(grs3_noProj);
   mg_noProj->Add(grs4_noProj);
   mg_noProj->SetTitle("Nominal 'Beam's-eye view' of T10 area; -y / m; z / m");
+  
   TCanvas *cnoProj = new TCanvas("cnoProj");
+  TLegend *legnoProj = new TLegend(0.15, 0.5, 0.25, 0.77);
+  legnoProj->AddEntry(grs1_noProj, "S1", "p");
+  legnoProj->AddEntry(grs2_noProj, "S2", "p");
+  legnoProj->AddEntry(grs3_noProj, "S3", "p");
+  legnoProj->AddEntry(grs4_noProj, "S4", "p");
   mg_noProj->Draw("AP");
+  legnoProj->Draw();
+  cnoProj->Print(Form("%s/beamlineOrig.png", saveDir));
+  cnoProj->Print(Form("%s/beamlineOrig.pdf", saveDir));   
 
   // To find angle to rotate
   // Vector pointing down beamline
@@ -188,9 +197,16 @@ void overlapCalc()
   mg_rot->Add(grs2_rot);
   mg_rot->Add(grs3_rot);
   mg_rot->Add(grs4_rot);
-  mg_rot->SetTitle("Rotated points; -y / m; z / m");
+  mg_rot->SetTitle("T10 points rotated to S1-S2 axis; -y / m; z / m");
+  TLegend *legRot = new TLegend(0.17, 0.5, 0.29, 0.75);
+  legRot->AddEntry(grs2_noProj, "S2", "p");
+  legRot->AddEntry(grs3_noProj, "S3", "p");
+  legRot->AddEntry(grs4_noProj, "S4", "p");
   TCanvas *crot = new TCanvas("crot");
   mg_rot->Draw("AP");
+  legRot->Draw();
+  crot->Print(Form("%s/beamlineRotated.png",saveDir));
+  crot->Print(Form("%s/beamlineRotated.pdf",saveDir));
   // Now project down the z axis with the paddle in the drawing plane
   // Origin still at S1
   TMultiGraph *mg_proj = new TMultiGraph();
@@ -226,8 +242,11 @@ void overlapCalc()
   mg_proj->Add(grs3_proj);
   mg_proj->Add(grs4_proj);
   TCanvas *cproj = new TCanvas("cproj");
-  mg_proj->SetTitle("Projected points; -y / m; z / m");
+  mg_proj->SetTitle("T10 points projected along S1-S2 axis (S1 origin); -y / m; z / m");
   mg_proj->Draw("AP");
+  legRot->Draw();
+  cproj->Print(Form("%s/beamlineProjected.png",saveDir));
+  cproj->Print(Form("%s/beamlineProjected.pdf",saveDir));
   
   std::vector<TVector3> vectorVec;
   vectorVec.push_back(vs2TopLeft);
