@@ -64,6 +64,7 @@ void angularDistS3(const char* saveDir,
   TFile *fout = new TFile(Form("%s/angularDistS3plots.root", saveDir), "recreate");
 
   TLegend *leg = new TLegend(0.15, 0.55, 0.3, 0.85);
+  TLegend *legTof = new TLegend(0.71, 0.55, 0.88, 0.85);
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     int nSpills = 0;
@@ -72,6 +73,7 @@ void angularDistS3(const char* saveDir,
     TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
     hThetaS1S2pro->Sumw2();
     TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
+    hPhiS1pro->Sumw2();
     TH1D *hPhiS1S2pro = new TH1D(Form("hPhiS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pro->Sumw2();
 
@@ -80,6 +82,7 @@ void angularDistS3(const char* saveDir,
     TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
     hThetaS1S2pi->Sumw2();
     TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
+    hPhiS1pi->Sumw2();
     TH1D *hPhiS1S2pi = new TH1D(Form("hPhiS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pi->Sumw2();
 
@@ -236,6 +239,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1S2->SetLineColor(kBlue);
       hutof1dS1->SetLineColor(kBlue);
       leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
+      legTof->AddEntry(hutof1dS1, "0 blocks", "l");
     }
     if (nBlocks==1) {
       hThetaS1S2pro->SetLineColor(kRed);
@@ -259,6 +263,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kRed);
 
       leg->AddEntry(hThetaS1S2pro, "1 block", "l");
+      legTof->AddEntry(hutof1dS1, "1 block", "l");
     }
     if (nBlocks==2) {
       hThetaS1S2pro->SetLineColor(kBlack);
@@ -282,6 +287,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kBlack);
 
       leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
+      legTof->AddEntry(hutof1dS1, "2 blocks", "l");
     }
     if (nBlocks==3) {
       hThetaS1S2pro->SetLineColor(kGreen+2);
@@ -305,6 +311,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kGreen+2);
 
       leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
+      legTof->AddEntry(hutof1dS1, "3 blocks", "l");
     }
     if (nBlocks==4) {
       hThetaS1S2pro->SetLineColor(kMagenta);
@@ -328,6 +335,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kMagenta);
 
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
+      legTof->AddEntry(hutof1dS1, "4 blocks", "l");
     }
 
     hPhiS1S2pro->Scale(1. / (double)nSpills);
@@ -350,11 +358,15 @@ void angularDistS3(const char* saveDir,
     hsThetaS1S2pi->Add(hThetaS1S2pi);
     hsPhiS1S2pro->Add(hPhiS1S2pro);
     hsPhiS1S2pi->Add(hPhiS1S2pi);
+    hsThetaS1S2ratio->Add(hThetaS1S2ratio);
+    hsPhiS1S2ratio->Add(hPhiS1S2ratio);
 
     hsThetaS1pro->Add(hThetaS1pro);
     hsThetaS1pi->Add(hThetaS1pi);
     hsPhiS1pro->Add(hPhiS1pro);
     hsPhiS1pi->Add(hPhiS1pi);
+    hsThetaS1ratio->Add(hThetaS1ratio);
+    hsPhiS1ratio->Add(hPhiS1ratio);
 
     hsutof1dS1S2->Add(hutof1dS1S2);
     hsutof1dS1->Add(hutof1dS1);
@@ -385,75 +397,137 @@ void angularDistS3(const char* saveDir,
   hsMomS1S2->Write();
   hsMomS1->Write();
 
+  TCanvas *c1_Log1 = new TCanvas("c1_Log1");
+  c1_Log1->SetLogy();
+  hsThetaS1S2pro->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log1->Print(Form("%s/thetaS12proLog.png", saveDir));
+  c1_Log1->Print(Form("%s/thetaS12proLog.pdf", saveDir));
+  TCanvas *c1_Log2 = new TCanvas("c1_Log2");
+  c1_Log2->SetLogy();
+  hsThetaS1S2pi->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log2->Print(Form("%s/thetaS12piLog.png", saveDir));
+  c1_Log2->Print(Form("%s/thetaS12piLog.pdf", saveDir));
+  TCanvas *c1_Log3 = new TCanvas("c1_Log3");
+  c1_Log3->SetLogy();
+  hsPhiS1S2pro->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log3->Print(Form("%s/phiS12proLog.png", saveDir));
+  c1_Log3->Print(Form("%s/phiS12proLog.pdf", saveDir));
+  TCanvas *c1_Log4 = new TCanvas("c1_Log4");
+  c1_Log4->SetLogy();
+  hsPhiS1S2pi->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log4->Print(Form("%s/phiS12piLog.png", saveDir));
+  c1_Log4->Print(Form("%s/phiS12piLog.pdf", saveDir));
+  TCanvas *c1_Log5 = new TCanvas("c1_Log5");
+  c1_Log5->SetLogy();
+  hsThetaS1S2ratio->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log5->Print(Form("%s/thetaS12ratioLog.png", saveDir));
+  c1_Log5->Print(Form("%s/thetaS12ratioLog.pdf", saveDir));
+  TCanvas *c1_Log6 = new TCanvas("c1_Log6");
+  c1_Log6->SetLogy();
+  hsPhiS1S2ratio->Draw("hist e nostack");
+  leg->Draw();
+  c1_Log6->Print(Form("%s/phiS12ratioLog.png", saveDir));
+  c1_Log6->Print(Form("%s/phiS12ratioLog.pdf", saveDir));
+
   TCanvas *c1_1 = new TCanvas("c1_1");
-  c1_1->SetLogy();
   hsThetaS1S2pro->Draw("hist e nostack");
   leg->Draw();
   c1_1->Print(Form("%s/thetaS12pro.png", saveDir));
   c1_1->Print(Form("%s/thetaS12pro.pdf", saveDir));
   TCanvas *c1_2 = new TCanvas("c1_2");
-  c1_2->SetLogy();
   hsThetaS1S2pi->Draw("hist e nostack");
   leg->Draw();
   c1_2->Print(Form("%s/thetaS12pi.png", saveDir));
   c1_2->Print(Form("%s/thetaS12pi.pdf", saveDir));
   TCanvas *c1_3 = new TCanvas("c1_3");
-  c1_3->SetLogy();
   hsPhiS1S2pro->Draw("hist e nostack");
   leg->Draw();
   c1_3->Print(Form("%s/phiS12pro.png", saveDir));
   c1_3->Print(Form("%s/phiS12pro.pdf", saveDir));
   TCanvas *c1_4 = new TCanvas("c1_4");
-  c1_4->SetLogy();
   hsPhiS1S2pi->Draw("hist e nostack");
   leg->Draw();
   c1_4->Print(Form("%s/phiS12pi.png", saveDir));
   c1_4->Print(Form("%s/phiS12pi.pdf", saveDir));
   TCanvas *c1_5 = new TCanvas("c1_5");
-  c1_5->SetLogy();
   hsThetaS1S2ratio->Draw("hist e nostack");
   leg->Draw();
   c1_5->Print(Form("%s/thetaS12ratio.png", saveDir));
   c1_5->Print(Form("%s/thetaS12ratio.pdf", saveDir));
   TCanvas *c1_6 = new TCanvas("c1_6");
-  c1_6->SetLogy();
   hsPhiS1S2ratio->Draw("hist e nostack");
   leg->Draw();
   c1_6->Print(Form("%s/phiS12ratio.png", saveDir));
   c1_6->Print(Form("%s/phiS12ratio.pdf", saveDir));
 
+  TCanvas *c1_Logs11 = new TCanvas("c1_Logs11");
+  c1_Logs11->SetLogy();
+  hsThetaS1pro->Draw("hist e nostack");
+  legTof->Draw();
+  c1_Logs11->Print(Form("%s/thetaS1proLog.png", saveDir));
+  c1_Logs11->Print(Form("%s/thetaS1proLog.pdf", saveDir));
+  TCanvas *c1_Logs12 = new TCanvas("c1_Logs12");
+  c1_Logs12->SetLogy();
+  hsThetaS1pi->Draw("hist e nostack");
+  legTof->Draw();
+  c1_Logs12->Print(Form("%s/thetaS1piLog.png", saveDir));
+  c1_Logs12->Print(Form("%s/thetaS1piLog.pdf", saveDir));
+  TCanvas *c1_Logs13 = new TCanvas("c1_Logs13");
+  c1_Logs13->SetLogy();
+  hsPhiS1pro->Draw("hist e nostack");
+  legTof->Draw();
+  c1_Logs13->Print(Form("%s/phiS1proLog.png", saveDir));
+  c1_Logs13->Print(Form("%s/phiS1proLog.pdf", saveDir));
+  TCanvas *c1_Logs14 = new TCanvas("c1_Logs14");
+  c1_Logs14->SetLogy();
+  hsPhiS1pi->Draw("hist e nostack");
+  legTof->Draw();
+  c1_Logs14->Print(Form("%s/phiS1piLog.png", saveDir));
+  c1_Logs14->Print(Form("%s/phiS1piLog.pdf", saveDir));
+  TCanvas *c1_Logs15 = new TCanvas("c1_Logs15");
+  c1_Logs15->SetLogy();
+  hsThetaS1ratio->Draw("hist e nostack");
+  leg->Draw();
+  c1_Logs15->Print(Form("%s/thetaS1ratioLog.png", saveDir));
+  c1_Logs15->Print(Form("%s/thetaS1ratioLog.pdf", saveDir));
+  TCanvas *c1_Logs16 = new TCanvas("c1_Logs16");
+  c1_Logs16->SetLogy();
+  hsPhiS1ratio->Draw("hist e nostack");
+  leg->Draw();
+  c1_Logs16->Print(Form("%s/phiS1ratioLog.png", saveDir));
+  c1_Logs16->Print(Form("%s/phiS1ratioLog.pdf", saveDir));
+
   TCanvas *c1_s11 = new TCanvas("c1_s11");
-  c1_s11->SetLogy();
   hsThetaS1pro->Draw("hist e nostack");
   leg->Draw();
   c1_s11->Print(Form("%s/thetaS1pro.png", saveDir));
   c1_s11->Print(Form("%s/thetaS1pro.pdf", saveDir));
   TCanvas *c1_s12 = new TCanvas("c1_s12");
-  c1_s12->SetLogy();
   hsThetaS1pi->Draw("hist e nostack");
   leg->Draw();
   c1_s12->Print(Form("%s/thetaS1pi.png", saveDir));
   c1_s12->Print(Form("%s/thetaS1pi.pdf", saveDir));
   TCanvas *c1_s13 = new TCanvas("c1_s13");
-  c1_s13->SetLogy();
   hsPhiS1pro->Draw("hist e nostack");
   leg->Draw();
   c1_s13->Print(Form("%s/phiS1pro.png", saveDir));
   c1_s13->Print(Form("%s/phiS1pro.pdf", saveDir));
   TCanvas *c1_s14 = new TCanvas("c1_s14");
-  c1_s14->SetLogy();
   hsPhiS1pi->Draw("hist e nostack");
   leg->Draw();
   c1_s14->Print(Form("%s/phiS1pi.png", saveDir));
   c1_s14->Print(Form("%s/phiS1pi.pdf", saveDir));
   TCanvas *c1_s15 = new TCanvas("c1_s15");
-  c1_s15->SetLogy();
   hsThetaS1ratio->Draw("hist e nostack");
   leg->Draw();
   c1_s15->Print(Form("%s/thetaS1ratio.png", saveDir));
   c1_s15->Print(Form("%s/thetaS1ratio.pdf", saveDir));
   TCanvas *c1_s16 = new TCanvas("c1_s16");
-  c1_s16->SetLogy();
   hsPhiS1ratio->Draw("hist e nostack");
   leg->Draw();
   c1_s16->Print(Form("%s/phiS1ratio.png", saveDir));
@@ -486,7 +560,7 @@ void angularDistS3(const char* saveDir,
   hsutof1dS1S2->GetYaxis()->SetLabelSize(0.05);
   hsutof1dS1S2->GetXaxis()->SetTitleSize(0.05);
   hsutof1dS1S2->GetYaxis()->SetTitleSize(0.05);
-  leg->Draw();
+  legTof->Draw();
   cutofS1S2->Print(Form("%s/utof1dS1S2.png", saveDir));
   cutofS1S2->Print(Form("%s/utof1dS1S2.pdf", saveDir));
   TCanvas *cutofS1 = new TCanvas("cutofS1");
@@ -496,7 +570,7 @@ void angularDistS3(const char* saveDir,
   hsutof1dS1->GetYaxis()->SetLabelSize(0.05);
   hsutof1dS1->GetXaxis()->SetTitleSize(0.05);
   hsutof1dS1->GetYaxis()->SetTitleSize(0.05);
-  leg->Draw();
+  legTof->Draw();
   cutofS1->Print(Form("%s/utof1dS1.png", saveDir));
   cutofS1->Print(Form("%s/utof1dS1.pdf", saveDir));
 
