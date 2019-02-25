@@ -15,7 +15,9 @@ void overlapCalc(const char* saveDir)
   TVector3 vs1_UBR(-1.7646, 0.0037, -0.0382);
   
   TVector3 vs2TopLeft(-0.3472, 0.0344, 0.0706);
+  TVector3 vs2_activeBL(-0.3472, 0.0344, -0.0496);
   TVector3 vs2TopRight(-0.3498, -0.0725, 0.0679);
+  TVector3 vs2_activeBR(-0.3498, -0.0725, -0.0521);
   TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
 
   TVector3 vs3TopLeft(9.0650, 0.5215, 0.6244);
@@ -55,6 +57,8 @@ void overlapCalc(const char* saveDir)
   
   std::vector<TVector3> s2Vec;
   s2Vec.push_back(vs2TopLeft);
+  s2Vec.push_back(vs2_activeBL);
+  s2Vec.push_back(vs2_activeBR);
   s2Vec.push_back(vs2TopRight);
   s2Vec.push_back(vs2Bottom);
   
@@ -365,24 +369,24 @@ void overlapCalc(const char* saveDir)
   grs4Act_ang->SetMarkerStyle(49);
   
   for (int i=0; i<s2Vec.size(); i++) {
-    grs2_ang->SetPoint(grs2_ang->GetN(), TMath::ATan(s2Vec[i].Y()/s2Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s2Vec[i].Z()/s2Vec[i].X())*(180./TMath::Pi()));
+    grs2_ang->SetPoint(grs2_ang->GetN(), (TMath::ATan(s2Vec[i].Y()/s2Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s2Vec[i].Z()/s2Vec[i].X())*(180./TMath::Pi()));
   }
-  grs2_ang->SetPoint(grs2_ang->GetN(), TMath::ATan(vs2Centre.Y()/vs2Centre.X())*(180./TMath::Pi())+s2Angle, TMath::ATan(vs2Centre.Z()/vs2Centre.X())*(180./TMath::Pi()));
+  grs2_ang->SetPoint(grs2_ang->GetN(), (TMath::ATan(vs2Centre.Y()/vs2Centre.X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(vs2Centre.Z()/vs2Centre.X())*(180./TMath::Pi()));
   for (int i=0; i<s3Vec.size(); i++) {
-    grs3_ang->SetPoint(grs3_ang->GetN(), TMath::ATan(s3Vec[i].Y()/s3Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s3Vec[i].Z()/s3Vec[i].X())*(180./TMath::Pi()));
+    grs3_ang->SetPoint(grs3_ang->GetN(), (TMath::ATan(s3Vec[i].Y()/s3Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s3Vec[i].Z()/s3Vec[i].X())*(180./TMath::Pi()));
   }
   for (int i=0; i<s4Vec.size(); i++) {
-    grs4_ang->SetPoint(grs4_ang->GetN(), TMath::ATan(s4Vec[i].Y()/s4Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s4Vec[i].Z()/s4Vec[i].X())*(180./TMath::Pi()));
+    grs4_ang->SetPoint(grs4_ang->GetN(), (TMath::ATan(s4Vec[i].Y()/s4Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s4Vec[i].Z()/s4Vec[i].X())*(180./TMath::Pi()));
   }
   for (int i=0; i<s4ActiveVec.size(); i++) {
-    grs4Act_ang->SetPoint(grs4Act_ang->GetN(), TMath::ATan(s4ActiveVec[i].Y()/s4ActiveVec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s4ActiveVec[i].Z()/s4ActiveVec[i].X())*(180./TMath::Pi()) );
+    grs4Act_ang->SetPoint(grs4Act_ang->GetN(), (TMath::ATan(s4ActiveVec[i].Y()/s4ActiveVec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s4ActiveVec[i].Z()/s4ActiveVec[i].X())*(180./TMath::Pi()) );
   }
   mg_ang->Add(grs2_ang);
   mg_ang->Add(grs3_ang);
   mg_ang->Add(grs4_ang);
   mg_ang->Add(grs4Act_ang);
   TCanvas *cang = new TCanvas("cang");
-  mg_ang->SetTitle("T10 points projected along S1-S2 axis (S1 origin); #theta / m; #phi / m");
+  mg_ang->SetTitle("Angular distribution of T10 (S1 origin); #theta / degrees; #phi / degrees");
   mg_ang->Draw("AP");
   legProj->Draw();
   cang->Print(Form("%s/beamlineAng.png",saveDir));
