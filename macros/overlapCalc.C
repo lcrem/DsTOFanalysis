@@ -340,6 +340,54 @@ void overlapCalc(const char* saveDir)
   legProj->Draw();
   cnproh->Print(Form("%s/beamlineProjectedNew.png",saveDir));
   cnproh->Print(Form("%s/beamlineProjectedNew.pdf",saveDir));
+
+  // Change the axes so we're doing this in terms of angle
+  TMultiGraph *mg_ang = new TMultiGraph();
+  TGraph *grs1_ang = new TGraph();
+  grs1_ang->SetMarkerColor(kBlack);
+  grs1_ang->SetMarkerSize(2);
+  grs1_ang->SetMarkerStyle(49);
+  TGraph *grs2_ang = new TGraph();
+  grs2_ang->SetMarkerColor(kOrange);
+  grs2_ang->SetMarkerSize(2);
+  grs2_ang->SetMarkerStyle(49);
+  TGraph *grs3_ang = new TGraph();
+  grs3_ang->SetMarkerColor(kGreen);
+  grs3_ang->SetMarkerSize(2);
+  grs3_ang->SetMarkerStyle(49);
+  TGraph *grs4_ang = new TGraph();
+  grs4_ang->SetMarkerColor(kRed);
+  grs4_ang->SetMarkerSize(2);
+  grs4_ang->SetMarkerStyle(49);
+  TGraph *grs4Act_ang = new TGraph();
+  grs4Act_ang->SetMarkerColor(kRed+2);
+  grs4Act_ang->SetMarkerSize(2);
+  grs4Act_ang->SetMarkerStyle(49);
+  
+  for (int i=0; i<s2Vec.size(); i++) {
+    grs2_ang->SetPoint(grs2_ang->GetN(), TMath::ATan(s2Vec[i].Y()/s2Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s2Vec[i].Z()/s2Vec[i].X())*(180./TMath::Pi()));
+  }
+  grs2_ang->SetPoint(grs2_ang->GetN(), TMath::ATan(vs2Centre.Y()/vs2Centre.X())*(180./TMath::Pi())+s2Angle, TMath::ATan(vs2Centre.Z()/vs2Centre.X())*(180./TMath::Pi()));
+  for (int i=0; i<s3Vec.size(); i++) {
+    grs3_ang->SetPoint(grs3_ang->GetN(), TMath::ATan(s3Vec[i].Y()/s3Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s3Vec[i].Z()/s3Vec[i].X())*(180./TMath::Pi()));
+  }
+  for (int i=0; i<s4Vec.size(); i++) {
+    grs4_ang->SetPoint(grs4_ang->GetN(), TMath::ATan(s4Vec[i].Y()/s4Vec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s4Vec[i].Z()/s4Vec[i].X())*(180./TMath::Pi()));
+  }
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    grs4Act_ang->SetPoint(grs4Act_ang->GetN(), TMath::ATan(s4ActiveVec[i].Y()/s4ActiveVec[i].X())*(180./TMath::Pi())+s2Angle, TMath::ATan(s4ActiveVec[i].Z()/s4ActiveVec[i].X())*(180./TMath::Pi()) );
+  }
+  mg_ang->Add(grs2_ang);
+  mg_ang->Add(grs3_ang);
+  mg_ang->Add(grs4_ang);
+  mg_ang->Add(grs4Act_ang);
+  TCanvas *cang = new TCanvas("cang");
+  mg_ang->SetTitle("T10 points projected along S1-S2 axis (S1 origin); #theta / m; #phi / m");
+  mg_ang->Draw("AP");
+  legProj->Draw();
+  cang->Print(Form("%s/beamlineAng.png",saveDir));
+  cang->Print(Form("%s/beamlineAng.pdf",saveDir));
+
   
   std::vector<TVector3> vectorVec;
   vectorVec.push_back(vs2TopLeft);
@@ -358,56 +406,4 @@ void overlapCalc(const char* saveDir)
   vectorVec.push_back(vs4_D5L);
   vectorVec.push_back(vs4_D5R);
 
-  // We want S1 to be at (-(x distance from S1 to S2), 0, 0)
-  // Vector to correct for this
-  /*
-  TVector3 correctVec(vs2TopLeft.X()*-1. , vs1Centre.Y()*-1., vs1Centre.Z()*-1.);
-
-  cout<<"Now S1 centre is at "<<(vs1Centre.X()+correctVec.X())<<" "<<(vs1Centre.Y()+correctVec.Y())<<" "<<(vs1Centre.Z()+correctVec.Z())<<endl;
-  // Now apply this correction to all the other vectors
-  
-  for (int i=0; i<vectorVec.size(); i++) {
-    vectorVec[i] += correctVec;
-  }
-
-  TMultiGraph *mg = new TMultiGraph();
-  TGraph *grs2 = new TGraph();
-  grs2->SetMarkerColor(kOrange);
-  grs2->SetMarkerSize(2);
-  grs2->SetMarkerStyle(49);
-  TGraph *grs3 = new TGraph();
-  grs3->SetMarkerColor(kGreen);
-  grs3->SetMarkerSize(2);
-  grs3->SetMarkerStyle(49);
-  TGraph *grs4 = new TGraph();
-  grs4->SetMarkerColor(kRed);
-  grs4->SetMarkerSize(2);
-  grs4->SetMarkerStyle(49);
-  
-  const double d = vs1Centre.X() * -1.;
-  // y' = y*d/(x+d)
-  grs2->SetPoint(grs2->GetN(), (vs2TopLeft.Y()*d)/(vs2TopLeft.X()+d),  (vs2TopLeft.Z()*d)/(vs2TopLeft.X()+d));
-  grs2->SetPoint(grs2->GetN(), (vs2TopRight.Y()*d)/(vs2TopRight.X()+d), (vs2TopRight.Z()*d)/(vs2TopRight.X()+d));
-  grs2->SetPoint(grs2->GetN(), (vs2Bottom.Y()*d)/(vs2Bottom.X()+d),   (vs2Bottom.Z()*d)/(vs2Bottom.X()+d));
-  // S3
-  grs3->SetPoint(grs3->GetN(), (vs3TopLeft.Y()*d)/(vs3TopLeft.X()+d),  (vs3TopLeft.Z()*d)/(vs3TopLeft.X()+d));
-  grs3->SetPoint(grs3->GetN(), (vs3TopRight.Y()*d)/(vs3TopRight.X()+d),  (vs3TopRight.Z()*d)/(vs3TopRight.X()+d));
-  grs3->SetPoint(grs3->GetN(), (vs3BottomLeft.Y()*d)/(vs3BottomLeft.X()+d),  (vs3BottomLeft.Z()*d)/(vs3BottomLeft.X()+d));
-  grs3->SetPoint(grs3->GetN(), (vs3BottomRight.Y()*d)/(vs3BottomRight.X()+d),  (vs3BottomRight.Z()*d)/(vs3BottomRight.X()+d));
-  // S4
-  grs4->SetPoint(grs4->GetN(), (vs4_UTL.Y()*d)/(vs4_UTL.X()+d),  (vs4_UTL.Z()*d)/(vs4_UTL.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_UBL.Y()*d)/(vs4_UBL.X()+d),  (vs4_UBL.Z()*d)/(vs4_UBL.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_UBR.Y()*d)/(vs4_UBR.X()+d),  (vs4_UBR.Z()*d)/(vs4_UBR.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_UTR.Y()*d)/(vs4_UTR.X()+d),  (vs4_UTR.Z()*d)/(vs4_UTR.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_U1R.Y()*d)/(vs4_U1R.X()+d),  (vs4_U1R.Z()*d)/(vs4_U1R.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_U1L.Y()*d)/(vs4_U1L.X()+d),  (vs4_U1L.Z()*d)/(vs4_U1L.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_D5R.Y()*d)/(vs4_D5R.X()+d),  (vs4_D5R.Z()*d)/(vs4_D5R.X()+d));
-  grs4->SetPoint(grs4->GetN(), (vs4_D5L.Y()*d)/(vs4_D5L.X()+d),  (vs4_D5L.Z()*d)/(vs4_D5L.X()+d));
-  
-  TCanvas *c = new TCanvas("c");
-  mg->Add(grs2);
-  mg->Add(grs3);
-  mg->Add(grs4);
-  mg->Draw("AP");
-  */
 } // overlapCalc
