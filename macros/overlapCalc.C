@@ -37,7 +37,12 @@ void overlapCalc(const char* saveDir)
   TVector3 vs4_D1R(12.3385, -1.1282, 0.3510);
   TVector3 vs4_D5L(12.4000, -0.3797, -0.2530);
   TVector3 vs4_D5R(12.3576, -1.1521, -0.2506);
-
+  // Vectprs for active area of S4
+  TVector3 vs4_activeTL(12.28, -0.0727, 0.432);
+  TVector3 vs4_activeTR(12.28, -1.4715, 0.432);
+  TVector3 vs4_activeBL(12.28, -0.0727, -0.352);
+  TVector3 vs4_activeBR(12.28, -1.4715, -0.352);
+  
   std::vector<TVector3> s1Vec;
   s1Vec.push_back(vs1_ULB);
   s1Vec.push_back(vs1_ULT);
@@ -64,6 +69,7 @@ void overlapCalc(const char* saveDir)
   s4Vec.push_back(vs4_UBL);
   s4Vec.push_back(vs4_UTR);
   s4Vec.push_back(vs4_UBR);
+  /*
   s4Vec.push_back(vs4_U1R);
   s4Vec.push_back(vs4_U1L);
   s4Vec.push_back(vs4_U2R);
@@ -74,6 +80,12 @@ void overlapCalc(const char* saveDir)
   s4Vec.push_back(vs4_D1R);
   s4Vec.push_back(vs4_D5L);
   s4Vec.push_back(vs4_D5R);
+  */
+  std::vector<TVector3> s4ActiveVec;
+  s4ActiveVec.push_back(vs4_activeTL);
+  s4ActiveVec.push_back(vs4_activeTR);
+  s4ActiveVec.push_back(vs4_activeBL);
+  s4ActiveVec.push_back(vs4_activeBR);
   
   TMultiGraph *mg_noProj = new TMultiGraph();
   TGraph *grs1_noProj = new TGraph();
@@ -92,6 +104,10 @@ void overlapCalc(const char* saveDir)
   grs4_noProj->SetMarkerColor(kRed);
   grs4_noProj->SetMarkerSize(2);
   grs4_noProj->SetMarkerStyle(49);
+  TGraph *grs4Act_noProj = new TGraph();
+  grs4Act_noProj->SetMarkerColor(kRed+2);
+  grs4Act_noProj->SetMarkerSize(2);
+  grs4Act_noProj->SetMarkerStyle(49);
 
   double vs1X = 0.;
   double vs1Y = 0.;
@@ -135,18 +151,25 @@ void overlapCalc(const char* saveDir)
     s4Vec[i] -= vs1_avg;
     s4Vec[i].SetY(s4Vec[i].Y()*-1.);
   }
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    grs4Act_noProj->SetPoint(grs4Act_noProj->GetN(), (s4ActiveVec[i].Y()-vs1_avg.Y())*-1, s4ActiveVec[i].Z()-vs1_avg.Z());
+    s4ActiveVec[i] -= vs1_avg;
+    s4ActiveVec[i].SetY(s4ActiveVec[i].Y()*-1.);
+  }
   mg_noProj->Add(grs1_noProj);
   mg_noProj->Add(grs2_noProj);
   mg_noProj->Add(grs3_noProj);
   mg_noProj->Add(grs4_noProj);
+  mg_noProj->Add(grs4Act_noProj);
   mg_noProj->SetTitle("Nominal 'Beam's-eye view' of T10 area; -y / m; z / m");
   
   TCanvas *cnoProj = new TCanvas("cnoProj");
-  TLegend *legnoProj = new TLegend(0.15, 0.5, 0.25, 0.77);
+  TLegend *legnoProj = new TLegend(0.1, 0.5, 0.27, 0.77);
   legnoProj->AddEntry(grs1_noProj, "S1", "p");
   legnoProj->AddEntry(grs2_noProj, "S2", "p");
   legnoProj->AddEntry(grs3_noProj, "S3", "p");
   legnoProj->AddEntry(grs4_noProj, "S4", "p");
+  legnoProj->AddEntry(grs4Act_noProj, "S4 Active", "p");
   mg_noProj->Draw("AP");
   legnoProj->Draw();
   cnoProj->Print(Form("%s/beamlineOrig.png", saveDir));
@@ -176,6 +199,10 @@ void overlapCalc(const char* saveDir)
   grs4_rot->SetMarkerColor(kRed);
   grs4_rot->SetMarkerSize(2);
   grs4_rot->SetMarkerStyle(49);
+  TGraph *grs4Active_rot = new TGraph();
+  grs4Active_rot->SetMarkerColor(kRed+2);
+  grs4Active_rot->SetMarkerSize(2);
+  grs4Active_rot->SetMarkerStyle(49);
   // Rotate about z axis by this angle
   for (int i=0; i<s1Vec.size(); i++) {
     s1Vec[i].RotateZ(-s2Angle);
@@ -194,14 +221,20 @@ void overlapCalc(const char* saveDir)
     s4Vec[i].RotateZ(-s2Angle);
     grs4_rot->SetPoint(grs4_rot->GetN(), s4Vec[i].Y(), s4Vec[i].Z());
   }
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    s4ActiveVec[i].RotateZ(-s2Angle);
+    grs4Active_rot->SetPoint(grs4Active_rot->GetN(), s4ActiveVec[i].Y(), s4ActiveVec[i].Z());
+  }
   mg_rot->Add(grs2_rot);
   mg_rot->Add(grs3_rot);
   mg_rot->Add(grs4_rot);
+  mg_rot->Add(grs4Active_rot);
   mg_rot->SetTitle("T10 points rotated to S1-S2 axis; -y / m; z / m");
-  TLegend *legRot = new TLegend(0.17, 0.5, 0.29, 0.75);
+  TLegend *legRot = new TLegend(0.1, 0.5, 0.29, 0.75);
   legRot->AddEntry(grs2_noProj, "S2", "p");
   legRot->AddEntry(grs3_noProj, "S3", "p");
   legRot->AddEntry(grs4_noProj, "S4", "p");
+  legRot->AddEntry(grs4Act_noProj, "S4 Active", "p");
   TCanvas *crot = new TCanvas("crot");
   mg_rot->Draw("AP");
   legRot->Draw();
@@ -226,6 +259,10 @@ void overlapCalc(const char* saveDir)
   grs4_proj->SetMarkerColor(kRed);
   grs4_proj->SetMarkerSize(2);
   grs4_proj->SetMarkerStyle(49);
+  TGraph *grs4Act_proj = new TGraph();
+  grs4Act_proj->SetMarkerColor(kRed+2);
+  grs4Act_proj->SetMarkerSize(2);
+  grs4Act_proj->SetMarkerStyle(49);
   
   const double d = vs2Centre.X();
   for (int i=0; i<s2Vec.size(); i++) {
@@ -238,15 +275,71 @@ void overlapCalc(const char* saveDir)
   for (int i=0; i<s4Vec.size(); i++) {
     grs4_proj->SetPoint(grs4_proj->GetN(), (s4Vec[i].Y()*d)/s4Vec[i].X(), (s4Vec[i].Z()*d)/s4Vec[i].X());
   }
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    grs4Act_proj->SetPoint(grs4Act_proj->GetN(), (s4ActiveVec[i].Y()*d)/s4ActiveVec[i].X(), (s4ActiveVec[i].Z()*d)/s4ActiveVec[i].X());
+  }
   mg_proj->Add(grs2_proj);
   mg_proj->Add(grs3_proj);
   mg_proj->Add(grs4_proj);
+  mg_proj->Add(grs4Act_proj);
   TCanvas *cproj = new TCanvas("cproj");
   mg_proj->SetTitle("T10 points projected along S1-S2 axis (S1 origin); -y / m; z / m");
   mg_proj->Draw("AP");
-  legRot->Draw();
+  TLegend *legProj = new TLegend(0.1, 0.15, 0.30, 0.35);
+  legProj->AddEntry(grs2_noProj, "S2", "p");
+  legProj->AddEntry(grs3_noProj, "S3", "p");
+  legProj->AddEntry(grs4_noProj, "S4", "p");
+  legProj->AddEntry(grs4Act_noProj, "S4 Active", "p");
+  legProj->Draw();
   cproj->Print(Form("%s/beamlineProjected.png",saveDir));
   cproj->Print(Form("%s/beamlineProjected.pdf",saveDir));
+
+  // Project but without draw distance to S2
+  TMultiGraph *mg_nproh = new TMultiGraph();
+  TGraph *grs1_nproh = new TGraph();
+  grs1_nproh->SetMarkerColor(kBlack);
+  grs1_nproh->SetMarkerSize(2);
+  grs1_nproh->SetMarkerStyle(49);
+  TGraph *grs2_nproh = new TGraph();
+  grs2_nproh->SetMarkerColor(kOrange);
+  grs2_nproh->SetMarkerSize(2);
+  grs2_nproh->SetMarkerStyle(49);
+  TGraph *grs3_nproh = new TGraph();
+  grs3_nproh->SetMarkerColor(kGreen);
+  grs3_nproh->SetMarkerSize(2);
+  grs3_nproh->SetMarkerStyle(49);
+  TGraph *grs4_nproh = new TGraph();
+  grs4_nproh->SetMarkerColor(kRed);
+  grs4_nproh->SetMarkerSize(2);
+  grs4_nproh->SetMarkerStyle(49);
+  TGraph *grs4Act_nproh = new TGraph();
+  grs4Act_nproh->SetMarkerColor(kRed+2);
+  grs4Act_nproh->SetMarkerSize(2);
+  grs4Act_nproh->SetMarkerStyle(49);
+  
+  for (int i=0; i<s2Vec.size(); i++) {
+    grs2_nproh->SetPoint(grs2_nproh->GetN(), s2Vec[i].Y()/s2Vec[i].X(), s2Vec[i].Z()/s2Vec[i].X());
+  }
+  grs2_nproh->SetPoint(grs2_nproh->GetN(), vs2Centre.Y()/vs2Centre.X(), vs2Centre.Z()/vs2Centre.X());
+  for (int i=0; i<s3Vec.size(); i++) {
+    grs3_nproh->SetPoint(grs3_nproh->GetN(), s3Vec[i].Y()/s3Vec[i].X(), s3Vec[i].Z()/s3Vec[i].X());
+  }
+  for (int i=0; i<s4Vec.size(); i++) {
+    grs4_nproh->SetPoint(grs4_nproh->GetN(), s4Vec[i].Y()/s4Vec[i].X(), s4Vec[i].Z()/s4Vec[i].X());
+  }
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    grs4Act_nproh->SetPoint(grs4Act_nproh->GetN(), s4ActiveVec[i].Y()/s4ActiveVec[i].X(), s4ActiveVec[i].Z()/s4ActiveVec[i].X());
+  }
+  mg_nproh->Add(grs2_nproh);
+  mg_nproh->Add(grs3_nproh);
+  mg_nproh->Add(grs4_nproh);
+  mg_nproh->Add(grs4Act_nproh);
+  TCanvas *cnproh = new TCanvas("cnproh");
+  mg_nproh->SetTitle("T10 points projected along S1-S2 axis (S1 origin); -y / m; z / m");
+  mg_nproh->Draw("AP");
+  legProj->Draw();
+  cnproh->Print(Form("%s/beamlineProjectedNew.png",saveDir));
+  cnproh->Print(Form("%s/beamlineProjectedNew.pdf",saveDir));
   
   std::vector<TVector3> vectorVec;
   vectorVec.push_back(vs2TopLeft);
