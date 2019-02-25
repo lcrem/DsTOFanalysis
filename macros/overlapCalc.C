@@ -392,7 +392,15 @@ void overlapCalc(const char* saveDir)
   cang->Print(Form("%s/beamlineAng.png",saveDir));
   cang->Print(Form("%s/beamlineAng.pdf",saveDir));
 
-  
+  cout<<"S4 angular positions"<<endl;
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    cout<<"Theta: "<<(TMath::ATan(s4ActiveVec[i].Y()/s4ActiveVec[i].X())+s2Angle)*(180./TMath::Pi())<<", Phi: "<<TMath::ATan(s4ActiveVec[i].Z()/s4ActiveVec[i].X())*(180./TMath::Pi())<<endl;
+  }
+  cout<<"S2 angular positions"<<endl;
+  for (int i=0; i<s2Vec.size(); i++) {
+    cout<<"Theta: "<<(TMath::ATan(s2Vec[i].Y()/s2Vec[i].X())+s2Angle)*(180./TMath::Pi())<<", Phi: "<<TMath::ATan(s2Vec[i].Z()/s2Vec[i].X())*(180./TMath::Pi())<<endl;
+  }
+
   std::vector<TVector3> vectorVec;
   vectorVec.push_back(vs2TopLeft);
   vectorVec.push_back(vs2TopRight);
