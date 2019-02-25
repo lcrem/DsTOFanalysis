@@ -55,9 +55,11 @@ void angularDistS3(const char* saveDir,
   THStack *hsPhiS1ratio   = new THStack("hsPhiS1ratio", "Angular distribution of S3 proton/MIP ratio (S1 trigger only); #phi / degrees;  Protons/MIPs");
   THStack *hsThetaS1ratio = new THStack("hsThetaS1ratio", "Angular distribution of S3 proton/MIP ratio (S1 trigger only); #theta / degrees;  Protons/MIPs");
 
-
   THStack *hsMomS1S2 = new THStack("hsMomS1S2", "Proton momentum measured in S3 (S1 & S2 trigger); Proton momentum [GeV/c]; Events / spill");
   THStack *hsMomS1 = new THStack("hsMomS1", "Proton momentum measured in S3 (S1 trigger only); Proton momentum [GeV/c]; Events / spill");
+
+  THStack *hsutof1dS1S2 = new THStack("hsutof1dS1S2", "Time of flight as measured in S3 (S1 & S2 trigger); Time of flight / ns; Events / spill");
+  THStack *hsutof1dS1   = new THStack("hsutof1dS1", "Time of flight as measured in S3 (S1 trigger only); Time of flight / ns; Events / spill");
 
   TFile *fout = new TFile(Form("%s/angularDistS3plots.root", saveDir), "recreate");
 
@@ -86,16 +88,21 @@ void angularDistS3(const char* saveDir,
     TH1D *hThetaS1S2ratio = new TH1D(Form("hThetaS1S2ratio%d", nBlocks), Form("Angular distribution of proton/MIP ratio in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 100, -3.8, 6.2);
     TH1D *hPhiS1S2ratio   = new TH1D(Form("hPhiS1S2ratio%d", nBlocks), Form("Angular distribution of proton/MIP in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
 
-    TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 260, 25, 155);
-    TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 260, 5, 155);
+    TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 120);
+    hutof1dS1->Sumw2();
+    TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 120);
+    hutof1dS1S2->Sumw2();
 
     TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 100, 0.3, 0.7);
     hMomS1S2->Sumw2();
     TH1D *hMomS1 = new TH1D(Form("hMomS1_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 100, 0.3, 0.7);
     hMomS1->Sumw2();
-
+    // Number of protons and number of MIPs
     int nP  = 0;
     int nPi = 0;
+    // Define signal and background functions to be fitted
+    TF1 *sPro = new TF1("sPro", "gaus", (tLight - (piLow+piHi)/2.) + proLow, (tLight - (piLow+piHi)/2.) + proHi);
+    TF1 *sPi  = new TF1("sPi", "gaus", (tLight - (piLow+piHi)/2.) + piLow, (tLight - (piLow+piHi)/2.) + piHi);
 
     const char* nustof;
     if (nBlocks==0) nustof = Form("%sData_2018_8_31_b2_800MeV_0block.root", ustofDir);
@@ -199,6 +206,9 @@ void angularDistS3(const char* saveDir,
     hMomS1S2->Write();
     hMomS1->Write();
 
+    hutof1dS1S2->Write();
+    hutof1dS1->Write();
+
     hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
     hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
     hThetaS1ratio->Divide(hThetaS1pro, hThetaS1pi, 1., 1., "B");
@@ -223,6 +233,8 @@ void angularDistS3(const char* saveDir,
       hThetaS1ratio->SetLineColor(kBlue);
       hMomS1S2->SetLineColor(kBlue);
       hMomS1->SetLineColor(kBlue);
+      hutof1dS1S2->SetLineColor(kBlue);
+      hutof1dS1->SetLineColor(kBlue);
       leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
     }
     if (nBlocks==1) {
@@ -242,6 +254,10 @@ void angularDistS3(const char* saveDir,
 
       hMomS1S2->SetLineColor(kRed);
       hMomS1->SetLineColor(kRed);
+
+      hutof1dS1S2->SetLineColor(kRed);
+      hutof1dS1->SetLineColor(kRed);
+
       leg->AddEntry(hThetaS1S2pro, "1 block", "l");
     }
     if (nBlocks==2) {
@@ -261,6 +277,10 @@ void angularDistS3(const char* saveDir,
 
       hMomS1S2->SetLineColor(kBlack);
       hMomS1->SetLineColor(kBlack);
+
+      hutof1dS1S2->SetLineColor(kBlack);
+      hutof1dS1->SetLineColor(kBlack);
+
       leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
     }
     if (nBlocks==3) {
@@ -280,6 +300,10 @@ void angularDistS3(const char* saveDir,
 
       hMomS1S2->SetLineColor(kGreen+2);
       hMomS1->SetLineColor(kGreen+2);
+
+      hutof1dS1S2->SetLineColor(kGreen+2);
+      hutof1dS1->SetLineColor(kGreen+2);
+
       leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
     }
     if (nBlocks==4) {
@@ -299,6 +323,10 @@ void angularDistS3(const char* saveDir,
 
       hMomS1S2->SetLineColor(kMagenta);
       hMomS1->SetLineColor(kMagenta);
+
+      hutof1dS1S2->SetLineColor(kMagenta);
+      hutof1dS1->SetLineColor(kMagenta);
+
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
     }
 
@@ -306,32 +334,30 @@ void angularDistS3(const char* saveDir,
     hPhiS1S2pi->Scale(1. / (double)nSpills);
     hThetaS1S2pro->Scale(1. / (double)nSpills);
     hThetaS1S2pi->Scale(1. / (double)nSpills);
-    hThetaS1S2ratio->Scale(1. / (double)nSpills);
-    hPhiS1S2ratio->Scale(1. / (double)nSpills);
 
     hPhiS1pro->Scale(1. / (double)nSpills);
     hPhiS1pi->Scale(1. / (double)nSpills);
     hThetaS1pro->Scale(1. / (double)nSpills);
     hThetaS1pi->Scale(1. / (double)nSpills);
-    hThetaS1ratio->Scale(1. / (double)nSpills);
-    hPhiS1ratio->Scale(1. / (double)nSpills);
 
     hMomS1S2->Scale(1. / (double)nSpills);
     hMomS1->Scale(1. / (double)nSpills);
+
+    hutof1dS1S2->Scale(1. / (double)nSpills);
+    hutof1dS1->Scale(1. / (double)nSpills);
 
     hsThetaS1S2pro->Add(hThetaS1S2pro);
     hsThetaS1S2pi->Add(hThetaS1S2pi);
     hsPhiS1S2pro->Add(hPhiS1S2pro);
     hsPhiS1S2pi->Add(hPhiS1S2pi);
-    hsPhiS1S2ratio->Add(hPhiS1S2ratio);
-    hsThetaS1S2ratio->Add(hThetaS1S2ratio);
 
     hsThetaS1pro->Add(hThetaS1pro);
     hsThetaS1pi->Add(hThetaS1pi);
     hsPhiS1pro->Add(hPhiS1pro);
     hsPhiS1pi->Add(hPhiS1pi);
-    hsPhiS1ratio->Add(hPhiS1ratio);
-    hsThetaS1ratio->Add(hThetaS1ratio);
+
+    hsutof1dS1S2->Add(hutof1dS1S2);
+    hsutof1dS1->Add(hutof1dS1);
 
     hsMomS1S2->Add(hMomS1S2);
     hsMomS1->Add(hMomS1);
@@ -346,6 +372,8 @@ void angularDistS3(const char* saveDir,
   hsThetaS1S2ratio->Write();
   hsPhiS1S2ratio->Write();
 
+  hsutof1dS1S2->Write();
+  hsutof1dS1->Write();
 
   hsThetaS1pro->Write();
   hsThetaS1pi->Write();
@@ -450,6 +478,27 @@ void angularDistS3(const char* saveDir,
   leg->Draw();
   cMomS1->Print(Form("%s/proMomS1.png", saveDir));
   cMomS1->Print(Form("%s/proMomS1.pdf", saveDir));
+
+  TCanvas *cutofS1S2 = new TCanvas("cutofS1S2");
+  cutofS1S2->SetLogy();
+  hsutof1dS1S2->Draw("hist e nostack");
+  hsutof1dS1S2->GetXaxis()->SetLabelSize(0.05);
+  hsutof1dS1S2->GetYaxis()->SetLabelSize(0.05);
+  hsutof1dS1S2->GetXaxis()->SetTitleSize(0.05);
+  hsutof1dS1S2->GetYaxis()->SetTitleSize(0.05);
+  leg->Draw();
+  cutofS1S2->Print(Form("%s/utof1dS1S2.png", saveDir));
+  cutofS1S2->Print(Form("%s/utof1dS1S2.pdf", saveDir));
+  TCanvas *cutofS1 = new TCanvas("cutofS1");
+  cutofS1->SetLogy();
+  hsutof1dS1->Draw("hist e nostack");
+  hsutof1dS1->GetXaxis()->SetLabelSize(0.05);
+  hsutof1dS1->GetYaxis()->SetLabelSize(0.05);
+  hsutof1dS1->GetXaxis()->SetTitleSize(0.05);
+  hsutof1dS1->GetYaxis()->SetTitleSize(0.05);
+  leg->Draw();
+  cutofS1->Print(Form("%s/utof1dS1.png", saveDir));
+  cutofS1->Print(Form("%s/utof1dS1.pdf", saveDir));
 
   fout->Close();
 } // angularDistS3
