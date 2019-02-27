@@ -2,11 +2,13 @@
 // Calculate the absolute flux of particles in S4
 // with no regard for if there was an upstream hit
 void absFluxS4 (const char* saveDir, 
-		const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") 
+		const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
+		const char* ustofDir="/zfs_home/sjones/mylinktoutof/") 
 {
   gROOT->SetBatch(kTRUE);
 
   // Unix timestamps for variable block moves
+  // File names for the utof
   // 0.8GeV/c, 0 blocks
   const double start0Block = 1535713289; 
   const double end0Block   = 1535716132;
@@ -32,12 +34,23 @@ void absFluxS4 (const char* saveDir,
   const double baselineS1S4Start = 14.0069;
   const double s4OffAxisStartX = 0.121;
   const double s4OffAxisEndX   = 1.4224;
+  // Edges of S3 in beam coordinate system
+  const double s3StartX   = -0.5168;
+  const double s3EndX     = 0.9970;
+  const double s3s1StartY = 9.0569 + 1.77;
+  const double s3s1EndY   = 8.9146 + 1.77;
   // Shift in ns required to to pion peak at speed of light
   const double dstofShift = 40.;
   // Ustof-dstof cable delay
   const double ustofDelay = 184.7;
   // S4 solid angle coverage
   const double s4SolidAngle = 0.00557;
+  // Define the runs to be used for varying number of blocks for ustof
+  const char* str0Block = "Data_2018_8_31_b2_800MeV_0block.root";
+  const char* str1Block = "Data_2018_9_1_b4_800MeV_1block_bend4cm.root";
+  const char* str2Block = "Data_2018_9_1_b2_800MeV_2block_bend4cm.root";
+  const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
+  const char* str4Block = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
 
   TFile *fout = new TFile(Form("%s/absFluxS4Plots.root", saveDir), "recreate");
   THStack *hs = new THStack("hsX","Absolute particle flux in S4; x / m; Events / spill");
@@ -72,27 +85,33 @@ void absFluxS4 (const char* saveDir,
     Int_t runMin=-1;
     Int_t runMax=-1;
 
+    char* nustof;
     double startTime = 0;
     double endTime   = 0;
     if (nBlocks == 0) {
       startTime = start0Block;
       endTime   = end0Block;
+      nustof = Form("%s/%s", ustofDir, str0Block);
     }
     else if (nBlocks == 1) {
       startTime = start1Block;
       endTime   = end1Block;
+      nustof = Form("%s/%s", ustofDir, str1Block);
     }
     else if (nBlocks == 2) {
       startTime = start2Block;
       endTime   = end2Block;
+      nustof = Form("%s/%s", ustofDir, str2Block);
     }
     else if (nBlocks == 3) {
       startTime = start3Block;
       endTime   = end3Block;
+      nustof = Form("%s/%s", ustofDir, str3Block);
     }
     else if (nBlocks == 4) {
       startTime = start4Block;
       endTime   = end4Block;
+      nustof = Form("%s/%s", ustofDir, str4Block);
     }
 
     for (int irun=950; irun<1400; irun++){
@@ -446,9 +465,55 @@ void absFluxS4 (const char* saveDir,
     hsAngle->Add(habsFluxXAngle);
 
     cout<<"Total of "<<nSpills<<" ("<<nSpillsTrue<<" true) for "<<nBlocks<<" blocks"<<endl;
+    /*
     double UtofPerSpill = (double)nUtofHits / (double)nSpillsTrue;
     cout<<UtofPerSpill<<" S1 x S2 hits per spill"<<endl;
+    cout<<habsFluxXAngle->Integral()<<" S4 per spill (raw)"<<endl;
 
+    // Read in ustof file
+    TFile *finustof = new TFile(nustof, "read");
+    TTree *utree = (TTree*)finustof->Get("tree");
+    double tTrig;
+    double tS1;
+    double tSoSd;
+    float xToF[50];
+    float yToF[50];
+    int nhit;
+    utree->SetBranchAddress("tTrig", &tTrig);
+    //    utree->SetBranchAddress("tS1", &tS1);
+    utree->SetBranchAddress("xToF", xToF);
+    utree->SetBranchAddress("yToF", yToF);
+    utree->SetBranchAddress("nhit", &nhit);
+    //    utree->SetBranchAddress("tSoSd", &tSoSd);
+
+    TH1D *hXAngleS1S2 = new TH1D(Form("hXAngleS1S2%d", nBlocks), Form("Angular distribution of hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    for (int t=0; t<utree->GetEntries(); t++) {
+      utree->GetEntry(t);
+      // Has an S1 and S2 hit
+      if (tTrig !=0 ) {
+	for (int n=0; n<nhit; n++) {
+	  double positionX = ((xToF[n] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;
+	  double positionY = ((xToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY)+s3s1StartY;
+	  double angleOffAxis = TMath::ATan(positionX / positionY) * 180. / TMath::Pi();
+	  hXAngleS1S2->Fill(angleOffAxis);
+	} // for (int n=0; n<nhit; n++) 
+      } // if (tTrig !=0 ) 
+    } // for (int t=0; t<utree->GetEntries(); t++)
+
+    // Integrate this hist between the angular limits of S2 then scale by this number
+    const double s2ThetaLow = -0.359;
+    const double s2ThetaHi  = 3.957;
+    const double s4ThetaLow = 0.401;
+    const double s4ThetaHi  = 6.083;
+    double s2Int = hXAngleS1S2->Integral(hXAngleS1S2->GetBin(s2ThetaLow), hXAngleS1S2->GetBin(s2ThetaHi));
+    hXAngleS1S2->Scale(1. / s2Int);
+    cout<<"Integral "<<hXAngleS1S2->Integral(hXAngleS1S2->GetBin(s2ThetaLow), hXAngleS1S2->GetBin(s2ThetaHi))<<endl;
+    double s4Int = hXAngleS1S2->Integral(hXAngleS1S2->GetBin(s4ThetaLow), hXAngleS1S2->GetBin(s4ThetaHi));
+    cout<<"S4 correction factor "<<s4Int<<endl;
+    
+    finustof->Close();
+    delete finustof;
+    */
   } // nBlocks
   TCanvas *cs = new TCanvas("cs");
   hs->Draw("hist nostack");
