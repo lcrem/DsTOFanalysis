@@ -2,7 +2,8 @@
 // Angular distribution of protons and pions for different moderator blocks
 // Use efficiency calculation and background subtraction
 void angularDistS4(const char* saveDir, 
-		   const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") 
+		   const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
+		   const char* ustofDir="/zfs_home/sjones/mylinktoutof/") 
 {
  
   gROOT->SetBatch(kTRUE);
@@ -42,6 +43,17 @@ void angularDistS4(const char* saveDir,
   const double baselineS1S4Start = 14.0069;
   const double s4OffAxisStartX   = 0.121;
   const double s4OffAxisEndX     = 1.4224;
+  // Edges of S3 in beam coordinate system
+  const double s3StartX   = -0.5168;
+  const double s3EndX     = 0.9970;
+  const double s3s1StartY = 9.0569 + 1.77;
+  const double s3s1EndY   = 8.9146 + 1.77;
+  // Define the runs to be used for varying number of blocks for ustof
+  const char* str0Block = "Data_2018_8_31_b2_800MeV_0block.root";
+  const char* str1Block = "Data_2018_9_1_b4_800MeV_1block_bend4cm.root";
+  const char* str2Block = "Data_2018_9_1_b2_800MeV_2block_bend4cm.root";
+  const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
+  const char* str4Block = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
   // z coordinates
   const double s4BarTop    = 0.43; 
   const double s4BarBottom = -0.35;
@@ -68,6 +80,8 @@ void angularDistS4(const char* saveDir,
   TLegend *legPiS4Horz  = new TLegend(0.55, 0.55, 0.88, .85);
   TLegend *legProS4Vert = new TLegend(0.60, 0.55, 0.88, .85);
   TLegend *legPiS4Vert  = new TLegend(0.60, 0.55, 0.88, .85);
+
+  TLegend *legRatioVert = new TLegend(0.15, 0.5, 0.4, 0.8);
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     // Number of signal particles using just cut and count
@@ -99,25 +113,32 @@ void angularDistS4(const char* saveDir,
 
     double startTime = 0;
     double endTime   = 0;
+
+    //    const char* nustof;
     if (nBlocks == 0) {
       startTime = start0Block;
       endTime   = end0Block;
+      //nustof = Form("%sData_2018_8_31_b2_800MeV_0block.root", ustofDir);
     }
     else if (nBlocks == 1) {
       startTime = start1Block;
       endTime   = end1Block;
+      //      nustof = Form("%s/%s", ustofDir, str1Block);
     }
     else if (nBlocks == 2) {
       startTime = start2Block;
       endTime   = end2Block;
+      //      nustof = Form("%s/%s", ustofDir, str2Block);
     }
     else if (nBlocks == 3) {
       startTime = start3Block;
       endTime   = end3Block;
+      //      nustof = Form("%s/%s", ustofDir, str3Block);
     }
     else if (nBlocks == 4) {
       startTime = start4Block;
       endTime   = end4Block;
+      //      nustof = Form("%s/%s", ustofDir, str4Block);
     }
 
     for (int irun=950; irun<1400; irun++) {
@@ -270,6 +291,8 @@ void angularDistS4(const char* saveDir,
     TH1D *hPiS4Vert  = new TH1D(Form("hPiS4Vert%d",nBlocks), Form("Vertical angular distribution of MIP hits in S4, %d blocks; #phi / degrees; Events / spill",nBlocks), 10, -1.5, 1.8);
     hPiS4Vert->Sumw2();
     TH1D *hProPiRatioS4Vert  = new TH1D(Form("hProPiRatioS4Vert%d",nBlocks), Form("Vertical angular distribution of proton/MIP ratio in S4, %d blocks; #phi / degrees; Protons/MIPs",nBlocks), 10, -1.5, 1.8);
+
+    TH1D *hAllS4Horz = new TH1D(Form("hAllS4Horz%d",nBlocks), Form("Horizontal angular distribution of hit in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 20, 0., 6.);
 
     // Now loop over the coincidence files again and calculate the angular distributions
     for (int itdc=0; itdc<2; itdc++) {
@@ -425,7 +448,8 @@ void angularDistS4(const char* saveDir,
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
       legProS4Horz->AddEntry(hProS4Horz, Form("0 blocks - %d per spill", (int)intProS4Horz), "l");     
-      legPiS4Horz->AddEntry(hPiS4Horz, Form("0 blocks - %d per spill", (int)intPiS4Horz), "l");     
+      legPiS4Horz->AddEntry(hPiS4Horz, Form("0 blocks - %d per spill", (int)intPiS4Horz), "l");
+      legRatioVert->AddEntry(hProPiRatioS4Vert, "0 blocks", "l");
     }
     else if (nBlocks == 1) {
       hdtof1d_sub->SetLineColor(kRed);
@@ -441,6 +465,7 @@ void angularDistS4(const char* saveDir,
       double intPiS4Horz  = hPiS4Horz->Integral();
       legProS4Horz->AddEntry(hProS4Horz, Form("1 block - %d per spill", (int)intProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("1 block - %d per spill", (int)intPiS4Horz), "l");     
+      legRatioVert->AddEntry(hProPiRatioS4Vert, "1 block", "l");
     }
     else if (nBlocks == 2) {
       hdtof1d_sub->SetLineColor(kBlack);
@@ -456,6 +481,7 @@ void angularDistS4(const char* saveDir,
       double intPiS4Horz  = hPiS4Horz->Integral();
       legProS4Horz->AddEntry(hProS4Horz, Form("2 blocks - %d per spill", (int)intProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("2 blocks - %d per spill", (int)intPiS4Horz), "l");     
+      legRatioVert->AddEntry(hProPiRatioS4Vert, "2 blocks", "l");
     }
     else if (nBlocks == 3) {
       hdtof1d_sub->SetLineColor(kGreen+2);
@@ -471,6 +497,7 @@ void angularDistS4(const char* saveDir,
       double intPiS4Horz  = hPiS4Horz->Integral();
       legProS4Horz->AddEntry(hProS4Horz, Form("3 blocks - %d per spill", (int)intProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("3 blocks - %d per spill", (int)intPiS4Horz), "l");     
+      legRatioVert->AddEntry(hProPiRatioS4Vert, "3 blocks", "l");
     }
     else if (nBlocks ==4) {
       hdtof1d_sub->SetLineColor(kMagenta);
@@ -486,6 +513,7 @@ void angularDistS4(const char* saveDir,
       double intPiS4Horz  = hPiS4Horz->Integral();
       legProS4Horz->AddEntry(hProS4Horz, Form("4 blocks - %d per spill", (int)intProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("4 blocks - %d per spill", (int)intPiS4Horz), "l");     
+      legRatioVert->AddEntry(hProPiRatioS4Vert, "4 blocks", "l");
     }
     hdtof1d->Scale(1. / nSpillsTrue);
     hdtof1d_sub->Scale(1. / nSpillsTrue);
@@ -503,6 +531,66 @@ void angularDistS4(const char* saveDir,
     hPiS4Horz->Write();
     hProPiRatioS4Vert->Write();
     hProPiRatioS4Horz->Write();
+
+    legRatioVert->Write("legRatioVert");
+
+    const char* nustof;
+    if (nBlocks == 0) nustof = Form("%sData_2018_8_31_b2_800MeV_0block.root", ustofDir);
+    else if (nBlocks==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
+    else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
+    else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
+    else if (nBlocks==4) nustof = Form("%sData_2018_9_1_b8_800MeV_4block_bend4cm.root", ustofDir);
+    
+
+    cout<<nustof<<endl;
+    // Read in ustof file
+    TFile *finustof = new TFile(nustof, "read");
+    TTree *utree = (TTree*)finustof->Get("tree");
+    double tTrig;
+    double tS1;
+    double tSoSd;
+    float xToF[50];
+    float yToF[50];
+    int nhit;
+    utree->SetBranchAddress("tTrig", &tTrig);
+    //    utree->SetBranchAddress("tS1", &tS1);
+    utree->SetBranchAddress("xToF", xToF);
+    utree->SetBranchAddress("yToF", yToF);
+    utree->SetBranchAddress("nhit", &nhit);
+    //    utree->SetBranchAddress("tSoSd", &tSoSd);
+
+    hAllS4Horz->Add(hProS4Horz);
+    hAllS4Horz->Add(hPiS4Horz);
+
+    TH1D *hXAngleS1S2 = new TH1D(Form("hXAngleS1S2%d", nBlocks), Form("Angular distribution of hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    for (int t=0; t<utree->GetEntries(); t++) {
+      utree->GetEntry(t);
+      // Has an S1 and S2 hit
+      if (tTrig != 0 ) {
+	for (int n=0; n<nhit; n++) {
+	  double positionX = ((xToF[n] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;
+	  double positionY = ((xToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY)+s3s1StartY;
+	  double angleOffAxis = TMath::ATan(positionX / positionY) * (180. / TMath::Pi());
+	  hXAngleS1S2->Fill(angleOffAxis);
+	} // for (int n=0; n<nhit; n++) 
+      } // if (tTrig !=0 ) 
+    } // for (int t=0; t<utree->GetEntries(); t++)
+
+    // Integrate this hist between the angular limits of S2 then scale by this number
+    const double s2ThetaLow = -0.359;
+    const double s2ThetaHi  = 3.957;
+    const double s4ThetaLow = 0.401;
+    const double s4ThetaHi  = 6.083;
+    double s2Int = hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s2ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s2ThetaHi));
+    cout<<s2Int<<endl;
+    hXAngleS1S2->Scale(1. / s2Int);
+    cout<<"Integral "<<hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s2ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s2ThetaHi))<<endl;
+    double s4Int = hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s4ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s4ThetaHi));
+    cout<<"S4 correction factor "<<s4Int<<endl;
+
+    hAllS4Horz->Scale(1. / nSpillsTrue);
+
+
   } // for (int nBlocks = 0; nBlocks < 4; nBlocks++) 
   fout->cd();
   TCanvas *csDtof = new TCanvas("csDstof");
@@ -573,13 +661,13 @@ void angularDistS4(const char* saveDir,
   hsRatioS4Vert->GetYaxis()->SetLabelSize(0.04);
   hsRatioS4Vert->GetXaxis()->SetTitleSize(0.04);
   hsRatioS4Vert->GetYaxis()->SetTitleSize(0.04);
-  leg->Draw();
+  legRatioVert->Draw();
   leg->Write("legOrdinary");
   hsRatioS4Vert->Write();
   csratios4vert->Print(Form("%s/ratioS4Vert.png", saveDir));
   csratios4vert->Print(Form("%s/ratioS4Vert.pdf", saveDir));
   TCanvas *csratios4horz = new TCanvas("csratios4horz");
-  hsRatioS4Horz->Draw("hist nostack");
+  hsRatioS4Horz->Draw("hist e nostack");
   hsRatioS4Horz->GetXaxis()->SetLabelSize(0.04);
   hsRatioS4Horz->GetYaxis()->SetLabelSize(0.04);
   hsRatioS4Horz->GetXaxis()->SetTitleSize(0.04);
