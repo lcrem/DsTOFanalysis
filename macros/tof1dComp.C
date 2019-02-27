@@ -3,7 +3,7 @@ void tof1dComp (const char* saveDir,
 		const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
 		const char* ustofDir="/home/sjones/mylinktoutof/") 
 {
-  //  gROOT->SetBatch(kTRUE);
+  gROOT->SetBatch(kTRUE);
 
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
@@ -22,25 +22,40 @@ void tof1dComp (const char* saveDir,
   // Most runs were in this configuration so don't need to use necessarily
   const double start4Block = 1535836129;
   const double end4Block   = 1535879634;
+  // Time of flight cuts for S1 to S3
+  // Particles travelling at c should cross the distance in between about 36.9ns
+  // and 35.6ns
+  // This is before the shift is applied
+  const double proLow  = -15.;
+  const double proHi   = 42.5;
+  const double piLow = -32.5;
+  const double piHi  = -22.5;
 
   TCanvas *cd = new TCanvas("cd");
   cd->SetLogy();
   TCanvas *cu = new TCanvas("cu");
   cu->SetLogy();
-  THStack *hsu = new THStack("hsu", "Time of flight for various moderator thicknesses; S3 - S1 / ns; Events / spill");
+  TCanvas *cuS12 = new TCanvas("cuS12");
+  cuS12->SetLogy();
+  THStack *hsuS1 = new THStack("hsuS1", "Time of flight for various moderator thicknesses (S1 trigger only); S3 - S1 / ns; Events / spill");
+  THStack *hsuS12 = new THStack("hsuS12", "Time of flight for various moderator thicknesses (S1 & S2 trigger); S3 - S1 / ns; Events / spill");
   THStack *hsd = new THStack("hsd", "Time of flight for various moderator thicknesses; S4 - S1 / ns; Events / spill");
 
   TLegend *legd = new TLegend(0.75, 0.6, 0.87, 0.8);
   TLegend *legu = new TLegend(0.75, 0.6, 0.87, 0.8);
   // Find the appropriate dtof files
-  for (int nBlocks=0; nBlocks <= 4; nBlocks++) {
+  for (int nBlocks=0; nBlocks <= 3; nBlocks++) {
+
+    // THStack for the utof comparison with and without the S2 trigger
+    THStack *hsutofComp = new THStack(Form("hsutofComp%d",nBlocks), Form("Time of flight as measured in S3 with and without S2 trigger, %d blocks; S3 - S1 / ns; Events / spill",nBlocks));
 
     int nSpills = 0;
     int nSpillsTrue = 0;
     double lastSpill = 0.;
     
     TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events / spill", nBlocks), 260, 70, 200);
-    TH1D *hutof1d = new TH1D(Form("hutof1d_%d",nBlocks), Form("Time of flight, %d blocks; S3 - S1 / ns; Events / spill", nBlocks), 260, -40, 90);
+    TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 260, -40, 90);
+    TH1D *hutof1dS12 = new TH1D(Form("hutof1dS12_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 260, -40, 90);
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -143,11 +158,11 @@ void tof1dComp (const char* saveDir,
     } // for (int itdc=0; itdc<2; itdc++)
 
     if (nBlocks==0) {
-      hdtof1d->SetLineColor(kRed);
+      hdtof1d->SetLineColor(kBlue);
       legd->AddEntry(hdtof1d, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
-      hdtof1d->SetLineColor(kBlue);
+      hdtof1d->SetLineColor(kRed);
       legd->AddEntry(hdtof1d, "1 block",  "l");
     }
     else if (nBlocks==2) {
@@ -183,6 +198,7 @@ void tof1dComp (const char* saveDir,
     TFile *futof = new TFile(nustof, "read");
 
     double tToF[50];
+    double tTrig;
     double tS1;
     int nhit;
 
@@ -191,39 +207,77 @@ void tof1dComp (const char* saveDir,
     tree->SetBranchAddress("nhit", &nhit);
     tree->SetBranchAddress("tS1", &tS1);
     tree->SetBranchAddress("tToF", tToF);
+    tree->SetBranchAddress("tTrig", &tTrig);
 
     for (int t=0; t<tree->GetEntries(); t++) {
       tree->GetEntry(t);
-      for (int n=0; n<nhit; n++) {
-	double tofCalc = tToF[n] - tS1;
-	hutof1d->Fill(tofCalc);
+      // Only select those events with multiplicity of 1 - advice from AK
+      if (nhit == 1) {
+	double tofCalc = tToF[0] - tS1;
+	// S1 trigger only
+	if (tTrig == 0) {
+	  hutof1dS1->Fill(tofCalc);
+	}
+	// S1 & S2 trigger
+	else {
+	  hutof1dS12->Fill(tofCalc);
+	}
       }
     } // for (int t=0; t<tree->GetEntries(); t++)
 
     if (nBlocks==0) {
-      hutof1d->SetLineColor(kRed);
-      legu->AddEntry(hutof1d, "0 blocks",  "l");
+      hutof1dS1->SetLineColor(kBlue);
+      hutof1dS12->SetLineColor(kBlue);
+      legu->AddEntry(hutof1dS1, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
-      hutof1d->SetLineColor(kBlue);
-      legu->AddEntry(hutof1d, "1 block",  "l");
+      hutof1dS1->SetLineColor(kRed);
+      hutof1dS12->SetLineColor(kRed);
+      legu->AddEntry(hutof1dS1, "1 block",  "l");
     }
     else if (nBlocks==2) {
-      hutof1d->SetLineColor(kBlack);
-      legu->AddEntry(hutof1d, "2 blocks",  "l");
+      hutof1dS1->SetLineColor(kBlack);
+      hutof1dS12->SetLineColor(kBlack);
+      legu->AddEntry(hutof1dS1, "2 blocks",  "l");
     }
     else if (nBlocks==3) {
-      hutof1d->SetLineColor(kGreen+2);
-      legu->AddEntry(hutof1d, "3 blocks",  "l");
+      hutof1dS1->SetLineColor(kGreen+2);
+      hutof1dS12->SetLineColor(kGreen+2);
+      legu->AddEntry(hutof1dS1, "3 blocks",  "l");
     }
     else if (nBlocks==4) {
-      hutof1d->SetLineColor(kMagenta);
-      legu->AddEntry(hutof1d, "4 blocks",  "l");
+      hutof1dS1->SetLineColor(kMagenta);
+      hutof1dS12->SetLineColor(kMagenta);
+      legu->AddEntry(hutof1dS1, "4 blocks",  "l");
     }
 
-    hutof1d->Scale(1./ (double)nSpillsTrue);
+    hutof1dS1->Scale(1./ (double)nSpillsTrue);
+    hutof1dS12->Scale(1./ (double)nSpillsTrue);
 
-    hsu->Add(hutof1d);
+    TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
+    TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
+    TCanvas *ctmp = new TCanvas(Form("ctmp%d",nBlocks));
+    ctmp->SetLogy();
+    hutof1dS1->Draw("hist");
+    hutof1dS1->Fit(sPro, "R");
+    hutof1dS1->Fit(sPi, "R");
+    sPro->Draw("same");
+    sPi->Draw("same");
+    ctmp->Print(Form("%s/%d_utofS1.png",saveDir,nBlocks));
+    ctmp->Print(Form("%s/%d_utofS1.pdf",saveDir,nBlocks));
+
+    hsuS1->Add(hutof1dS1);
+    hsuS12->Add(hutof1dS12);
+
+    hutof1dS1->SetLineStyle(7);
+    hsutofComp->Add(hutof1dS1);
+    hsutofComp->Add(hutof1dS12);
+
+    TCanvas *cutofComp = new TCanvas(Form("cutofComp%d",nBlocks));
+    cutofComp->SetLogy();
+    hsutofComp->Draw("hist nostack");
+    cutofComp->Print(Form("%s/%d_utofComp.png", saveDir, nBlocks));
+    cutofComp->Print(Form("%s/%d_utofComp.pdf", saveDir, nBlocks));
 
   } // nBlocks
 
@@ -234,8 +288,15 @@ void tof1dComp (const char* saveDir,
   cd->Print(Form("%s/dstofAllBlockLog.pdf",saveDir));
 
   cu->cd();
-  hsu->Draw("hist nostack");
+  hsuS1->Draw("hist nostack");
   legu->Draw();
-  cu->Print(Form("%s/ustofAllBlockLog.png", saveDir));
-  cu->Print(Form("%s/ustofAllBlockLog.pdf", saveDir));
+  cu->Print(Form("%s/ustofAllBlockLogS1.png", saveDir));
+  cu->Print(Form("%s/ustofAllBlockLogS1.pdf", saveDir));
+
+  cuS12->cd();
+  hsuS12->Draw("hist nostack");
+  legu->Draw();
+  cuS12->Print(Form("%s/ustofAllBlockLogS12.png", saveDir));
+  cuS12->Print(Form("%s/ustofAllBlockLogS12.pdf", saveDir));
+
 }
