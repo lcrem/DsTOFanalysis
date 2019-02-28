@@ -277,6 +277,7 @@ void angularDistS4(const char* saveDir,
     hEff->Write();
     cEff->Print(Form("%s/%d_barEff.png",saveDir,nBlocks));
     cEff->Print(Form("%s/%d_barEff.pdf",saveDir,nBlocks));
+    cEff->Print(Form("%s/%d_barEff.tex",saveDir,nBlocks));
 
     // 1D histograms in the horizontal and vertical direction of S4
     // Horizontal
@@ -378,6 +379,7 @@ void angularDistS4(const char* saveDir,
     hdtof1d->Write();
     c2d_exp->Print(Form("%s/%d_dtof1d.png",saveDir,nBlocks));
     c2d_exp->Print(Form("%s/%d_dtof1d.pdf",saveDir,nBlocks));
+    c2d_exp->Print(Form("%s/%d_dtof1d.tex",saveDir,nBlocks));
 
     // Now we have the fit values, loop over again and subtract the background
     // For each bin, find the fraction of each particle type which are background and 
@@ -406,27 +408,32 @@ void angularDistS4(const char* saveDir,
     hProS4Horz->Draw("hist e");
     cProS4Horz->Print(Form("%s/%d_proS4Horz.png",saveDir,nBlocks));
     cProS4Horz->Print(Form("%s/%d_proS4Horz.pdf",saveDir,nBlocks));
+    cProS4Horz->Print(Form("%s/%d_proS4Horz.tex",saveDir,nBlocks));
     TCanvas *cPiS4Horz  = new TCanvas(Form("cPiS4Horz%d",nBlocks));
     hPiS4Horz->Scale(1. / nSpillsTrue);
     hPiS4Horz->Draw("hist e");
     cPiS4Horz->Print(Form("%s/%d_piS4Horz.png",saveDir,nBlocks));
     cPiS4Horz->Print(Form("%s/%d_piS4Horz.pdf",saveDir,nBlocks));
+    cPiS4Horz->Print(Form("%s/%d_piS4Horz.tex",saveDir,nBlocks));
     TCanvas *cProS4Vert = new TCanvas(Form("cProS4Vert%d",nBlocks));
     hProS4Vert->Scale(1. / nSpillsTrue);
     hProS4Vert->Draw("hist e");
     cProS4Vert->Print(Form("%s/%d_proS4Vert.png",saveDir,nBlocks));
     cProS4Vert->Print(Form("%s/%d_proS4Vert.pdf",saveDir,nBlocks));
+    cProS4Vert->Print(Form("%s/%d_proS4Vert.tex",saveDir,nBlocks));
     TCanvas *cPiS4Vert  = new TCanvas(Form("cPiS4Vert%d",nBlocks));
     hPiS4Vert->Scale(1. / nSpillsTrue);
     hPiS4Vert->Draw("hist e");
     cPiS4Vert->Print(Form("%s/%d_piS4Vert.png",saveDir,nBlocks));
     cPiS4Vert->Print(Form("%s/%d_piS4Vert.pdf",saveDir,nBlocks));
+    cPiS4Vert->Print(Form("%s/%d_piS4Vert.tex",saveDir,nBlocks));
 
     TCanvas *cRatioS4Vert = new TCanvas(Form("cRatioS4Vert%d",nBlocks));
     hProPiRatioS4Vert->Divide(hProS4Vert, hPiS4Vert, 1., 1., "B");
     hProPiRatioS4Vert->Draw("hist e");
     cRatioS4Vert->Print(Form("%s/%d_proPiS4Vert.png", saveDir,nBlocks));
     cRatioS4Vert->Print(Form("%s/%d_proPiS4Vert.pdf", saveDir,nBlocks));
+    cRatioS4Vert->Print(Form("%s/%d_proPiS4Vert.tex", saveDir,nBlocks));
     TCanvas *cRatioS4Horz = new TCanvas(Form("cRatioS4Horz%d",nBlocks));
     hProPiRatioS4Horz->Divide(hProS4Horz, hPiS4Horz, 1., 1., "B");
     //    hProPiRatioS4Horz->SetBinContent(39, 0);
@@ -434,16 +441,26 @@ void angularDistS4(const char* saveDir,
     hProPiRatioS4Horz->Draw("hist e");
     cRatioS4Horz->Print(Form("%s/%d_proPiS4Horz.png", saveDir,nBlocks));
     cRatioS4Horz->Print(Form("%s/%d_proPiS4Horz.pdf", saveDir,nBlocks));
+    cRatioS4Horz->Print(Form("%s/%d_proPiS4Horz.tex", saveDir,nBlocks));
 
+    hdtof1d_sub->SetLineWidth(2);
+    hdtof1d->SetLineWidth(2);
+    hProPiRatioS4Horz->SetLineWidth(2);
+    hProPiRatioS4Vert->SetLineWidth(2);
+    hProS4Horz->SetLineWidth(2);
+    hProS4Vert->SetLineWidth(2);
+    hPiS4Horz->SetLineWidth(2);
+    hPiS4Vert->SetLineWidth(2);
+    
     if (nBlocks == 0) {
-      hdtof1d_sub->SetLineColor(kBlue);
-      hdtof1d->SetLineColor(kBlue);
-      hProPiRatioS4Horz->SetLineColor(kBlue);
-      hProPiRatioS4Vert->SetLineColor(kBlue);
-      hProS4Horz->SetLineColor(kBlue);
-      hProS4Vert->SetLineColor(kBlue);
-      hPiS4Horz->SetLineColor(kBlue);
-      hPiS4Vert->SetLineColor(kBlue);
+      hdtof1d_sub->SetLineColor(kBlue+2);
+      hdtof1d->SetLineColor(kBlue+2);
+      hProPiRatioS4Horz->SetLineColor(kBlue+2);
+      hProPiRatioS4Vert->SetLineColor(kBlue+2);
+      hProS4Horz->SetLineColor(kBlue+2);
+      hProS4Vert->SetLineColor(kBlue+2);
+      hPiS4Horz->SetLineColor(kBlue+2);
+      hPiS4Vert->SetLineColor(kBlue+2);
       leg->AddEntry(hdtof1d, "0 blocks", "l");     
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
@@ -484,14 +501,14 @@ void angularDistS4(const char* saveDir,
       legRatioVert->AddEntry(hProPiRatioS4Vert, "2 blocks", "l");
     }
     else if (nBlocks == 3) {
-      hdtof1d_sub->SetLineColor(kGreen+2);
-      hdtof1d->SetLineColor(kGreen+2);
-      hProPiRatioS4Horz->SetLineColor(kGreen+2);
-      hProPiRatioS4Vert->SetLineColor(kGreen+2);
-      hProS4Horz->SetLineColor(kGreen+2);
-      hProS4Vert->SetLineColor(kGreen+2);
-      hPiS4Horz->SetLineColor(kGreen+2);
-      hPiS4Vert->SetLineColor(kGreen+2);
+      hdtof1d_sub->SetLineColor(kCyan+2);
+      hdtof1d->SetLineColor(kCyan+2);
+      hProPiRatioS4Horz->SetLineColor(kCyan+2);
+      hProPiRatioS4Vert->SetLineColor(kCyan+2);
+      hProS4Horz->SetLineColor(kCyan+2);
+      hProS4Vert->SetLineColor(kCyan+2);
+      hPiS4Horz->SetLineColor(kCyan+2);
+      hPiS4Vert->SetLineColor(kCyan+2);
       leg->AddEntry(hdtof1d, "3 blocks", "l");
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
@@ -602,6 +619,7 @@ void angularDistS4(const char* saveDir,
   hsDtof->Write();
   csDtof->Print(Form("%s/s4ToF.png", saveDir));
   csDtof->Print(Form("%s/s4ToF.pdf", saveDir));
+  csDtof->Print(Form("%s/s4ToF.tex", saveDir));
   TCanvas *csBkgSub = new TCanvas("csBkgSub");
   csBkgSub->SetLogy();
   hsBkgSub->Draw("hist nostack");
@@ -611,6 +629,7 @@ void angularDistS4(const char* saveDir,
   hsBkgSub->Write();
   csBkgSub->Print(Form("%s/s4BkgSub.png", saveDir));
   csBkgSub->Print(Form("%s/s4BkgSub.pdf", saveDir));
+  csBkgSub->Print(Form("%s/s4BkgSub.tex", saveDir));
 
   TCanvas *cspros4vert = new TCanvas("cspros4vert");
   hsProS4Vert->Draw("hist e nostack");
@@ -622,6 +641,7 @@ void angularDistS4(const char* saveDir,
   hsProS4Vert->Write();
   cspros4vert->Print(Form("%s/proS4Vert.png",saveDir));
   cspros4vert->Print(Form("%s/proS4Vert.pdf",saveDir));
+  cspros4vert->Print(Form("%s/proS4Vert.tex",saveDir));
   TCanvas *cspis4vert  = new TCanvas("cspis4vert");
   hsPiS4Vert->Draw("hist e nostack");
   hsPiS4Vert->GetXaxis()->SetLabelSize(0.04);
@@ -632,6 +652,7 @@ void angularDistS4(const char* saveDir,
   hsPiS4Vert->Write();
   cspis4vert->Print(Form("%s/piS4Vert.png",saveDir));
   cspis4vert->Print(Form("%s/piS4Vert.pdf",saveDir));
+  cspis4vert->Print(Form("%s/piS4Vert.tex",saveDir));
   TCanvas *cspros4horz = new TCanvas("cspros4horz");
   hsProS4Horz->Draw("hist e nostack");
   hsProS4Horz->GetXaxis()->SetLabelSize(0.04);
@@ -643,6 +664,7 @@ void angularDistS4(const char* saveDir,
   hsProS4Horz->Write();
   cspros4horz->Print(Form("%s/proS4Horz.png",saveDir));
   cspros4horz->Print(Form("%s/proS4Horz.pdf",saveDir));
+  cspros4horz->Print(Form("%s/proS4Horz.tex",saveDir));
   TCanvas *cspis4horz  = new TCanvas("cspis4horz");
   hsPiS4Horz->Draw("hist e nostack");
   hsPiS4Horz->GetXaxis()->SetLabelSize(0.04);
@@ -654,6 +676,7 @@ void angularDistS4(const char* saveDir,
   hsPiS4Horz->Write();
   cspis4horz->Print(Form("%s/piS4Horz.png",saveDir));
   cspis4horz->Print(Form("%s/piS4Horz.pdf",saveDir));
+  cspis4horz->Print(Form("%s/piS4Horz.tex",saveDir));
 
   TCanvas *csratios4vert = new TCanvas("csratios4vert");
   hsRatioS4Vert->Draw("hist e nostack");
@@ -666,6 +689,7 @@ void angularDistS4(const char* saveDir,
   hsRatioS4Vert->Write();
   csratios4vert->Print(Form("%s/ratioS4Vert.png", saveDir));
   csratios4vert->Print(Form("%s/ratioS4Vert.pdf", saveDir));
+  csratios4vert->Print(Form("%s/ratioS4Vert.tex", saveDir));
   TCanvas *csratios4horz = new TCanvas("csratios4horz");
   hsRatioS4Horz->Draw("hist e nostack");
   hsRatioS4Horz->GetXaxis()->SetLabelSize(0.04);
@@ -676,4 +700,5 @@ void angularDistS4(const char* saveDir,
   hsRatioS4Horz->Write();
   csratios4horz->Print(Form("%s/ratioS4Horz.png", saveDir));
   csratios4horz->Print(Form("%s/ratioS4Horz.pdf", saveDir));
+  csratios4horz->Print(Form("%s/ratioS4Horz.tex", saveDir));
 } // angularDistS4

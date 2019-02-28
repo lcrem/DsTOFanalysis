@@ -407,6 +407,7 @@ void absFluxS4 (const char* saveDir,
     fX->Write();
     c1->Print(Form("%s/%d_absFluxX.png", saveDir, nBlocks));
     c1->Print(Form("%s/%d_absFluxX.pdf", saveDir, nBlocks));
+    c1->Print(Form("%s/%d_absFluxX.tex", saveDir, nBlocks));
 
     
     TCanvas *c2 = new TCanvas(Form("c2_%d",nBlocks));
@@ -420,11 +421,13 @@ void absFluxS4 (const char* saveDir,
     //    fTheta->Write();
     c2->Print(Form("%s/%d_absFluxXAngle.png", saveDir, nBlocks));
     c2->Print(Form("%s/%d_absFluxXAngle.pdf", saveDir, nBlocks));
-    
+
+    habsFluxX->SetLineWidth(2);
+    habsFluxXAngle->SetLineWidth(2);
     // And do them all together in different colours
     if (nBlocks == 0) {
-      habsFluxX->SetLineColor(kBlue);
-      habsFluxXAngle->SetLineColor(kBlue);
+      habsFluxX->SetLineColor(kBlue+2);
+      habsFluxXAngle->SetLineColor(kBlue+2);
       legHorz->AddEntry(habsFluxX, "0 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();
@@ -447,8 +450,8 @@ void absFluxS4 (const char* saveDir,
       legAngle->AddEntry(habsFluxXAngle, Form("2 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 3){
-      habsFluxX->SetLineColor(kGreen+2);
-      habsFluxXAngle->SetLineColor(kGreen+2);
+      habsFluxX->SetLineColor(kCyan+2);
+      habsFluxXAngle->SetLineColor(kCyan+2);
       legHorz->AddEntry(habsFluxX, "3 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();
@@ -532,5 +535,6 @@ void absFluxS4 (const char* saveDir,
   hsAngle->Write();
   csAngle->Print(Form("%s/absFluxXAngle.png", saveDir));
   csAngle->Print(Form("%s/absFluxXAngle.pdf", saveDir));
+  csAngle->Print(Form("%s/absFluxXAngle.tex", saveDir));
 
 } // absFluxS4

@@ -46,6 +46,9 @@ void momCalc(const char* saveDir, const double mass,
   // Shift in ns required to to pion peak at speed of light
   const double dstofShift = 40.;
 
+  THStack *hsMom = new THStack("hsMom", "Proton momentum as measured in S4; Proton momentum [GeV/c]; Events / spill");
+  TLegend *leg = new TLegend(0.15, 0.5, 0.45, 0.88);
+  
   TFile *fout = new TFile(Form("%s/bkgSubPlots_eff.root", saveDir), "recreate");
 
   for (int nBlocks = 0; nBlocks <= 3; nBlocks++) {
@@ -308,6 +311,28 @@ void momCalc(const char* saveDir, const double mass,
     cmom->Print(Form("%s/%d_protonMomentum.png", saveDir, nBlocks));
     cmom->Print(Form("%s/%d_protonMomentum.pdf", saveDir, nBlocks));
 
+    hpromom->SetLineWidth(2);
+    if (nBlocks==0) {
+      hpromom->SetLineColor(kBlue+2);
+      leg->AddEntry(hpromom, "0 blocks", "l"); 
+    }
+    else if (nBlocks==1) {
+      hpromom->SetLineColor(kRed);
+      leg->AddEntry(hpromom, "1 block", "l"); 
+    }
+    else if (nBlocks==2) {
+      hpromom->SetLineColor(kBlack);
+      leg->AddEntry(hpromom, "2 blocks", "l"); 
+    }
+    else if (nBlocks==3) {
+      hpromom->SetLineColor(kCyan+2);
+      leg->AddEntry(hpromom, "3 blocks", "l"); 
+    }
+    else if (nBlocks==4) {
+      hpromom->SetLineColor(kMagenta);
+      leg->AddEntry(hpromom, "4 blocks", "l"); 
+    }
+    hsMom->Add(hpromom);
     // Now we have the fit values, loop over again and subtract the background
     // For each bin, find the fraction of each particle type which are background and 
     // this fraction from the bin
@@ -330,7 +355,23 @@ void momCalc(const char* saveDir, const double mass,
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.png",saveDir,nBlocks));
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.pdf",saveDir,nBlocks));
     
-
   } // for (int nBlocks=firstBlock; nBlocks <= lastBlock; nBlocks++)
 
+  fout->cd();
+  hsMom->Write();
+  leg->Write("leg");
+  
+  TCanvas *cstack = new TCanvas("cstack");
+  cstack->SetLeftMargin(0.13);
+  cstack->SetBottomMargin(0.13);
+  hsMom->Draw("hist e nostack");
+  leg->Draw();
+  hsMom->GetXaxis()->SetLabelSize(0.05);
+  hsMom->GetXaxis()->SetTitleSize(0.05);
+  hsMom->GetYaxis()->SetLabelSize(0.05);
+  hsMom->GetYaxis()->SetTitleSize(0.05);
+  cstack->Print(Form("%s/proMomS4.png", saveDir));
+  cstack->Print(Form("%s/proMomS4.tex", saveDir));
+  cstack->Print(Form("%s/proMomS4.pdf", saveDir));
+  
 } // momCalc

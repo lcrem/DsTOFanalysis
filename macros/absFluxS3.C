@@ -121,13 +121,17 @@ void absFluxS3(const char* saveDir,
     hXAngleS1->Write();
     cXAngleS1->Print(Form("%s/%d_absFluxXAngleS13.png", saveDir, nBlocks));
     cXAngleS1->Print(Form("%s/%d_absFluxXAngleS13.pdf", saveDir, nBlocks));
-
+    // Better line width
+    hXAngleS1S2->SetLineWidth(2);
+    hXAngleS1->SetLineWidth(2);
+    hXS1S2->SetLineWidth(2);
+    hXS1->SetLineWidth(2);
     // And do them all together in different colours
     if (nBlocks == 0) {
-      hXAngleS1S2->SetLineColor(kBlue);
-      hXAngleS1->SetLineColor(kBlue);
-      hXS1S2->SetLineColor(kBlue);
-      hXS1->SetLineColor(kBlue);
+      hXAngleS1S2->SetLineColor(kBlue+2);
+      hXAngleS1->SetLineColor(kBlue+2);
+      hXS1S2->SetLineColor(kBlue+2);
+      hXS1->SetLineColor(kBlue+2);
       leg->AddEntry(hXAngleS1S2, "0 blocks", "l");
     }
     else if (nBlocks == 1) {
@@ -145,10 +149,10 @@ void absFluxS3(const char* saveDir,
       leg->AddEntry(hXAngleS1S2, "2 blocks", "l");
     }
     else if (nBlocks == 3){
-      hXAngleS1S2->SetLineColor(kGreen+2);
-      hXAngleS1->SetLineColor(kGreen+2);
-      hXS1S2->SetLineColor(kGreen+2);
-      hXS1->SetLineColor(kGreen+2);
+      hXAngleS1S2->SetLineColor(kCyan+2);
+      hXAngleS1->SetLineColor(kCyan+2);
+      hXS1S2->SetLineColor(kCyan+2);
+      hXS1->SetLineColor(kCyan+2);
       leg->AddEntry(hXAngleS1S2, "3 blocks", "l");
     }
     else {
@@ -175,24 +179,28 @@ void absFluxS3(const char* saveDir,
   leg->Write();
   cXAngleS1S2->Print(Form("%s/absFluxXAngleS123.png", saveDir));
   cXAngleS1S2->Print(Form("%s/absFluxXAngleS123.pdf", saveDir));
+  cXAngleS1S2->Print(Form("%s/absFluxXAngleS123.tex", saveDir));
   TCanvas *cXAngleS1 = new TCanvas("cXAngleS1");
   hsXAngleS1->Draw("hist nostack");
   leg->Draw();
   hsXAngleS1->Write();
   cXAngleS1->Print(Form("%s/absFluxXAngleS13.png", saveDir));
   cXAngleS1->Print(Form("%s/absFluxXAngleS13.pdf", saveDir));
+  cXAngleS1->Print(Form("%s/absFluxXAngleS13.tex", saveDir));
   TCanvas *cXS1S2 = new TCanvas("cXS1S2");
   hsXS1S2->Draw("hist nostack");
   leg->Draw();
   hsXS1S2->Write();
   cXS1S2->Print(Form("%s/absFluxXS123.png", saveDir));
   cXS1S2->Print(Form("%s/absFluxXS123.pdf", saveDir));
+  cXS1S2->Print(Form("%s/absFluxXS123.tex", saveDir));
   TCanvas *cXS1 = new TCanvas("cXS1");
   hsXS1->Draw("hist nostack");
   leg->Draw();
   hsXS1->Write();
   cXS1->Print(Form("%s/absFluxXS13.png", saveDir));
   cXS1->Print(Form("%s/absFluxXS13.pdf", saveDir));
+  cXS1->Print(Form("%s/absFluxXS13.tex", saveDir));
 
   fout->Close();
 }
