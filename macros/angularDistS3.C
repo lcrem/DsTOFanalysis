@@ -267,22 +267,22 @@ void angularDistS3(const char* saveDir,
     hutof1dS1->SetLineWidth(2);
     
     if (nBlocks==0) {
-      hThetaS1S2pro->SetLineColor(kBlue+2);
-      hThetaS1S2pi->SetLineColor(kBlue+2);
-      hPhiS1S2pro->SetLineColor(kBlue+2);
-      hPhiS1S2pi->SetLineColor(kBlue+2);
-      hPhiS1S2ratio->SetLineColor(kBlue+2);
-      hThetaS1S2ratio->SetLineColor(kBlue+2);
-      hThetaS1pro->SetLineColor(kBlue+2);
-      hThetaS1pi->SetLineColor(kBlue+2);
-      hPhiS1pro->SetLineColor(kBlue+2);
-      hPhiS1pi->SetLineColor(kBlue+2);
-      hPhiS1ratio->SetLineColor(kBlue+2);
-      hThetaS1ratio->SetLineColor(kBlue+2);
-      hMomS1S2->SetLineColor(kBlue+2);
-      hMomS1->SetLineColor(kBlue+2);
-      hutof1dS1S2->SetLineColor(kBlue+2);
-      hutof1dS1->SetLineColor(kBlue+2);
+      hThetaS1S2pro->SetLineColor(kBlack);
+      hThetaS1S2pi->SetLineColor(kBlack);
+      hPhiS1S2pro->SetLineColor(kBlack);
+      hPhiS1S2pi->SetLineColor(kBlack);
+      hPhiS1S2ratio->SetLineColor(kBlack);
+      hThetaS1S2ratio->SetLineColor(kBlack);
+      hThetaS1pro->SetLineColor(kBlack);
+      hThetaS1pi->SetLineColor(kBlack);
+      hPhiS1pro->SetLineColor(kBlack);
+      hPhiS1pi->SetLineColor(kBlack);
+      hPhiS1ratio->SetLineColor(kBlack);
+      hThetaS1ratio->SetLineColor(kBlack);
+      hMomS1S2->SetLineColor(kBlack);
+      hMomS1->SetLineColor(kBlack);
+      hutof1dS1S2->SetLineColor(kBlack);
+      hutof1dS1->SetLineColor(kBlack);
       
       leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
       legTof->AddEntry(hutof1dS1, "0 blocks", "l");
@@ -319,25 +319,25 @@ void angularDistS3(const char* saveDir,
       hMom2D_1blkS->Write();
     }
     if (nBlocks==2) {
-      hThetaS1S2pro->SetLineColor(kBlack);
-      hThetaS1S2pi->SetLineColor(kBlack);
-      hPhiS1S2pro->SetLineColor(kBlack);
-      hPhiS1S2pi->SetLineColor(kBlack);
-      hPhiS1S2ratio->SetLineColor(kBlack);
-      hThetaS1S2ratio->SetLineColor(kBlack);
+      hThetaS1S2pro->SetLineColor(kBlue);
+      hThetaS1S2pi->SetLineColor(kBlue);
+      hPhiS1S2pro->SetLineColor(kBlue);
+      hPhiS1S2pi->SetLineColor(kBlue);
+      hPhiS1S2ratio->SetLineColor(kBlue);
+      hThetaS1S2ratio->SetLineColor(kBlue);
 
-      hThetaS1pro->SetLineColor(kBlack);
-      hThetaS1pi->SetLineColor(kBlack);
-      hPhiS1pro->SetLineColor(kBlack);
-      hPhiS1pi->SetLineColor(kBlack);
-      hPhiS1ratio->SetLineColor(kBlack);
-      hThetaS1ratio->SetLineColor(kBlack);
+      hThetaS1pro->SetLineColor(kBlue);
+      hThetaS1pi->SetLineColor(kBlue);
+      hPhiS1pro->SetLineColor(kBlue);
+      hPhiS1pi->SetLineColor(kBlue);
+      hPhiS1ratio->SetLineColor(kBlue);
+      hThetaS1ratio->SetLineColor(kBlue);
 
-      hMomS1S2->SetLineColor(kBlack);
-      hMomS1->SetLineColor(kBlack);
+      hMomS1S2->SetLineColor(kBlue);
+      hMomS1->SetLineColor(kBlue);
 
-      hutof1dS1S2->SetLineColor(kBlack);
-      hutof1dS1->SetLineColor(kBlack);
+      hutof1dS1S2->SetLineColor(kBlue);
+      hutof1dS1->SetLineColor(kBlue);
 
       leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
       legTof->AddEntry(hutof1dS1, "2 blocks", "l");
@@ -348,49 +348,49 @@ void angularDistS3(const char* saveDir,
       hMom2D_2blkS->Write();
     }
     if (nBlocks==3) {
-      hThetaS1S2pro->SetLineColor(kCyan+2);
-      hThetaS1S2pi->SetLineColor(kCyan+2);
-      hPhiS1S2pro->SetLineColor(kCyan+2);
-      hPhiS1S2pi->SetLineColor(kCyan+2);
-      hPhiS1S2ratio->SetLineColor(kCyan+2);
-      hThetaS1S2ratio->SetLineColor(kCyan+2);
+      hThetaS1S2pro->SetLineColor(kCyan+1);
+      hThetaS1S2pi->SetLineColor(kCyan+1);
+      hPhiS1S2pro->SetLineColor(kCyan+1);
+      hPhiS1S2pi->SetLineColor(kCyan+1);
+      hPhiS1S2ratio->SetLineColor(kCyan+1);
+      hThetaS1S2ratio->SetLineColor(kCyan+1);
 
-      hThetaS1pro->SetLineColor(kCyan+2);
-      hThetaS1pi->SetLineColor(kCyan+2);
-      hPhiS1pro->SetLineColor(kCyan+2);
-      hPhiS1pi->SetLineColor(kCyan+2);
-      hPhiS1ratio->SetLineColor(kCyan+2);
-      hThetaS1ratio->SetLineColor(kCyan+2);
+      hThetaS1pro->SetLineColor(kCyan+1);
+      hThetaS1pi->SetLineColor(kCyan+1);
+      hPhiS1pro->SetLineColor(kCyan+1);
+      hPhiS1pi->SetLineColor(kCyan+1);
+      hPhiS1ratio->SetLineColor(kCyan+1);
+      hThetaS1ratio->SetLineColor(kCyan+1);
 
-      hMomS1S2->SetLineColor(kCyan+2);
-      hMomS1->SetLineColor(kCyan+2);
+      hMomS1S2->SetLineColor(kCyan+1);
+      hMomS1->SetLineColor(kCyan+1);
 
-      hutof1dS1S2->SetLineColor(kCyan+2);
-      hutof1dS1->SetLineColor(kCyan+2);
+      hutof1dS1S2->SetLineColor(kCyan+1);
+      hutof1dS1->SetLineColor(kCyan+1);
 
       leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
       legTof->AddEntry(hutof1dS1, "3 blocks", "l");
     }
     if (nBlocks==4) {
-      hThetaS1S2pro->SetLineColor(kMagenta);
-      hThetaS1S2pi->SetLineColor(kMagenta);
-      hPhiS1S2pro->SetLineColor(kMagenta);
-      hPhiS1S2pi->SetLineColor(kMagenta);
-      hPhiS1S2ratio->SetLineColor(kMagenta);
-      hThetaS1S2ratio->SetLineColor(kMagenta);
+      hThetaS1S2pro->SetLineColor(kOrange+1);
+      hThetaS1S2pi->SetLineColor(kOrange+1);
+      hPhiS1S2pro->SetLineColor(kOrange+1);
+      hPhiS1S2pi->SetLineColor(kOrange+1);
+      hPhiS1S2ratio->SetLineColor(kOrange+1);
+      hThetaS1S2ratio->SetLineColor(kOrange+1);
 
-      hThetaS1pro->SetLineColor(kMagenta);
-      hThetaS1pi->SetLineColor(kMagenta);
-      hPhiS1pro->SetLineColor(kMagenta);
-      hPhiS1pi->SetLineColor(kMagenta);
-      hPhiS1ratio->SetLineColor(kMagenta);
-      hThetaS1ratio->SetLineColor(kMagenta);
+      hThetaS1pro->SetLineColor(kOrange+1);
+      hThetaS1pi->SetLineColor(kOrange+1);
+      hPhiS1pro->SetLineColor(kOrange+1);
+      hPhiS1pi->SetLineColor(kOrange+1);
+      hPhiS1ratio->SetLineColor(kOrange+1);
+      hThetaS1ratio->SetLineColor(kOrange+1);
 
-      hMomS1S2->SetLineColor(kMagenta);
-      hMomS1->SetLineColor(kMagenta);
+      hMomS1S2->SetLineColor(kOrange+1);
+      hMomS1->SetLineColor(kOrange+1);
 
-      hutof1dS1S2->SetLineColor(kMagenta);
-      hutof1dS1->SetLineColor(kMagenta);
+      hutof1dS1S2->SetLineColor(kOrange+1);
+      hutof1dS1->SetLineColor(kOrange+1);
 
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
       legTof->AddEntry(hutof1dS1, "4 blocks", "l");

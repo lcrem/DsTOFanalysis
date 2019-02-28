@@ -128,10 +128,10 @@ void absFluxS3(const char* saveDir,
     hXS1->SetLineWidth(2);
     // And do them all together in different colours
     if (nBlocks == 0) {
-      hXAngleS1S2->SetLineColor(kBlue+2);
-      hXAngleS1->SetLineColor(kBlue+2);
-      hXS1S2->SetLineColor(kBlue+2);
-      hXS1->SetLineColor(kBlue+2);
+      hXAngleS1S2->SetLineColor(kBlack);
+      hXAngleS1->SetLineColor(kBlack);
+      hXS1S2->SetLineColor(kBlack);
+      hXS1->SetLineColor(kBlack);
       leg->AddEntry(hXAngleS1S2, "0 blocks", "l");
     }
     else if (nBlocks == 1) {
@@ -142,24 +142,24 @@ void absFluxS3(const char* saveDir,
       leg->AddEntry(hXAngleS1S2, "1 block", "l");
     }
     else if (nBlocks == 2) {
-      hXAngleS1S2->SetLineColor(kBlack);
-      hXAngleS1->SetLineColor(kBlack);
-      hXS1S2->SetLineColor(kBlack);
-      hXS1->SetLineColor(kBlack);
+      hXAngleS1S2->SetLineColor(kBlue);
+      hXAngleS1->SetLineColor(kBlue);
+      hXS1S2->SetLineColor(kBlue);
+      hXS1->SetLineColor(kBlue);
       leg->AddEntry(hXAngleS1S2, "2 blocks", "l");
     }
     else if (nBlocks == 3){
-      hXAngleS1S2->SetLineColor(kCyan+2);
-      hXAngleS1->SetLineColor(kCyan+2);
-      hXS1S2->SetLineColor(kCyan+2);
-      hXS1->SetLineColor(kCyan+2);
+      hXAngleS1S2->SetLineColor(kCyan+1);
+      hXAngleS1->SetLineColor(kCyan+1);
+      hXS1S2->SetLineColor(kCyan+1);
+      hXS1->SetLineColor(kCyan+1);
       leg->AddEntry(hXAngleS1S2, "3 blocks", "l");
     }
     else {
-      hXAngleS1S2->SetLineColor(kMagenta);
-      hXAngleS1->SetLineColor(kMagenta);
-      hXS1S2->SetLineColor(kMagenta);
-      hXS1->SetLineColor(kMagenta);
+      hXAngleS1S2->SetLineColor(kOrange+1);
+      hXAngleS1->SetLineColor(kOrange+1);
+      hXS1S2->SetLineColor(kOrange+1);
+      hXS1->SetLineColor(kOrange+1);
       leg->AddEntry(hXAngleS1S2, "4 blocks", "l");
     }
     hsXAngleS1S2->Add(hXAngleS1S2);

@@ -426,8 +426,8 @@ void absFluxS4 (const char* saveDir,
     habsFluxXAngle->SetLineWidth(2);
     // And do them all together in different colours
     if (nBlocks == 0) {
-      habsFluxX->SetLineColor(kBlue+2);
-      habsFluxXAngle->SetLineColor(kBlue+2);
+      habsFluxX->SetLineColor(kBlack);
+      habsFluxXAngle->SetLineColor(kBlack);
       legHorz->AddEntry(habsFluxX, "0 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();
@@ -442,24 +442,24 @@ void absFluxS4 (const char* saveDir,
       legAngle->AddEntry(habsFluxXAngle, Form("1 block - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 2) {
-      habsFluxX->SetLineColor(kBlack);
-      habsFluxXAngle->SetLineColor(kBlack);
+      habsFluxX->SetLineColor(kBlue);
+      habsFluxXAngle->SetLineColor(kBlue);
       legHorz->AddEntry(habsFluxX, "2 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();
       legAngle->AddEntry(habsFluxXAngle, Form("2 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else if (nBlocks == 3){
-      habsFluxX->SetLineColor(kCyan+2);
-      habsFluxXAngle->SetLineColor(kCyan+2);
+      habsFluxX->SetLineColor(kCyan+1);
+      habsFluxXAngle->SetLineColor(kCyan+1);
       legHorz->AddEntry(habsFluxX, "3 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();
       legAngle->AddEntry(habsFluxXAngle, Form("3 blocks - %d per spill ", (int)intAngle), "l"); 
     }
     else {
-      habsFluxX->SetLineColor(kMagenta);
-      habsFluxXAngle->SetLineColor(kMagenta);
+      habsFluxX->SetLineColor(kOrange+1);
+      habsFluxXAngle->SetLineColor(kOrange+1);
       legHorz->AddEntry(habsFluxX, "4 blocks", "l");
       hs->Add(habsFluxX);
       double intAngle = habsFluxXAngle->Integral();

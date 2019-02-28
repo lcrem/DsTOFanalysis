@@ -313,7 +313,7 @@ void momCalc(const char* saveDir, const double mass,
 
     hpromom->SetLineWidth(2);
     if (nBlocks==0) {
-      hpromom->SetLineColor(kBlue+2);
+      hpromom->SetLineColor(kBlack);
       leg->AddEntry(hpromom, "0 blocks", "l"); 
     }
     else if (nBlocks==1) {
@@ -321,15 +321,15 @@ void momCalc(const char* saveDir, const double mass,
       leg->AddEntry(hpromom, "1 block", "l"); 
     }
     else if (nBlocks==2) {
-      hpromom->SetLineColor(kBlack);
+      hpromom->SetLineColor(kBlue);
       leg->AddEntry(hpromom, "2 blocks", "l"); 
     }
     else if (nBlocks==3) {
-      hpromom->SetLineColor(kCyan+2);
+      hpromom->SetLineColor(kCyan+1);
       leg->AddEntry(hpromom, "3 blocks", "l"); 
     }
     else if (nBlocks==4) {
-      hpromom->SetLineColor(kMagenta);
+      hpromom->SetLineColor(kOrange+1);
       leg->AddEntry(hpromom, "4 blocks", "l"); 
     }
     hsMom->Add(hpromom);

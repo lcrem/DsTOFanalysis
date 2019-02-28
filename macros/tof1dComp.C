@@ -159,7 +159,7 @@ void tof1dComp (const char* saveDir,
 
     hdtof1d->SetLineWidth(2);
     if (nBlocks==0) {
-      hdtof1d->SetLineColor(kBlue+2);
+      hdtof1d->SetLineColor(kBlack);
       legd->AddEntry(hdtof1d, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
@@ -167,15 +167,15 @@ void tof1dComp (const char* saveDir,
       legd->AddEntry(hdtof1d, "1 block",  "l");
     }
     else if (nBlocks==2) {
-      hdtof1d->SetLineColor(kBlack);
+      hdtof1d->SetLineColor(kBlue);
       legd->AddEntry(hdtof1d, "2 blocks",  "l");
     }
     else if (nBlocks==3) {
-      hdtof1d->SetLineColor(kCyan+2);
+      hdtof1d->SetLineColor(kCyan+1);
       legd->AddEntry(hdtof1d, "3 blocks",  "l");
     }
     else if (nBlocks==4) {
-      hdtof1d->SetLineColor(kMagenta);
+      hdtof1d->SetLineColor(kOrange+1);
       legd->AddEntry(hdtof1d, "4 blocks",  "l");
     }
 
@@ -229,8 +229,8 @@ void tof1dComp (const char* saveDir,
     hutof1dS1->SetLineWidth(2);
     hutof1dS12->SetLineWidth(2);
     if (nBlocks==0) {
-      hutof1dS1->SetLineColor(kBlue+2);
-      hutof1dS12->SetLineColor(kBlue+2);
+      hutof1dS1->SetLineColor(kBlack);
+      hutof1dS12->SetLineColor(kBlack);
       legu->AddEntry(hutof1dS1, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
@@ -239,18 +239,18 @@ void tof1dComp (const char* saveDir,
       legu->AddEntry(hutof1dS1, "1 block",  "l");
     }
     else if (nBlocks==2) {
-      hutof1dS1->SetLineColor(kBlack);
-      hutof1dS12->SetLineColor(kBlack);
+      hutof1dS1->SetLineColor(kBlue);
+      hutof1dS12->SetLineColor(kBlue);
       legu->AddEntry(hutof1dS1, "2 blocks",  "l");
     }
     else if (nBlocks==3) {
-      hutof1dS1->SetLineColor(kCyan+2);
-      hutof1dS12->SetLineColor(kCyan+2);
+      hutof1dS1->SetLineColor(kCyan+1);
+      hutof1dS12->SetLineColor(kCyan+1);
       legu->AddEntry(hutof1dS1, "3 blocks",  "l");
     }
     else if (nBlocks==4) {
-      hutof1dS1->SetLineColor(kMagenta);
-      hutof1dS12->SetLineColor(kMagenta);
+      hutof1dS1->SetLineColor(kOrange+1);
+      hutof1dS12->SetLineColor(kOrange+1);
       legu->AddEntry(hutof1dS1, "4 blocks",  "l");
     }
 

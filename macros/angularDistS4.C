@@ -453,14 +453,14 @@ void angularDistS4(const char* saveDir,
     hPiS4Vert->SetLineWidth(2);
     
     if (nBlocks == 0) {
-      hdtof1d_sub->SetLineColor(kBlue+2);
-      hdtof1d->SetLineColor(kBlue+2);
-      hProPiRatioS4Horz->SetLineColor(kBlue+2);
-      hProPiRatioS4Vert->SetLineColor(kBlue+2);
-      hProS4Horz->SetLineColor(kBlue+2);
-      hProS4Vert->SetLineColor(kBlue+2);
-      hPiS4Horz->SetLineColor(kBlue+2);
-      hPiS4Vert->SetLineColor(kBlue+2);
+      hdtof1d_sub->SetLineColor(kBlack);
+      hdtof1d->SetLineColor(kBlack);
+      hProPiRatioS4Horz->SetLineColor(kBlack);
+      hProPiRatioS4Vert->SetLineColor(kBlack);
+      hProS4Horz->SetLineColor(kBlack);
+      hProS4Vert->SetLineColor(kBlack);
+      hPiS4Horz->SetLineColor(kBlack);
+      hPiS4Vert->SetLineColor(kBlack);
       leg->AddEntry(hdtof1d, "0 blocks", "l");     
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
@@ -485,14 +485,14 @@ void angularDistS4(const char* saveDir,
       legRatioVert->AddEntry(hProPiRatioS4Vert, "1 block", "l");
     }
     else if (nBlocks == 2) {
-      hdtof1d_sub->SetLineColor(kBlack);
-      hdtof1d->SetLineColor(kBlack);
-      hProPiRatioS4Horz->SetLineColor(kBlack);
-      hProPiRatioS4Vert->SetLineColor(kBlack);
-      hProS4Horz->SetLineColor(kBlack);
-      hProS4Vert->SetLineColor(kBlack);
-      hPiS4Horz->SetLineColor(kBlack);
-      hPiS4Vert->SetLineColor(kBlack);
+      hdtof1d_sub->SetLineColor(kBlue);
+      hdtof1d->SetLineColor(kBlue);
+      hProPiRatioS4Horz->SetLineColor(kBlue);
+      hProPiRatioS4Vert->SetLineColor(kBlue);
+      hProS4Horz->SetLineColor(kBlue);
+      hProS4Vert->SetLineColor(kBlue);
+      hPiS4Horz->SetLineColor(kBlue);
+      hPiS4Vert->SetLineColor(kBlue);
       leg->AddEntry(hdtof1d, "2 blocks", "l");
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
@@ -501,14 +501,14 @@ void angularDistS4(const char* saveDir,
       legRatioVert->AddEntry(hProPiRatioS4Vert, "2 blocks", "l");
     }
     else if (nBlocks == 3) {
-      hdtof1d_sub->SetLineColor(kCyan+2);
-      hdtof1d->SetLineColor(kCyan+2);
-      hProPiRatioS4Horz->SetLineColor(kCyan+2);
-      hProPiRatioS4Vert->SetLineColor(kCyan+2);
-      hProS4Horz->SetLineColor(kCyan+2);
-      hProS4Vert->SetLineColor(kCyan+2);
-      hPiS4Horz->SetLineColor(kCyan+2);
-      hPiS4Vert->SetLineColor(kCyan+2);
+      hdtof1d_sub->SetLineColor(kCyan+1);
+      hdtof1d->SetLineColor(kCyan+1);
+      hProPiRatioS4Horz->SetLineColor(kCyan+1);
+      hProPiRatioS4Vert->SetLineColor(kCyan+1);
+      hProS4Horz->SetLineColor(kCyan+1);
+      hProS4Vert->SetLineColor(kCyan+1);
+      hPiS4Horz->SetLineColor(kCyan+1);
+      hPiS4Vert->SetLineColor(kCyan+1);
       leg->AddEntry(hdtof1d, "3 blocks", "l");
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
@@ -517,14 +517,14 @@ void angularDistS4(const char* saveDir,
       legRatioVert->AddEntry(hProPiRatioS4Vert, "3 blocks", "l");
     }
     else if (nBlocks ==4) {
-      hdtof1d_sub->SetLineColor(kMagenta);
-      hdtof1d->SetLineColor(kMagenta);
-      hProPiRatioS4Horz->SetLineColor(kMagenta);
-      hProPiRatioS4Vert->SetLineColor(kMagenta);
-      hProS4Horz->SetLineColor(kMagenta);
-      hProS4Vert->SetLineColor(kMagenta);
-      hPiS4Horz->SetLineColor(kMagenta);
-      hPiS4Vert->SetLineColor(kMagenta);
+      hdtof1d_sub->SetLineColor(kOrange+1);
+      hdtof1d->SetLineColor(kOrange+1);
+      hProPiRatioS4Horz->SetLineColor(kOrange+1);
+      hProPiRatioS4Vert->SetLineColor(kOrange+1);
+      hProS4Horz->SetLineColor(kOrange+1);
+      hProS4Vert->SetLineColor(kOrange+1);
+      hPiS4Horz->SetLineColor(kOrange+1);
+      hPiS4Vert->SetLineColor(kOrange+1);
       leg->AddEntry(hdtof1d, "4 blocks", "l");
       double intProS4Horz = hProS4Horz->Integral();
       double intPiS4Horz  = hPiS4Horz->Integral();
