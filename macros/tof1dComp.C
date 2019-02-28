@@ -157,8 +157,9 @@ void tof1dComp (const char* saveDir,
       delete tofCoin;
     } // for (int itdc=0; itdc<2; itdc++)
 
+    hdtof1d->SetLineWidth(2);
     if (nBlocks==0) {
-      hdtof1d->SetLineColor(kBlue);
+      hdtof1d->SetLineColor(kBlue+2);
       legd->AddEntry(hdtof1d, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
@@ -170,7 +171,7 @@ void tof1dComp (const char* saveDir,
       legd->AddEntry(hdtof1d, "2 blocks",  "l");
     }
     else if (nBlocks==3) {
-      hdtof1d->SetLineColor(kGreen+2);
+      hdtof1d->SetLineColor(kCyan+2);
       legd->AddEntry(hdtof1d, "3 blocks",  "l");
     }
     else if (nBlocks==4) {
@@ -225,9 +226,11 @@ void tof1dComp (const char* saveDir,
       }
     } // for (int t=0; t<tree->GetEntries(); t++)
 
+    hutof1dS1->SetLineWidth(2);
+    hutof1dS12->SetLineWidth(2);
     if (nBlocks==0) {
-      hutof1dS1->SetLineColor(kBlue);
-      hutof1dS12->SetLineColor(kBlue);
+      hutof1dS1->SetLineColor(kBlue+2);
+      hutof1dS12->SetLineColor(kBlue+2);
       legu->AddEntry(hutof1dS1, "0 blocks",  "l");
     }
     else if (nBlocks==1) {
@@ -241,8 +244,8 @@ void tof1dComp (const char* saveDir,
       legu->AddEntry(hutof1dS1, "2 blocks",  "l");
     }
     else if (nBlocks==3) {
-      hutof1dS1->SetLineColor(kGreen+2);
-      hutof1dS12->SetLineColor(kGreen+2);
+      hutof1dS1->SetLineColor(kCyan+2);
+      hutof1dS12->SetLineColor(kCyan+2);
       legu->AddEntry(hutof1dS1, "3 blocks",  "l");
     }
     else if (nBlocks==4) {
@@ -286,17 +289,20 @@ void tof1dComp (const char* saveDir,
   legd->Draw();
   cd->Print(Form("%s/dstofAllBlockLog.png",saveDir));
   cd->Print(Form("%s/dstofAllBlockLog.pdf",saveDir));
+  cd->Print(Form("%s/dstofAllBlockLog.tex",saveDir));
 
   cu->cd();
   hsuS1->Draw("hist nostack");
   legu->Draw();
   cu->Print(Form("%s/ustofAllBlockLogS1.png", saveDir));
   cu->Print(Form("%s/ustofAllBlockLogS1.pdf", saveDir));
+  cu->Print(Form("%s/ustofAllBlockLogS1.tex", saveDir));
 
   cuS12->cd();
   hsuS12->Draw("hist nostack");
   legu->Draw();
   cuS12->Print(Form("%s/ustofAllBlockLogS12.png", saveDir));
   cuS12->Print(Form("%s/ustofAllBlockLogS12.pdf", saveDir));
+  cuS12->Print(Form("%s/ustofAllBlockLogS12.tex", saveDir));
 
 }
