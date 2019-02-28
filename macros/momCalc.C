@@ -51,7 +51,7 @@ void momCalc(const char* saveDir, const double mass,
   
   TFile *fout = new TFile(Form("%s/bkgSubPlots_eff.root", saveDir), "recreate");
 
-  for (int nBlocks = 0; nBlocks <= 3; nBlocks++) {
+  for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     double nP  = 0.;
     double nPi = 0.;
     // Define signal and background functions to be fitted
