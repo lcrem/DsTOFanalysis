@@ -44,7 +44,7 @@ void tof1dComp (const char* saveDir,
   TLegend *legd = new TLegend(0.75, 0.6, 0.87, 0.8);
   TLegend *legu = new TLegend(0.75, 0.6, 0.87, 0.8);
   // Find the appropriate dtof files
-  for (int nBlocks=0; nBlocks <= 3; nBlocks++) {
+  for (int nBlocks=0; nBlocks <= 4; nBlocks++) {
 
     // THStack for the utof comparison with and without the S2 trigger
     THStack *hsutofComp = new THStack(Form("hsutofComp%d",nBlocks), Form("Time of flight as measured in S3 with and without S2 trigger, %d blocks; S3 - S1 / ns; Events / spill",nBlocks));
