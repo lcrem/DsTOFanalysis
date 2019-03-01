@@ -38,22 +38,22 @@ void angularDistS3(const char* saveDir,
   const double piHi  = -28.06;
   // S3 amplitude cut for protons
   // Apply to A1ToF and A2ToF
-  const double ACut = 0.25;
+  const double ACut = 0.15;
 
-  THStack *hsThetaS1pro   = new THStack("hsThetaS1pro", "Angular distribution of S3 proton hits with S1 trigger only; #theta / degrees; Events / spill");
-  THStack *hsThetaS1S2pro = new THStack("hsThetaS1S2pro", "Angular distribution of S3 proton hits with S1 & S2; #theta / degrees; Events / spill");
-  THStack *hsPhiS1pro     = new THStack("hsPhiS1pro", "Angular distribution of S3 proton hits with S1 trigger only; #phi / degrees; Events / spill");
-  THStack *hsPhiS1S2pro   = new THStack("hsPhiS1S2pro", "Angular distribution of S3 proton hits with S1 & S2; #phi / degrees; Events / spill");
+  THStack *hsThetaS1pro   = new THStack("hsThetaS1pro", "S1 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill");
+  THStack *hsThetaS1S2pro = new THStack("hsThetaS1S2pro", "S1 #cap S2 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill");
+  THStack *hsPhiS1pro     = new THStack("hsPhiS1pro", "S1 #cap S3 angular distribution of proton hits; #phi / degrees; Events / spill");
+  THStack *hsPhiS1S2pro   = new THStack("hsPhiS1S2pro", "S1 #cap S2 #cap S3 angular distribution of proton hits; #phi / degrees; Events / spill");
 
-  THStack *hsThetaS1pi   = new THStack("hsThetaS1pi", "Angular distribution of S3 pion hits with S1 trigger only; #theta / degrees; Events / spill");
-  THStack *hsThetaS1S2pi = new THStack("hsThetaS1S2pi", "Angular distribution of S3 pion hits with S1 & S2; #theta / degrees; Events / spill");
-  THStack *hsPhiS1pi     = new THStack("hsPhiS1pi", "Angular distribution of S3 pion hits with S1 trigger only; #phi / degrees; Events / spill");
-  THStack *hsPhiS1S2pi   = new THStack("hsPhiS1S2pi", "Angular distribution of S3 pion hits with S1 & S2; #phi / degrees; Events / spill");
+  THStack *hsThetaS1pi   = new THStack("hsThetaS1pi", "S1 #cap S3 angular distribution of MIP hits; #theta / degrees; Events / spill");
+  THStack *hsThetaS1S2pi = new THStack("hsThetaS1S2pi", "S1 #cap S2 #cap S3 angular distribution of MIP hits; #theta / degrees; Events / spill");
+  THStack *hsPhiS1pi     = new THStack("hsPhiS1pi", "S1 #cap S3 angular distribution of MIP hits; #phi / degrees; Events / spill");
+  THStack *hsPhiS1S2pi   = new THStack("hsPhiS1S2pi", "S1 #cap S2 #cap S3 angular distribution of MIP hits; #phi / degrees; Events / spill");
 
-  THStack *hsPhiS1S2ratio   = new THStack("hsPhiS1S2ratio", "Angular distribution of S3 proton/MIP ratio (S1 & S2 trigger); #phi / degrees;  Protons/MIPs");
-  THStack *hsThetaS1S2ratio = new THStack("hsThetaS1S2ratio", "Angular distribution of S3 proton/MIP ratio (S1 & S2 trigger); #theta / degrees;  Protons/MIPs");
-  THStack *hsPhiS1ratio   = new THStack("hsPhiS1ratio", "Angular distribution of S3 proton/MIP ratio (S1 trigger only); #phi / degrees;  Protons/MIPs");
-  THStack *hsThetaS1ratio = new THStack("hsThetaS1ratio", "Angular distribution of S3 proton/MIP ratio (S1 trigger only); #theta / degrees;  Protons/MIPs");
+  THStack *hsPhiS1S2ratio   = new THStack("hsPhiS1S2ratio", "S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio; #phi / degrees;  Protons/MIPs");
+  THStack *hsThetaS1S2ratio = new THStack("hsThetaS1S2ratio", "S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio; #theta / degrees;  Protons/MIPs");
+  THStack *hsPhiS1ratio   = new THStack("hsPhiS1ratio", "S1 #cap S3 angular distribution of proton/MIP ratio; #phi / degrees;  Protons/MIPs");
+  THStack *hsThetaS1ratio = new THStack("hsThetaS1ratio", "S1 #cap S3 angular distribution of proton/MIP ratio; #theta / degrees;  Protons/MIPs");
 
   THStack *hsMomS1S2 = new THStack("hsMomS1S2", "Proton momentum measured in S3 (S1 & S2 trigger); Proton momentum [GeV/c]; Events / spill");
   THStack *hsMomS1 = new THStack("hsMomS1", "Proton momentum measured in S3 (S1 trigger only); Proton momentum [GeV/c]; Events / spill");
@@ -64,6 +64,7 @@ void angularDistS3(const char* saveDir,
   TFile *fout = new TFile(Form("%s/angularDistS3plots.root", saveDir), "recreate");
 
   TLegend *leg = new TLegend(0.15, 0.55, 0.3, 0.85);
+  TLegend *legTheta = new TLegend(0.23, 0.5, 0.38, 0.85);
   TLegend *legTof = new TLegend(0.71, 0.53, 0.88, 0.85);
 
   TH2D *hMom2D_0blkQ = new TH2D("hMom2D_0blkQ", "Quick peak 0 block; x / cm; Bar", 100, -10, 170, 22, 0.5, 22.5);
@@ -73,30 +74,43 @@ void angularDistS3(const char* saveDir,
   TH2D *hMom2D_2blkQ = new TH2D("hMom2D_2blkQ", "Quick peak 2 block; x / cm; Bar", 100, -10, 170, 22, 0.5, 22.5);
   TH2D *hMom2D_2blkS = new TH2D("hMom2D_2blkS", "Slow peak 2 block; x / cm; Bar", 100, -10, 170, 22, 0.5, 22.5);
 
+  double binsTheta[] = {-3.8, -3.7, -3.6, -3.5, -3.4, -3.3, -3.2, -3.1, -3.,
+			-2.9, -2.8, -2.7, -2.6, -2.5, -2.4, -2.3, -2.2, -2.1, -2., 
+			-1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.,
+			-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 
+			0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 
+			1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 1.9, 
+			2.0, 2.2, 2.4, 2.6, 2.8, 
+			3.0, 3.2, 3.4, 3.6, 3.8,  
+			4.0, 4.25, 4.5, 4.75, 
+			5.0, 5.25, 5.8,
+		        6.2};
+  int binnum = sizeof(binsTheta)/sizeof(double) - 1;
+
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     int nSpills = 0;
-    TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1pro->Sumw2();
-    TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1S2pro->Sumw2();
     TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1pro->Sumw2();
     TH1D *hPhiS1S2pro = new TH1D(Form("hPhiS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pro->Sumw2();
 
-    TH1D *hThetaS1pi   = new TH1D(Form("hThetaS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    TH1D *hThetaS1pi   = new TH1D(Form("hThetaS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1pi->Sumw2();
-    TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1S2pi->Sumw2();
     TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1pi->Sumw2();
     TH1D *hPhiS1S2pi = new TH1D(Form("hPhiS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pi->Sumw2();
 
-    TH1D *hThetaS1ratio = new TH1D(Form("hThetaS1ratio%d", nBlocks), Form("Angular distribution of proton/MIP ratio in S3 (S1 trigger only), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 100, -3.8, 6.2);
-    TH1D *hPhiS1ratio   = new TH1D(Form("hPhiS1ratio%d", nBlocks), Form("Angular distribution of proton/MIP in S3 (S1 trigger only), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
-    TH1D *hThetaS1S2ratio = new TH1D(Form("hThetaS1S2ratio%d", nBlocks), Form("Angular distribution of proton/MIP ratio in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 100, -3.8, 6.2);
-    TH1D *hPhiS1S2ratio   = new TH1D(Form("hPhiS1S2ratio%d", nBlocks), Form("Angular distribution of proton/MIP in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
+    TH1D *hThetaS1ratio = new TH1D(Form("hThetaS1ratio%d", nBlocks), Form("S1 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), binnum, binsTheta);
+    TH1D *hPhiS1ratio   = new TH1D(Form("hPhiS1ratio%d", nBlocks), Form("S1 #cap S3 angular distribution of proton/MIP, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
+    TH1D *hThetaS1S2ratio = new TH1D(Form("hThetaS1S2ratio%d", nBlocks), Form("S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), binnum, binsTheta);
+    TH1D *hPhiS1S2ratio   = new TH1D(Form("hPhiS1S2ratio%d", nBlocks), Form("S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
 
     TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 120);
     hutof1dS1->Sumw2();
@@ -285,6 +299,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kBlack);
       
       leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
+      legTheta->AddEntry(hThetaS1ratio, "0 blocks", "l");
       legTof->AddEntry(hutof1dS1, "0 blocks", "l");
 
       hMom2D_0blkQ->Scale(1. / (double)nSpills);
@@ -311,6 +326,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kRed);
       
       leg->AddEntry(hThetaS1S2pro, "1 block", "l");
+      legTheta->AddEntry(hThetaS1ratio, "1 block", "l");
       legTof->AddEntry(hutof1dS1, "1 block", "l");
 
       hMom2D_1blkQ->Scale(1. / (double)nSpills);
@@ -340,6 +356,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kBlue);
 
       leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
+      legTheta->AddEntry(hThetaS1ratio, "2 blocks", "l");
       legTof->AddEntry(hutof1dS1, "2 blocks", "l");
 
       hMom2D_2blkQ->Scale(1. / (double)nSpills);
@@ -369,6 +386,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kCyan+1);
 
       leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
+      legTheta->AddEntry(hThetaS1ratio, "3 blocks", "l");
       legTof->AddEntry(hutof1dS1, "3 blocks", "l");
     }
     if (nBlocks==4) {
@@ -393,6 +411,7 @@ void angularDistS3(const char* saveDir,
       hutof1dS1->SetLineColor(kOrange+1);
 
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
+      legTheta->AddEntry(hThetaS1ratio, "4 blocks", "l");
       legTof->AddEntry(hutof1dS1, "4 blocks", "l");
     }
 
@@ -510,36 +529,48 @@ void angularDistS3(const char* saveDir,
 
   TCanvas *c1_1 = new TCanvas("c1_1");
   hsThetaS1S2pro->Draw("hist e nostack");
+  c1_1->SetGridx();
+  c1_1->SetGridy();
   leg->Draw();
   c1_1->Print(Form("%s/thetaS12pro.png", saveDir));
   c1_1->Print(Form("%s/thetaS12pro.pdf", saveDir));
   c1_1->Print(Form("%s/thetaS12pro.tex", saveDir));
   TCanvas *c1_2 = new TCanvas("c1_2");
   hsThetaS1S2pi->Draw("hist e nostack");
+  c1_2->SetGridx();
+  c1_2->SetGridy();
   leg->Draw();
   c1_2->Print(Form("%s/thetaS12pi.png", saveDir));
   c1_2->Print(Form("%s/thetaS12pi.pdf", saveDir));
   c1_2->Print(Form("%s/thetaS12pi.tex", saveDir));
   TCanvas *c1_3 = new TCanvas("c1_3");
   hsPhiS1S2pro->Draw("hist e nostack");
+  c1_3->SetGridx();
+  c1_3->SetGridy();
   leg->Draw();
   c1_3->Print(Form("%s/phiS12pro.png", saveDir));
   c1_3->Print(Form("%s/phiS12pro.pdf", saveDir));
   c1_3->Print(Form("%s/phiS12pro.tex", saveDir));
   TCanvas *c1_4 = new TCanvas("c1_4");
   hsPhiS1S2pi->Draw("hist e nostack");
+  c1_4->SetGridx();
+  c1_4->SetGridy();
   leg->Draw();
   c1_4->Print(Form("%s/phiS12pi.png", saveDir));
   c1_4->Print(Form("%s/phiS12pi.pdf", saveDir));
   c1_4->Print(Form("%s/phiS12pi.tex", saveDir));
   TCanvas *c1_5 = new TCanvas("c1_5");
   hsThetaS1S2ratio->Draw("hist e nostack");
+  c1_5->SetGridx();
+  c1_5->SetGridy();
   leg->Draw();
   c1_5->Print(Form("%s/thetaS12ratio.png", saveDir));
   c1_5->Print(Form("%s/thetaS12ratio.pdf", saveDir));
   c1_5->Print(Form("%s/thetaS12ratio.tex", saveDir));
   TCanvas *c1_6 = new TCanvas("c1_6");
   hsPhiS1S2ratio->Draw("hist e nostack");
+  c1_6->SetGridx();
+  c1_6->SetGridy();
   leg->Draw();
   c1_6->Print(Form("%s/phiS12ratio.png", saveDir));
   c1_6->Print(Form("%s/phiS12ratio.pdf", saveDir));
@@ -590,40 +621,52 @@ void angularDistS3(const char* saveDir,
 
   TCanvas *c1_s11 = new TCanvas("c1_s11");
   hsThetaS1pro->Draw("hist e nostack");
+  c1_s11->SetGridx();
+  c1_s11->SetGridy();
   leg->Draw();
   c1_s11->Print(Form("%s/thetaS1pro.png", saveDir));
   c1_s11->Print(Form("%s/thetaS1pro.pdf", saveDir));
   c1_s11->Print(Form("%s/thetaS1pro.tex", saveDir));
   TCanvas *c1_s12 = new TCanvas("c1_s12");
   hsThetaS1pi->Draw("hist e nostack");
+  c1_s12->SetGridx();
+  c1_s12->SetGridy();
   leg->Draw();
   c1_s12->Print(Form("%s/thetaS1pi.png", saveDir));
   c1_s12->Print(Form("%s/thetaS1pi.pdf", saveDir));
   c1_s12->Print(Form("%s/thetaS1pi.tex", saveDir));
   TCanvas *c1_s13 = new TCanvas("c1_s13");
   hsPhiS1pro->Draw("hist e nostack");
+  c1_s13->SetGridx();
+  c1_s13->SetGridy();
   leg->Draw();
   c1_s13->Print(Form("%s/phiS1pro.png", saveDir));
   c1_s13->Print(Form("%s/phiS1pro.pdf", saveDir));
   c1_s13->Print(Form("%s/phiS1pro.tex", saveDir));
   TCanvas *c1_s14 = new TCanvas("c1_s14");
   hsPhiS1pi->Draw("hist e nostack");
+  c1_s14->SetGridx();
+  c1_s14->SetGridy();
   leg->Draw();
   c1_s14->Print(Form("%s/phiS1pi.png", saveDir));
   c1_s14->Print(Form("%s/phiS1pi.pdf", saveDir));
   c1_s14->Print(Form("%s/phiS1pi.tex", saveDir));
   TCanvas *c1_s15 = new TCanvas("c1_s15");
   hsThetaS1ratio->Draw("hist e nostack");
-  leg->Draw();
+  c1_s15->SetGridx();
+  c1_s15->SetGridy();
+  legTheta->Draw();
   c1_s15->Print(Form("%s/thetaS1ratio.png", saveDir));
   c1_s15->Print(Form("%s/thetaS1ratio.pdf", saveDir));
-    c1_s15->Print(Form("%s/thetaS1ratio.tex", saveDir));
+  c1_s15->Print(Form("%s/thetaS1ratio.tex", saveDir));
   TCanvas *c1_s16 = new TCanvas("c1_s16");
   hsPhiS1ratio->Draw("hist e nostack");
+  c1_s16->SetGridx();
+  c1_s16->SetGridy();
   leg->Draw();
   c1_s16->Print(Form("%s/phiS1ratio.png", saveDir));
   c1_s16->Print(Form("%s/phiS1ratio.pdf", saveDir));
-    c1_s16->Print(Form("%s/phiS1ratio.tex", saveDir));
+  c1_s16->Print(Form("%s/phiS1ratio.tex", saveDir));
 
   TCanvas *cMomS1S2 = new TCanvas("cMomS1S2");
   hsMomS1S2->Draw("hist e nostack");
@@ -680,6 +723,7 @@ void angularDistS3(const char* saveDir,
   legTof->Draw();
   cutofS1S2Log->Print(Form("%s/utof1dS1S2Log.png", saveDir));
   cutofS1S2Log->Print(Form("%s/utof1dS1S2Log.pdf", saveDir));
+  cutofS1S2Log->Print(Form("%s/utof1dS1S2Log.tex", saveDir));
   TCanvas *cutofS1Log = new TCanvas("cutofS1Log");
   cutofS1Log->SetLogy();
   hsutof1dS1->Draw("hist nostack");
@@ -692,6 +736,7 @@ void angularDistS3(const char* saveDir,
   legTof->Draw();
   cutofS1Log->Print(Form("%s/utof1dS1Log.png", saveDir));
   cutofS1Log->Print(Form("%s/utof1dS1Log.pdf", saveDir));
+  cutofS1Log->Print(Form("%s/utof1dS1Log.tex", saveDir));
 
   fout->Close();
 } // angularDistS3
