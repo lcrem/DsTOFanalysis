@@ -3,7 +3,7 @@
 
 void s3CutOpt(const char* saveDir,
 	      const int block,
-	      const char* ustofDir)
+	      const char* ustofDir="/zfs_home/sjones/mylinktoutof/")
 {
   gROOT->SetBatch(kTRUE);
 
@@ -48,13 +48,19 @@ void s3CutOpt(const char* saveDir,
     TH2D *hAmpTime = new TH2D(Form("hAmpTime%d", i), Form("Bar %d; #delta t / ns; Amplitude / V", i), 100, -40, 60, 100, 0, 0.5);
     histVec.push_back(hAmpTime);
   } // for (int i=0; i < 22; i++) 
-
+  // Fill appropriate bar histogram
   for (int t=0; t<tree->GetEntries(); t++) {
     tree->GetEntry(t);
-    if (nhit == 0) {
-      histVec[nBar]->Fill((tToF[0] - tS1), A1ToF[0]);
+    if (nhit == 1) {
+      histVec.at(nBar[0])->Fill((tToF[0] - tS1), A1ToF[0]);
     }
-  }
-  TFile* fout = new TFile(Form("%s/s3CutOpt.root",saveDir), "recreate");
+  } // Loop over entries in tree
 
+  TFile* fout = new TFile(Form("%s/s3CutOpt%dblock.root",saveDir,block), "recreate");
+  cout<<"Writing to "<<Form("%s/s3CutOpt%dblock,root",saveDir,block)<<endl;
+  // Write the histograms to file
+  for (int i=0; i<22; i++) {
+    histVec[i]->Write();
+  }
+  fout->Close();
 }
