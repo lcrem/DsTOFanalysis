@@ -79,7 +79,7 @@ void angularDistS3(const char* saveDir,
 			-1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.,
 			-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 
 			0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 
-			1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 1.9, 
+			1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 
 			2.0, 2.2, 2.4, 2.6, 2.8, 
 			3.0, 3.2, 3.4, 3.6, 3.8,  
 			4.0, 4.25, 4.5, 4.75, 
@@ -189,8 +189,8 @@ void angularDistS3(const char* saveDir,
 	double positionZ = (yToF[0] + s3BarBottom + 2.75) / 100.;
 	double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-	// S1 trigger only
-	if (tTrig == 0) {
+	// All triggers
+	//	if (tTrig == 0) {
 	  hutof1dS1->Fill(tofCalc);
 	  // Separate protons and MIPs using timing and amplitude cuts
 	  // Is a MIP
@@ -215,9 +215,9 @@ void angularDistS3(const char* saveDir,
 	    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[0], nBar[0]);
 	    
 	  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-	}
-	// S1 & S2 trigger
-	else {
+	  //	}
+	// S1 & S2 trigger only
+	if (tTrig !=0) {
 	  hutof1dS1S2->Fill(tofCalc);
 	  // Separate protons and MIPs using timing and amplitude cuts
 	  // Is a MIP
@@ -621,17 +621,29 @@ void angularDistS3(const char* saveDir,
 
   TCanvas *c1_s11 = new TCanvas("c1_s11");
   hsThetaS1pro->Draw("hist e nostack");
+  hsThetaS1pro->GetXaxis()->SetLabelSize(0.05);
+  hsThetaS1pro->GetYaxis()->SetLabelSize(0.05);
+  hsThetaS1pro->GetXaxis()->SetTitleSize(0.05);
+  hsThetaS1pro->GetYaxis()->SetTitleSize(0.05);
+  c1_s11->SetLeftMargin(0.13);
+  c1_s11->SetBottomMargin(0.13);
   c1_s11->SetGridx();
   c1_s11->SetGridy();
-  leg->Draw();
+  legTof->Draw();
   c1_s11->Print(Form("%s/thetaS1pro.png", saveDir));
   c1_s11->Print(Form("%s/thetaS1pro.pdf", saveDir));
   c1_s11->Print(Form("%s/thetaS1pro.tex", saveDir));
   TCanvas *c1_s12 = new TCanvas("c1_s12");
   hsThetaS1pi->Draw("hist e nostack");
+  hsThetaS1pi->GetXaxis()->SetLabelSize(0.05);
+  hsThetaS1pi->GetYaxis()->SetLabelSize(0.05);
+  hsThetaS1pi->GetXaxis()->SetTitleSize(0.05);
+  hsThetaS1pi->GetYaxis()->SetTitleSize(0.05);
+  c1_s12->SetLeftMargin(0.13);
+  c1_s12->SetBottomMargin(0.13);
   c1_s12->SetGridx();
   c1_s12->SetGridy();
-  leg->Draw();
+  legTof->Draw();
   c1_s12->Print(Form("%s/thetaS1pi.png", saveDir));
   c1_s12->Print(Form("%s/thetaS1pi.pdf", saveDir));
   c1_s12->Print(Form("%s/thetaS1pi.tex", saveDir));
@@ -653,6 +665,12 @@ void angularDistS3(const char* saveDir,
   c1_s14->Print(Form("%s/phiS1pi.tex", saveDir));
   TCanvas *c1_s15 = new TCanvas("c1_s15");
   hsThetaS1ratio->Draw("hist e nostack");
+  hsThetaS1ratio->GetXaxis()->SetLabelSize(0.05);
+  hsThetaS1ratio->GetYaxis()->SetLabelSize(0.05);
+  hsThetaS1ratio->GetXaxis()->SetTitleSize(0.05);
+  hsThetaS1ratio->GetYaxis()->SetTitleSize(0.05);
+  c1_s15->SetLeftMargin(0.13);
+  c1_s15->SetBottomMargin(0.13);
   c1_s15->SetGridx();
   c1_s15->SetGridy();
   legTheta->Draw();
