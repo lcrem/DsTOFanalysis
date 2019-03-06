@@ -43,24 +43,29 @@ void s3CutOpt(const char* saveDir,
   tree->SetBranchAddress("nBar", nBar);
 
   // Create vector of 2D hists
-  std::vector<TH2D*> histVec;
+  std::vector<TH2D*> histA1Vec;
+  std::vector<TH2D*> histA2Vec;
   for (int i=0; i < 22; i++) {
-    TH2D *hAmpTime = new TH2D(Form("hAmpTime%d", i), Form("Bar %d; #delta t / ns; Amplitude / V", i), 100, -40, 60, 100, 0, 0.5);
-    histVec.push_back(hAmpTime);
+    TH2D *hA1Time = new TH2D(Form("hA1Time%d", i), Form("Bar %d; #delta t / ns; A1 / V", i), 100, -40, 60, 100, 0, 0.5);
+    TH2D *hA2Time = new TH2D(Form("hA2Time%d", i), Form("Bar %d; #delta t / ns; A2 / V", i), 100, -40, 60, 100, 0, 0.5);
+    histA1Vec.push_back(hA1Time);
+    histA2Vec.push_back(hA2Time);
   } // for (int i=0; i < 22; i++) 
   // Fill appropriate bar histogram
   for (int t=0; t<tree->GetEntries(); t++) {
     tree->GetEntry(t);
     if (nhit == 1) {
-      histVec.at(nBar[0])->Fill((tToF[0] - tS1), A1ToF[0]);
+      histA1Vec.at(nBar[0])->Fill((tToF[0] - tS1), A1ToF[0]);
+      histA2Vec.at(nBar[0])->Fill((tToF[0] - tS1), A2ToF[0]);
     }
   } // Loop over entries in tree
 
   TFile* fout = new TFile(Form("%s/s3CutOpt%dblock.root",saveDir,block), "recreate");
-  cout<<"Writing to "<<Form("%s/s3CutOpt%dblock,root",saveDir,block)<<endl;
+  cout<<"Writing to "<<Form("%s/s3CutOpt%dblock.root",saveDir,block)<<endl;
   // Write the histograms to file
   for (int i=0; i<22; i++) {
-    histVec[i]->Write();
+    histA1Vec[i]->Write();
+    histA2Vec[i]->Write();
   }
   fout->Close();
 }
