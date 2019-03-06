@@ -38,7 +38,17 @@ void angularDistS3(const char* saveDir,
   const double piHi  = -28.06;
   // S3 amplitude cut for protons
   // Apply to A1ToF and A2ToF
-  const double ACut = 0.15;
+  // AK's standard cut
+  const double ACut = 0.25;
+  // SJ's bar by bar amplitude cut (by eye)
+  // For A1 
+  const std::vector<double> A1CutVec = {0.25, 0.25, 0.275, 0.2, 0.25, 0.25, 0.25, 0.275, 0.325, 
+					0.3, 0.3, 0.2, 0.2, 0.25, 0.225, 0.25, 0.25, 0.3, 0.3, 
+					0.25, 0.3, 0.3};
+  // For A2
+  const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.3, 0.3, 0.15, 0.225, 0.25, 0.25,
+				       0.225, 0.225, 0.2, 0.225, 0.225, 0.225, 0.2, 0.275, 0.25, 
+				       0.225, 0.3, 0.3};
 
   THStack *hsThetaS1pro   = new THStack("hsThetaS1pro", "S1 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill");
   THStack *hsThetaS1S2pro = new THStack("hsThetaS1S2pro", "S1 #cap S2 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill");
@@ -66,6 +76,7 @@ void angularDistS3(const char* saveDir,
   TLegend *leg = new TLegend(0.15, 0.55, 0.3, 0.85);
   TLegend *legTheta = new TLegend(0.23, 0.5, 0.38, 0.85);
   TLegend *legTof = new TLegend(0.71, 0.53, 0.88, 0.85);
+  TLegend *legPhiRatio = new TLegend(0.38, 0.56, 0.55, 0.88);
 
   TH2D *hMom2D_0blkQ = new TH2D("hMom2D_0blkQ", "Quick peak 0 block; x / cm; Bar", 100, -10, 170, 22, 0.5, 22.5);
   TH2D *hMom2D_0blkS = new TH2D("hMom2D_0blkS", "Slow peak 0 block; x / cm; Bar", 100, -10, 170, 22, 0.5, 22.5);
@@ -200,7 +211,7 @@ void angularDistS3(const char* saveDir,
 	    hPhiS1pi->Fill(anglePhi);
 	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	  // Is a proton
-	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > ACut && A2ToF[0] > ACut) {
+	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
 	    nP++;
 	    hThetaS1pro->Fill(angleTheta);
 	    hPhiS1pro->Fill(anglePhi);
@@ -227,7 +238,7 @@ void angularDistS3(const char* saveDir,
 	    hPhiS1S2pi->Fill(anglePhi);
 	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	  // Is a proton
-	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > ACut && A2ToF[0] > ACut) {
+	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
 	    nP++;
 	    hThetaS1S2pro->Fill(angleTheta);
 	    hPhiS1S2pro->Fill(anglePhi);
@@ -301,6 +312,7 @@ void angularDistS3(const char* saveDir,
       leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
       legTheta->AddEntry(hThetaS1ratio, "0 blocks", "l");
       legTof->AddEntry(hutof1dS1, "0 blocks", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "0 blocks", "l");
 
       hMom2D_0blkQ->Scale(1. / (double)nSpills);
       hMom2D_0blkS->Scale(1. / (double)nSpills);
@@ -328,6 +340,7 @@ void angularDistS3(const char* saveDir,
       leg->AddEntry(hThetaS1S2pro, "1 block", "l");
       legTheta->AddEntry(hThetaS1ratio, "1 block", "l");
       legTof->AddEntry(hutof1dS1, "1 block", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "1 block", "l");
 
       hMom2D_1blkQ->Scale(1. / (double)nSpills);
       hMom2D_1blkS->Scale(1. / (double)nSpills);
@@ -358,6 +371,7 @@ void angularDistS3(const char* saveDir,
       leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
       legTheta->AddEntry(hThetaS1ratio, "2 blocks", "l");
       legTof->AddEntry(hutof1dS1, "2 blocks", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "2 blocks", "l");
 
       hMom2D_2blkQ->Scale(1. / (double)nSpills);
       hMom2D_2blkS->Scale(1. / (double)nSpills);
@@ -388,6 +402,7 @@ void angularDistS3(const char* saveDir,
       leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
       legTheta->AddEntry(hThetaS1ratio, "3 blocks", "l");
       legTof->AddEntry(hutof1dS1, "3 blocks", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "3 blocks", "l");
     }
     if (nBlocks==4) {
       hThetaS1S2pro->SetLineColor(kOrange+1);
@@ -413,6 +428,7 @@ void angularDistS3(const char* saveDir,
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
       legTheta->AddEntry(hThetaS1ratio, "4 blocks", "l");
       legTof->AddEntry(hutof1dS1, "4 blocks", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "4 blocks", "l");
     }
 
     hPhiS1S2pro->Scale(1. / (double)nSpills);
@@ -614,7 +630,7 @@ void angularDistS3(const char* saveDir,
   TCanvas *c1_Logs16 = new TCanvas("c1_Logs16");
   c1_Logs16->SetLogy();
   hsPhiS1ratio->Draw("hist e nostack");
-  leg->Draw();
+  legTof->Draw();
   c1_Logs16->Print(Form("%s/phiS1ratioLog.png", saveDir));
   c1_Logs16->Print(Form("%s/phiS1ratioLog.pdf", saveDir));
   c1_Logs16->Print(Form("%s/phiS1ratioLog.tex", saveDir));
@@ -681,7 +697,7 @@ void angularDistS3(const char* saveDir,
   hsPhiS1ratio->Draw("hist e nostack");
   c1_s16->SetGridx();
   c1_s16->SetGridy();
-  leg->Draw();
+  legPhiRatio->Draw();
   c1_s16->Print(Form("%s/phiS1ratio.png", saveDir));
   c1_s16->Print(Form("%s/phiS1ratio.pdf", saveDir));
   c1_s16->Print(Form("%s/phiS1ratio.tex", saveDir));
