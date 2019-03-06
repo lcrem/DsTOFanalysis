@@ -34,5 +34,24 @@ void deadtime(const char* saveDir,
   const double start4Block = 1535836129;
   const double end4Block   = 1535879634;
 
+  
+  for (int nBlocks = 0; nBlocks <=4; nBlocks++) {
+    // Open files by hand since we're doing this locally
+    if (nBlocks == 0) {
+      
+    }
+    else if (nBlocks == 1) {
 
+    }
+    else if (nBlocks == 2) {
+
+    }
+    else if (nBlocks == 3) {
+
+    }
+    else if (nBlocks == 4) {
+
+    }
+  } // for (int nBlocks = 0; nBlocks <=4; nBlocks++)
+  
 } // deadtime
