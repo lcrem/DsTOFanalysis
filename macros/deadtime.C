@@ -33,8 +33,12 @@ void deadtime(const char* saveDir,
   // 4 moderator blocks with -4cm bend
   const double start4Block = 1535836129;
   const double end4Block   = 1535879634;
+  // Ustof-dstof cable delay
+  const double ustofDelay = 184.7;
 
   for (int nBlocks = 0; nBlocks <=4; nBlocks++) {
+    cout<<nBlocks<<" blocks"<<endl;
+
     Int_t runMin=-1;
     Int_t runMax=-1;
 
@@ -87,18 +91,19 @@ void deadtime(const char* saveDir,
     tree->SetBranchAddress("tSoSd", &tSoSd);
     tree->SetBranchAddress("nBar", nBar);
 
-    int nS1S2 = 0;
+    int nS1S2utof = 0;
+    int nS1S2dtof = 0;
     // Count number of S1 x S2 hits
     for (int t=0; t<tree->GetEntries(); t++ ) {
       tree->GetEntry(t);
       if (tTrig !=0) {
-	nS1S2++;
+	nS1S2utof++;
       }
     } // for (int t=0; t<tree->GetEntries(); t++ )
 
     // Find the correct dtof files
     for (int irun=1000; irun<1100; irun++) {
-      TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+      TFile *fin = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
       RawDsTofCoincidence *tofCoinTemp = NULL;
       TTree *tree = (TTree*) fin->Get("tofCoinTree");
       tree->SetBranchAddress("tofCoin", &tofCoinTemp);
@@ -127,17 +132,14 @@ void deadtime(const char* saveDir,
 
     // Now go over dtof files and count the number of s1s2 coincidences
     for (int irun = runMin; irun < runMax+1; irun++) {
-      double tempUstof;
-      double ustofNs;
       // Utof and beam signals go into both TDCs so only need to run over one
-      TFile *tofFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun));
+      TFile *tofFile = new TFile(Form("%s/run%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun));
       RawDsTofHeader *tof = NULL;
-      TTree *ustofTree = new TTree("ustofTree", "ustof");
-      ustofTree->SetDirectory(0);
-      ustofTree->Branch("ustofNs", &ustofNs, "ustofNs/D");
-      tempUstof=0;
-      double tempBeam;
-      double beamNs;
+      TTree *tofTree = (TTree*)tofFile->Get("tofTree");
+      tofTree->SetBranchAddress("tof", &tof);
+      double tempBeam = 0.;
+      double beamNs = 0.;
+      double lastRawBeamSpillNs = 0.;
       TTree *beamTree = new TTree("beamTree", "beam");
       beamTree->SetDirectory(0);
       beamTree->Branch("beamNs", &beamNs, "beamNs/D");
@@ -146,19 +148,46 @@ void deadtime(const char* saveDir,
 	if (tof->unixTime < startTime) continue;
 	if (tof->unixTime > endTime) break;
 	
-	if (tof->channel == 13) {
-	  ustofNs = tof->fakeTimeNs - ustofDelay;
-	  // ustof signals shouldn't be coming closer than 500ns
-	  if ( (ustofNs - tempUstof) < 500.) continue;
-	  ustofTree->Fill();
-	  tempUstof = ustofNs;
-	} // if (tof->channel == 13) 
-	else if (tof->channel == 14) {
+	if (tof->channel == 15) {
+	  lastRawBeamSpillNs = tof->fakeTimeNs;
+	  continue;
+	} // if (tof->channel == 15) 
 
+	if (tof->channel == 14) {
+	  if (tof->fakeTimeNs>(lastRawBeamSpillNs+900.98e6) && tof->fakeTimeNs<(lastRawBeamSpillNs+900.982e6)) {
+	    beamNs = tof->fakeTimeNs - ustofDelay;
+	    tempBeam = beamNs;
+	    beamTree->Fill();
+	    cout.precision(12);
+
+	  }
 	}
       } // for (int i=0; i<tof->GetEntries(); i++)
-    }
 
+      beamTree->BuildIndex("beamNs");
+      cout<<"Beam spill tree has "<<beamTree->GetEntries()<<" entries"<<endl;
+      // Now loop again and this time count all the S1S2 coincidences in the spill windows
+      for (int i=0; i<tofTree->GetEntries(); i++) {
+	tofTree->GetEntry(i);
+	if (tof->unixTime < startTime) continue;
+	if (tof->unixTime > endTime) break;
+	if (tof->channel == 13) {
+	  double ustofTemp = tof->fakeTimeNs;
+	  int beamEntry = beamTree->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
+	  beamTree->GetEntry(beamEntry);
+	  // Is in a spill
+	  if ((ustofTemp - beamNs) > 0. && (ustofTemp - beamNs) < 1e9) {
+	    nS1S2dtof++;
+	  }
+	}
+      } // for (int i=0; i<tof->GetEntries(); i++)
+      delete tof;
+      tofFile->Close();
+      //      delete ustofTree;
+      delete beamTree;
+    } // for (int irun = runMin; irun < runMax+1; irun++)
+
+    cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<endl;
   } // for (int nBlocks = 0; nBlocks <=4; nBlocks++)
    
   
