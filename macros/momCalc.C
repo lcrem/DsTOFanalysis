@@ -29,9 +29,14 @@ void momCalc(const char* saveDir, const double mass,
   const double start3Block = 1535792404;
   const double end3Block   = 1535795300;
   // 0.8GeV/c, 4 block
+  // 4 moderator blocks with -4cm bend
+  const double start4Block = 1535836129;
+  const double end4Block   = 1535879634;
   // Most runs were in this configuration so don't need to use necessarily
+  /*
   const double start4Block = 1536537600; 
   const double end4Block   = 1536669600;
+  */
   // Timing cuts
   const double piLow  = 80.;
   const double piHi   = 95.;
@@ -44,7 +49,7 @@ void momCalc(const char* saveDir, const double mass,
   // ustof-dstof cable delay
   const double ustofDelay = 184.7;
   // Shift in ns required to to pion peak at speed of light
-  const double dstofShift = 40.;
+  const double dstofShift = 39.3;
 
   THStack *hsMom = new THStack("hsMom", "Proton momentum as measured in S4; Proton momentum [GeV/c]; Events / spill");
   TLegend *leg = new TLegend(0.15, 0.5, 0.45, 0.88);
@@ -73,7 +78,8 @@ void momCalc(const char* saveDir, const double mass,
     double lastSpill = 0.;
 
     TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events", nBlocks), 260, 30, 160);
-    TH1D *hpromom = new TH1D(Form("hpromom_%d",nBlocks), Form("Proton momentum in S4, %d blocks; Proton momentum [GeV/c]; Events", nBlocks), 300, 0., 1);
+    TH1D *hpromom = new TH1D(Form("hpromom_%d",nBlocks), Form("Proton momentum in S4, %d blocks; Proton momentum [GeV/c]; Events", nBlocks), 100, 0.3, 0.7);
+    hpromom->Sumw2();
 
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -277,7 +283,7 @@ void momCalc(const char* saveDir, const double mass,
 	double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
 	if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	  hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
-	  if (tofCalc > proLow - dstofShift-5 && tofCalc < proHi - dstofShift) {
+	  if (tofCalc > proLow - dstofShift-5 && tofCalc < proHi - dstofShift+15) {
 	    hpromom->Fill(momFromTime(0.938, baselineS1S4, tofCalc), 1. / hEff->GetBinContent(tofCoin->bar));
 	  }
 	} // if (tofCalc < 200. && tofCalc > 70.) 
@@ -304,6 +310,8 @@ void momCalc(const char* saveDir, const double mass,
     c2d_exp->Print(Form("%s/%d_dtof1d.png",saveDir,nBlocks));
     c2d_exp->Print(Form("%s/%d_dtof1d.pdf",saveDir,nBlocks));
     c2d_exp->Print(Form("%s/%d_dtof1d.tex",saveDir,nBlocks));
+
+    hpromom->Scale(1. / nSpillsTrue);
 
     TCanvas *cmom = new TCanvas(Form("%d_cmom",nBlocks));
     cmom->SetLogy();
@@ -367,6 +375,8 @@ void momCalc(const char* saveDir, const double mass,
   TCanvas *cstack = new TCanvas("cstack");
   cstack->SetLeftMargin(0.13);
   cstack->SetBottomMargin(0.13);
+  cstack->SetGridx();
+  cstack->SetGridy();
   hsMom->Draw("hist e nostack");
   leg->Draw();
   hsMom->GetXaxis()->SetLabelSize(0.05);

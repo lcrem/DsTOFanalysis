@@ -30,7 +30,7 @@ void angularDistS3(const char* saveDir,
   // Time of flight cuts for S1 to S3
   // Particles travelling at c should cross the distance in between about 36.9ns
   // and 35.6ns
-  const double tLight = 36.4; // Expected time in ns of light speed particles according to AK
+  const double tLight = 35.8; // Expected time in ns of light speed particles according to AK
   // This is before the shift is applied
   const double proLow  = -12.5;
   const double proHi   = 40.5;
@@ -140,6 +140,10 @@ void angularDistS3(const char* saveDir,
     TH2D *hMomZS12 = new TH2D(Form("hMomZS12_%d",nBlocks), Form("Proton momentum measured in S3 compared to hit position (S1 & S2 trigger), %d blocks; Proton momentum [GeV/c]; Bar in S3",nBlocks), 100, 0.3, 0.7, 22, 0.5, 22.5);
     TH2D *hMomYS12 = new TH2D(Form("hMomYS12_%d",nBlocks), Form("Proton momentum measured in S3 compared to hit position (S1 & S2 trigger), %d blocks; Proton momentum [GeV/c]; x / cm",nBlocks), 100, 0.3, 0.7, 100, -10., 170.);
 
+    // XY distributions in S3
+    TH2D *hprotonXY = new TH2D(Form("hprotonXY%d", nBlocks), Form("S3 spatial distribution of proton hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, -10., 170., 22, 0., 120.);
+    TH2D *hpionXY   = new TH2D(Form("hpionXY%d", nBlocks), Form("S3 spatial distribution of MIP hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, -10., 170., 22, 0., 120.);
+
     // Number of protons and number of MIPs
     int nP  = 0;
     int nPi = 0;
@@ -209,21 +213,24 @@ void angularDistS3(const char* saveDir,
 	    nPi++;
 	    hThetaS1pi->Fill(angleTheta);
 	    hPhiS1pi->Fill(anglePhi);
+	    hpionXY->Fill(xToF[0], yToF[0]);
 	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	  // Is a proton
 	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
 	    nP++;
 	    hThetaS1pro->Fill(angleTheta);
 	    hPhiS1pro->Fill(anglePhi);
-	    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc));
-	    hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[0]);
-	    hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[0]);
-	    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
-	    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[0], nBar[0]);
-	    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[0], nBar[0]);
-	    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[0], nBar[0]);
-	    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[0]);
-	    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[0], nBar[0]);
+	    hprotonXY->Fill(xToF[0], yToF[0]);
+
+	    hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc));
+	    hMomZS1->Fill(momFromTime(0.938, 10.75, tofCalc), nBar[0]);
+	    hMomYS1->Fill(momFromTime(0.938, 10.75, tofCalc), xToF[0]);
+	    if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
+	    else if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[0], nBar[0]);
+	    else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[0], nBar[0]);
+	    else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[0], nBar[0]);
+	    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[0]);
+	    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[0], nBar[0]);
 	    
 	  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	  //	}
@@ -259,6 +266,7 @@ void angularDistS3(const char* saveDir,
     hThetaS1pi->Write();
     hPhiS1pro->Write();
     hPhiS1pi->Write();
+
     hMomS1S2->Write();
     hMomS1->Write();
 
@@ -451,6 +459,42 @@ void angularDistS3(const char* saveDir,
     hMomYS12->Scale(1. / (double)nSpills);
     hMomZS1->Scale(1. / (double)nSpills);
     hMomZS12->Scale(1. / (double)nSpills);
+
+    hprotonXY->Scale(1. / (double)nSpills);
+    hpionXY->Scale(1. / (double)nSpills);
+    hprotonXY->Write();
+    hpionXY->Write();
+
+    gStyle->SetPalette(55);
+    gStyle->SetOptStat(0);
+    TCanvas *cpionXY   = new TCanvas(Form("cpionXY%d", nBlocks));
+    hpionXY->Draw("colz");
+    cpionXY->SetRightMargin(0.15);
+    cpionXY->SetLeftMargin(0.13);
+    cpionXY->SetBottomMargin(0.13);
+    hpionXY->GetXaxis()->SetLabelSize(0.05);
+    hpionXY->GetYaxis()->SetLabelSize(0.05);
+    hpionXY->GetXaxis()->SetTitleSize(0.05);
+    hpionXY->GetYaxis()->SetTitleSize(0.05);
+    hpionXY->GetZaxis()->SetTitleSize(0.05);
+    hpionXY->GetZaxis()->SetLabelSize(0.05);
+    cpionXY->Print(Form("%s/%d_pionXY.png", saveDir, nBlocks));
+    cpionXY->Print(Form("%s/%d_pionXY.pdf", saveDir, nBlocks));
+    cpionXY->Print(Form("%s/%d_pionXY.tex", saveDir, nBlocks));
+    TCanvas *cprotonXY = new TCanvas(Form("cprotonXY%d", nBlocks));
+    hprotonXY->Draw("colz");
+    cprotonXY->SetRightMargin(0.15);
+    cprotonXY->SetLeftMargin(0.13);
+    cprotonXY->SetBottomMargin(0.13);
+    hprotonXY->GetXaxis()->SetLabelSize(0.05);
+    hprotonXY->GetYaxis()->SetLabelSize(0.05);
+    hprotonXY->GetXaxis()->SetTitleSize(0.05);
+    hprotonXY->GetYaxis()->SetTitleSize(0.05);
+    hprotonXY->GetZaxis()->SetTitleSize(0.05);
+    hprotonXY->GetZaxis()->SetLabelSize(0.05);
+    cprotonXY->Print(Form("%s/%d_protonXY.png", saveDir, nBlocks));
+    cprotonXY->Print(Form("%s/%d_protonXY.pdf", saveDir, nBlocks));
+    cprotonXY->Print(Form("%s/%d_protonXY.tex", saveDir, nBlocks));
 
     hMomYS1->Write();
     hMomYS12->Write();
@@ -715,10 +759,15 @@ void angularDistS3(const char* saveDir,
 
   TCanvas *cMomS1 = new TCanvas("cMomS1");
   hsMomS1->Draw("hist e nostack");
+  cMomS1->SetGridx();
+  cMomS1->SetGridy();
   hsMomS1->GetXaxis()->SetLabelSize(0.05);
   hsMomS1->GetYaxis()->SetLabelSize(0.05);
   hsMomS1->GetXaxis()->SetTitleSize(0.05);
   hsMomS1->GetYaxis()->SetTitleSize(0.05);
+  cMomS1->SetLeftMargin(0.13);
+  cMomS1->SetBottomMargin(0.13);
+  cMomS1->Update();
   leg->Draw();
   cMomS1->Print(Form("%s/proMomS1.png", saveDir));
   cMomS1->Print(Form("%s/proMomS1.pdf", saveDir));
@@ -741,6 +790,7 @@ void angularDistS3(const char* saveDir,
   hsutof1dS1->GetXaxis()->SetTitleSize(0.05);
   hsutof1dS1->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
+  legTof->Write("legTof");
   cutofS1->Print(Form("%s/utof1dS1.png", saveDir));
   cutofS1->Print(Form("%s/utof1dS1.pdf", saveDir));
   cutofS1->Print(Form("%s/utof1dS1.tex", saveDir));
@@ -748,6 +798,8 @@ void angularDistS3(const char* saveDir,
   TCanvas *cutofS1S2Log = new TCanvas("cutofS1S2Log");
   cutofS1S2Log->SetLogy();
   hsutof1dS1S2->Draw("hist nostack");
+  cutofS1S2Log->SetGridx();
+  cutofS1S2Log->SetGridy();
   hsutof1dS1S2->GetXaxis()->SetLabelSize(0.05);
   hsutof1dS1S2->GetYaxis()->SetLabelSize(0.05);
   hsutof1dS1S2->GetXaxis()->SetTitleSize(0.05);
@@ -761,6 +813,8 @@ void angularDistS3(const char* saveDir,
   TCanvas *cutofS1Log = new TCanvas("cutofS1Log");
   cutofS1Log->SetLogy();
   hsutof1dS1->Draw("hist nostack");
+  cutofS1Log->SetGridx();
+  cutofS1Log->SetGridy();
   hsutof1dS1->GetXaxis()->SetLabelSize(0.05);
   hsutof1dS1->GetYaxis()->SetLabelSize(0.05);
   hsutof1dS1->GetXaxis()->SetTitleSize(0.05);

@@ -36,6 +36,9 @@ void correctionFactors(const char* saveDir,
   const double s4PhiLow = -1.427;
   const double s4PhiHi  = 1.771;
 
+  THStack *hsAngleS1S3 = new THStack("hsAngleS1S3", "S1 #cap S3 angular distribution; #theta / degrees; Events / spill");
+  TLegend *leg = new TLegend(0.6, 0.5, 0.85, 0.85);
+
   TFile *fout = new TFile(Form("%s/correctionFactorsPlots.root", saveDir), "recreate");
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
@@ -44,6 +47,9 @@ void correctionFactors(const char* saveDir,
     TH2D *hAngleS1   = new TH2D(Form("hAngleS1%d", nBlocks), Form("Angular distribution of hits in S3 (S1 trigger only), %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 100, -3.8, 6.2, 22, -3.15, 3.25);
     TH2D *hDetS1S2 = new TH2D(Form("hDetS1S2%d", nBlocks), Form("Distribution of hits in S3 (S1 & S2 triggers), %d blocks; x / cm; Bar; Events / spill", nBlocks), 100, -10., 170., 22, 2., 120.);
     TH2D *hDetS1   = new TH2D(Form("hDetS1%d", nBlocks), Form("Distribution of hits in S3 (S1 trigger only), %d blocks; x / cm ; Bar; Events / spill", nBlocks), 100, -10., 170., 22, 2., 120.);
+
+    TH1D *h1DAngleS1 = new TH1D(Form("h1DAngleS1%d", nBlocks), Form("Angular distribution of hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), 100, -3.8, 6.2);
+    h1DAngleS1->Sumw2();
 
     const char* nustof;
     if (nBlocks == 0) nustof = Form("%s/%s", ustofDir, str0Block);
@@ -83,17 +89,18 @@ void correctionFactors(const char* saveDir,
 	  hDetS1S2->Fill(xToF[n], yToF[n]);
 	} // for (int n=0; n<nhit; n++) 
       } // if (tTrig !=0 ) 
-      else {
-	for (int n=0; n<nhit; n++) {
-	  double positionX = ((xToF[n] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;
-	  double positionY = ((xToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY)+s3s1StartY;
-	  double angleTheta = TMath::ATan2(positionX, positionY) * (180. / TMath::Pi());
-	  double positionZ  = (yToF[n] + s3BarBottom + 2.75) / 100.;
-	  double anglePhi   = TMath::ATan2(positionZ, positionY) * (180./TMath::Pi());
-	  hAngleS1->Fill(angleTheta, anglePhi);
-	  hDetS1->Fill(xToF[n], yToF[n]);
-	} // for (int n=0; n<nhit; n++) 
-      } // S1 trigger only
+      //      else {
+      for (int n=0; n<nhit; n++) {
+	double positionX = ((xToF[n] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;
+	double positionY = ((xToF[n] - 4.) / 152.)*(s3s1EndY - s3s1StartY)+s3s1StartY;
+	double angleTheta = TMath::ATan2(positionX, positionY) * (180. / TMath::Pi());
+	double positionZ  = (yToF[n] + s3BarBottom + 2.75) / 100.;
+	double anglePhi   = TMath::ATan2(positionZ, positionY) * (180./TMath::Pi());
+	hAngleS1->Fill(angleTheta, anglePhi);
+	h1DAngleS1->Fill(angleTheta);
+	hDetS1->Fill(xToF[n], yToF[n]);
+      } // for (int n=0; n<nhit; n++) 
+	//} // S1 trigger only
     } // for (int t=0; t<utree->GetEntries(); t++) 
     double s3Int = hAngleS1->Integral();
     hAngleS1->Scale(1. / s3Int);
@@ -104,6 +111,38 @@ void correctionFactors(const char* saveDir,
     
     cout<<"S4 integral = "<<hAngleS1->Integral(hAngleS1->GetXaxis()->FindBin(s4ThetaLow), hAngleS1->GetXaxis()->FindBin(s4ThetaHi), hAngleS1->GetYaxis()->FindBin(s4PhiLow),  hAngleS1->GetYaxis()->FindBin(s4PhiHi))<<endl;
     
+    if (nBlocks==0) {
+      h1DAngleS1->SetLineColor(kBlack);
+      h1DAngleS1->SetLineWidth(2); 
+      h1DAngleS1->Scale(1. / 273.);
+      leg->AddEntry(h1DAngleS1, "0 blocks", "l");
+    }
+    if (nBlocks==1) {
+      h1DAngleS1->SetLineColor(kRed);
+      h1DAngleS1->SetLineWidth(2); 
+      h1DAngleS1->Scale(1. / 253.);
+      leg->AddEntry(h1DAngleS1, "1 block", "l");
+    }
+    if (nBlocks==2) {
+      h1DAngleS1->SetLineColor(kBlue);
+      h1DAngleS1->SetLineWidth(2); 
+      h1DAngleS1->Scale(1. / 266.);
+      leg->AddEntry(h1DAngleS1, "2 blocks", "l");
+    }
+    if (nBlocks==3) {
+      h1DAngleS1->SetLineColor(kCyan+1);
+      h1DAngleS1->SetLineWidth(2); 
+      h1DAngleS1->Scale(1. / 212.);
+      leg->AddEntry(h1DAngleS1, "3 blocks", "l");
+    }
+    if (nBlocks==4) {
+      h1DAngleS1->SetLineColor(kOrange+1);
+      h1DAngleS1->SetLineWidth(2); 
+      h1DAngleS1->Scale(1. / 3822.);
+      leg->AddEntry(h1DAngleS1, "4 blocks", "l");
+    }
+    hsAngleS1S3->Add(h1DAngleS1);
+
     fout->cd();
     hAngleS1->Write();
     hAngleS1S2->Write();
@@ -113,5 +152,23 @@ void correctionFactors(const char* saveDir,
 
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++)
 
+  TCanvas *c1 = new TCanvas("c1");
+  hsAngleS1S3->Draw("hist e nostack");
+  hsAngleS1S3->GetXaxis()->SetLabelSize(0.05);
+  hsAngleS1S3->GetYaxis()->SetLabelSize(0.05);
+  hsAngleS1S3->GetXaxis()->SetTitleSize(0.05);
+  hsAngleS1S3->GetYaxis()->SetTitleSize(0.05);
+  c1->SetGridx();
+  c1->SetGridy();
+  c1->SetLeftMargin(0.13); 
+  c1->SetBottomMargin(0.13);
+  c1->Update();
+  leg->Draw();
+  c1->Print(Form("%s/totalFlux.png", saveDir));
+  c1->Print(Form("%s/totalFlux.pdf", saveDir));
+  c1->Print(Form("%s/totalFlux.tex", saveDir));
+
+  leg->Write("leg");
+  hsAngleS1S3->Write();
   fout->Close();
 }
