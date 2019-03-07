@@ -303,6 +303,7 @@ void momCalc(const char* saveDir, const double mass,
     hdtof1d->Write();
     c2d_exp->Print(Form("%s/%d_dtof1d.png",saveDir,nBlocks));
     c2d_exp->Print(Form("%s/%d_dtof1d.pdf",saveDir,nBlocks));
+    c2d_exp->Print(Form("%s/%d_dtof1d.tex",saveDir,nBlocks));
 
     TCanvas *cmom = new TCanvas(Form("%d_cmom",nBlocks));
     cmom->SetLogy();
@@ -310,6 +311,7 @@ void momCalc(const char* saveDir, const double mass,
     hpromom->Write();
     cmom->Print(Form("%s/%d_protonMomentum.png", saveDir, nBlocks));
     cmom->Print(Form("%s/%d_protonMomentum.pdf", saveDir, nBlocks));
+    cmom->Print(Form("%s/%d_protonMomentum.tex", saveDir, nBlocks));
 
     hpromom->SetLineWidth(2);
     if (nBlocks==0) {
@@ -354,6 +356,7 @@ void momCalc(const char* saveDir, const double mass,
     hdtof1d_sub->Write();
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.png",saveDir,nBlocks));
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.pdf",saveDir,nBlocks));
+    cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.tex",saveDir,nBlocks));
     
   } // for (int nBlocks=firstBlock; nBlocks <= lastBlock; nBlocks++)
 
