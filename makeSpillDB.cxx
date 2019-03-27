@@ -400,8 +400,8 @@ int main(int argc, char *argv[]) {
 	      */
 	    } // if (spill.at(2) != -1)	    
 	    else { } // Do nothing and try the following spill
-
-
+	    
+	    ustofFile->Close();
 	  } // if (goodFile != "nofile")
 	  else { }
 	}
