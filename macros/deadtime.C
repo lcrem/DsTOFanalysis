@@ -140,6 +140,7 @@ void deadtime(const char* saveDir,
       double tempBeam = 0.;
       double beamNs = 0.;
       double lastRawBeamSpillNs = 0.;
+      double lastS1S2 = 0.;
       TTree *beamTree = new TTree("beamTree", "beam");
       beamTree->SetDirectory(0);
       beamTree->Branch("beamNs", &beamNs, "beamNs/D");
@@ -175,9 +176,10 @@ void deadtime(const char* saveDir,
 	  double ustofTemp = tof->fakeTimeNs;
 	  int beamEntry = beamTree->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
 	  beamTree->GetEntry(beamEntry);
-	  // Is in a spill
-	  if ((ustofTemp - beamNs) > 0. && (ustofTemp - beamNs) < 1e9) {
+	  // Is in a spill && is separated by more than 400 ns
+	  if ((ustofTemp - beamNs) > 0. && (ustofTemp - beamNs) < 1e9 && (ustofTemp - lastS1S2) > 500.) {
 	    nS1S2dtof++;
+	    lastS1S2 = ustofTemp;
 	  }
 	}
       } // for (int i=0; i<tof->GetEntries(); i++)
@@ -187,8 +189,264 @@ void deadtime(const char* saveDir,
       delete beamTree;
     } // for (int irun = runMin; irun < runMax+1; irun++)
 
-    cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<endl;
+    cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<", Ratio "<<(double)nS1S2utof/(double)nS1S2dtof<<endl;
   } // for (int nBlocks = 0; nBlocks <=4; nBlocks++)
-   
   
 } // deadtime
+
+// Same thing but do it for a given utof file with the appropriate matching dtof file
+void deadtimeTimestamp(const char* utofFile,	    
+		       const char* saveDir,
+		       //const char* spillDB,
+		       const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof",
+		       const char* ustofDir="/zfs_home/sjones/mylinktoutof") 
+{
+  gROOT->SetBatch(kTRUE);
+
+  TH1D *hDeltatDtof = new TH1D(Form("hDeltaDtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in dtof: %s", utofFile), 300, 500, 1000000);
+  TH1D *hDeltatUtof = new TH1D(Form("hDeltaUtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in utof: %s", utofFile), 300, 500, 1000000);
+
+  // Ustof-dstof cable delay
+  const double ustofDelay = 184.7;
+
+  double startTime = 0;
+  double endTime   = 0;
+
+  // Go through utof files and count the number of hits
+  TFile *futof = new TFile(Form("%s/%s.root", ustofDir, utofFile), "read");
+
+  double tToF[50];
+  double tTrig;
+  double tS1;
+  double tSoSd;
+  int nhit;
+  int nBar[50];
+
+  TTree *tree = (TTree*)futof->Get("tree");
+
+  tree->SetBranchAddress("nhit", &nhit);
+  tree->SetBranchAddress("tS1", &tS1);
+  tree->SetBranchAddress("tToF", tToF);
+  tree->SetBranchAddress("tTrig", &tTrig);
+  tree->SetBranchAddress("tSoSd", &tSoSd);
+  tree->SetBranchAddress("nBar", nBar);
+
+  double lastS1S2utof = 0.;
+
+  double lastUtofSpill = 0.;
+  int nUtofSpills = 0;
+  int nDtofSpills = 0;
+
+  std::vector<double> utofTimes;
+  std::vector<double> dtofTimes;
+
+  // Get the start and end time of the file
+  TNamed *start = 0;
+  TNamed *end   = 0;
+  futof->GetObject("start_of_run", start);
+  futof->GetObject("end_of_run", end);
+
+  const char* startchar = start->GetTitle();
+  std::string startstr(startchar);
+  std::string unixstart = startstr.substr(25,10);
+  startTime = stoi(unixstart);
+  
+  const char* endchar = end->GetTitle();
+  std::string endstr(endchar);
+  std::string unixend = endstr.substr(23,10);
+  endTime = stoi(unixend);
+
+  cout.precision(13);
+  cout<<"Utof file start, end "<<startTime<<", "<<endTime<<endl;
+
+  Int_t runMin=-1;
+  Int_t runMax=-1;
+
+  // Find the correct dtof files
+  for (int irun=1000; irun<1400; irun++) {
+    TFile *fin = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+    RawDsTofCoincidence *tofCoinTemp = NULL;
+    TTree *tree = (TTree*) fin->Get("tofCoinTree");
+    tree->SetBranchAddress("tofCoin", &tofCoinTemp);
+    tree->GetEntry(0);
+    UInt_t firstTemp = tofCoinTemp->unixTime[0];
+    tree->GetEntry(tree->GetEntries()-1);
+    UInt_t lastTemp = tofCoinTemp->unixTime[0];
+      
+    fin->Close();
+    delete fin;
+      
+    if (firstTemp>endTime){
+      break;
+    }
+      
+    if (firstTemp<startTime && lastTemp>startTime){
+      runMin = irun;
+    }
+      
+    if (firstTemp<endTime && lastTemp>endTime){
+      runMax = irun;
+    }   
+  } // for (int irun=950; irun<1400; irun++) 
+    
+  cout << "Min and max runs are " << runMin << " " << runMax << endl;
+  
+  std::vector<int> nS1S2dtofVec;
+  // Now go over the spill DB files for these runs and 
+  // make two vectors of the appropriate matching spill times
+  for (int irun = runMin; irun < runMax+1; irun++) {
+    cout<<"Getting hits for dtof run "<<irun<<endl;
+    // if (irun == 1058) continue;
+    TFile *dbFile = new TFile(Form("~/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
+    std::vector<double> tempDtofTimes;
+    TTree *spillTree = (TTree*)dbFile->Get("spillTree");
+    double globalSpillTime;
+    double ustofSpillTime;
+    spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
+    spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
+    // Loop over these entries
+    // Only add them to the vectors if they are between
+    // correct unix start and end times
+    for (int t = 0; t < spillTree->GetEntries(); t++) {
+      spillTree->GetEntry(t);
+
+      if (globalSpillTime < startTime) continue;
+      if (globalSpillTime > endTime) break;
+
+      utofTimes.push_back(ustofSpillTime);
+      dtofTimes.push_back(globalSpillTime);
+      tempDtofTimes.push_back(globalSpillTime);
+    } // for (int t = 0; t < spillTree->GetEntries(); t++)
+    dbFile->Close();
+    // Now open the corresponding dtof file and count the appropriate spills
+    // Utof and beam signals go into both TDCs so only need to run over one
+    TFile *tofFile = new TFile(Form("%s/run%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun));
+    RawDsTofHeader *tof = NULL;
+    TTree *tofTree = (TTree*)tofFile->Get("tofTree");
+    tofTree->SetBranchAddress("tof", &tof);
+    tofTree->GetEntry(0);
+    UInt_t firstTime = tof->unixTime;
+    vector<int> nS1S2dtofTemp;
+    nS1S2dtofTemp.resize(tempDtofTimes.size(), 0);
+    // Loop over only the spill times in this particular dtof file
+    // Saves us having to open loads of dtof files to check if the spill is there
+    double lastS1S2Dtof = 0.;
+    int lastdt = 0;
+    for (int spill = 0; spill < tempDtofTimes.size(); spill++) {
+      for (int t = lastdt; t < tofTree->GetEntries(); t++) {
+	tofTree->GetEntry(t);
+	if ((tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) > 1.) break;
+	if ((tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) < 0.) continue;
+	// Check that hit is up to 1s after the chosen spill
+	if (tof->channel == 13 && 
+	    (tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) < 1. &&
+	    (tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) > 0. &&
+	    (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
+	  nS1S2dtofTemp[spill]++;
+	  hDeltatDtof->Fill(tof->fakeTimeNs - lastS1S2Dtof);
+	  lastS1S2Dtof = tof->fakeTimeNs;
+	  lastdt = t;
+	}
+      } // for (int t = 0; t < tofTree->GetEntries(); t++)
+    } // for (int spill = 0; spill < tempDtofTimes.size(); spill++)
+    // Add this to the larger spill vector 
+
+    for (int i = 0; i < nS1S2dtofTemp.size(); i++) {
+      nS1S2dtofVec.push_back(nS1S2dtofTemp[i]);
+    }
+
+    delete tof;
+    tofFile->Close();
+  } // for (int irun = runMin; irun < runMax+1; irun++)
+
+  int nSpills = utofTimes.size();
+  cout<<"Counting over "<<nSpills<<" matched spills"<<endl;
+
+  int nS1S2utof = 0;
+  int nS1S2dtof = 0;
+  std::vector<int> nS1S2utofVec;
+  nS1S2utofVec.resize(nSpills, 0);
+  //nS1S2dtofVec.resize(nSpills, 0);
+  // Count number of S1 x S2 hits
+  // Only do this for the spills in the spillDB
+  int lastut=0;
+  for (int spill = 0; spill < nSpills; spill++) {
+    double tempUtofSpill = utofTimes[spill];
+    double tempDtofSpill = dtofTimes[spill];
+    for (int t=lastut; t<tree->GetEntries(); t++ ) {
+      tree->GetEntry(t);
+      if ((tSoSd/1e9 + startTime) > tempUtofSpill) break;
+
+      if (tTrig !=0 && (tSoSd/1e9 + startTime) == tempUtofSpill) {
+	nS1S2utof++;
+	nS1S2utofVec[spill]++;
+	hDeltatUtof->Fill(tTrig - lastS1S2utof);
+	lastS1S2utof = tTrig;
+	lastut=t;
+      }
+    }
+    cout<<"Utof spill at "<<tempUtofSpill<<", hits "<<nS1S2utofVec[spill]<<", Dtof spill at "<<tempDtofSpill<<", hits "<<nS1S2dtofVec[spill]<<endl;
+  } // for (int spill = 0; spill < nSpills; spill++) 
+  
+
+  cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<", Ratio "<<(double)nS1S2utof/(double)nS1S2dtof<<endl;
+
+  cout<<"There are "<<nDtofSpills<<" dtof spills, "<<nUtofSpills<<" utof spills"<<endl;
+
+  gStyle->SetOptFit(1);
+  TCanvas *cdtof = new TCanvas("cdtof");
+  TF1 *f1 = new TF1("f1", "exp([0]+[1]*x)", 500, 1000000);
+  hDeltatDtof->Fit("f1", "R");
+  hDeltatDtof->Draw("hist");
+  f1->Draw("same");
+  cdtof->SetGridx();
+  cdtof->SetGridy();
+  cdtof->Print(Form("%s/%s_deltatDtof.png", saveDir, utofFile));
+  cdtof->Print(Form("%s/%s_deltatDtof.pdf", saveDir, utofFile));
+
+  TCanvas *cutof = new TCanvas("cutof");
+  TF1 *f2 = new TF1("f2", "exp([0]+[1]*x)", 35000, 1000000);
+  hDeltatUtof->Fit("f2", "R");
+  hDeltatUtof->Draw("hist");
+  f2->Draw("same");
+  cutof->SetGridx();
+  cutof->SetGridy();
+  cutof->Print(Form("%s/%s_deltatUtof.png", saveDir, utofFile));
+  cutof->Print(Form("%s/%s_deltatUtof.pdf", saveDir, utofFile));
+
+  TCanvas *cComb = new TCanvas("cComb");
+  cComb->SetLogy();
+  hDeltatDtof->SetLineColor(kRed);
+  hDeltatDtof->Draw("hist");
+  hDeltatUtof->Draw("hist same");
+  cComb->SetGridx();
+  cComb->SetGridy();
+  cComb->Print(Form("%s/%s_deltatComb.png", saveDir, utofFile));
+  cComb->Print(Form("%s/%s_deltatComb.pdf", saveDir, utofFile));
+
+  TGraph *grRatioDtof = new TGraph();
+  TGraph *grUtofDtof  = new TGraph();
+  for (int n=0; n < nSpills; n++) {
+    grUtofDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], nS1S2utofVec[n]);
+    grRatioDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
+  }
+
+  TCanvas *cRatioDtof = new TCanvas("cRatioDtof");
+  grRatioDtof->SetTitle(Form("Utof/Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof/dtof", utofFile));
+  grRatioDtof->Draw("AP*");
+  cRatioDtof->Print(Form("%s/%s_RatioDtof.png", saveDir, utofFile));
+  cRatioDtof->Print(Form("%s/%s_RatioDtof.pdf", saveDir, utofFile));
+
+  TCanvas *cUtofDtof = new TCanvas("cUtofDtof");
+  grUtofDtof->SetTitle(Form("Utof vs. Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof", utofFile));
+  grUtofDtof->Draw("AP*");
+  cUtofDtof->Print(Form("%s/%s_UtofDtof.png", saveDir, utofFile));
+  cUtofDtof->Print(Form("%s/%s_UtofDtof.pdf", saveDir, utofFile));
+
+  TFile *fout = new TFile(Form("%s/%s_out.root", saveDir, utofFile), "recreate");
+  hDeltatDtof->Write();
+  hDeltatUtof->Write();
+  grRatioDtof->Write("grRatioDtof");
+  grUtofDtof->Write("grUtofDtof");
+  fout->Close();
+} // deadtimeTimestamp
