@@ -15,7 +15,7 @@ void s4MomCalc(const char* saveDir,
 	       const char* spillDBDir="/zfs_home/sjones/spillDB/")
 {
   gSystem->Load("libdstof.so");
-  gSystem->SetBatch(kTRUE);
+  gROOT->SetBatch(kTRUE);
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
   const double start0Block = 1535713289; 
@@ -71,7 +71,7 @@ void s4MomCalc(const char* saveDir,
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots_eff.root", saveDir), "recreate");
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
-
+    cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
     Int_t runMax=-1;
@@ -105,6 +105,46 @@ void s4MomCalc(const char* saveDir,
       endTime   = end4Block;
     }
 
+    // Open ustof file
+    TFile *ustofIn = new TFile(nustof, "read");
+    double tToF[50];
+    float xToF[50];
+    float yToF[50];
+    float A1ToF[50];
+    float A2ToF[50];
+    double tTrig;
+    double tS1;
+    double tSoSd;
+    int nhit;
+    int nBar[50];
+
+    TTree *tree = (TTree*)ustofIn->Get("tree");
+    tree->SetBranchAddress("xToF", xToF);
+    tree->SetBranchAddress("yToF", yToF);
+    tree->SetBranchAddress("A1ToF", A1ToF);
+    tree->SetBranchAddress("A2ToF", A2ToF);
+    tree->SetBranchAddress("nhit", &nhit);
+    tree->SetBranchAddress("tS1", &tS1);
+    tree->SetBranchAddress("tToF", tToF);
+    tree->SetBranchAddress("tTrig", &tTrig);
+    tree->SetBranchAddress("tSoSd", &tSoSd);
+    tree->SetBranchAddress("nBar", nBar);
+    // Get unix start and end times for the ustof files
+    TNamed *start = 0;
+    TNamed *end = 0;
+    ustofIn->GetObject("start_of_run", start);
+    ustofIn->GetObject("end_of_run", end);
+
+    const char* startchar = start->GetTitle();
+    std::string startstr(startchar);
+    std::string unixstart = startstr.substr(25,10);
+    const int ustofStart = stoi(unixstart);
+  
+    const char* endchar = end->GetTitle();
+    std::string endstr(endchar);
+    std::string unixend = endstr.substr(23,10);
+    const int ustofEnd = stoi(unixend);
+
     for (int irun=950; irun<1400; irun++){
       TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
       RawDsTofCoincidence *tofCoinTemp = NULL;
@@ -135,31 +175,97 @@ void s4MomCalc(const char* saveDir,
 
     // Use the spill DB files to match the spills
     for (int irun = runMin; irun < runMax+1; irun++) {
-      TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d", spillDBDir, irun, irun), "read");
+      // Open spill DB files
+      TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDBDir, irun, irun), "read");
       double globalSpillTime;
       double ustofSpillTime;
       TTree *spillTree = (TTree*)dbFile->Get("spillTree");
       spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
       spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
-
-      vector<double> utofSpillTimes;
-      vector<double> dtofSpillTimes;
+      // Open dstof files
+      TFile *dstofFile1 = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+      TFile *dstofFile2 = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc2.root", dstofDir, irun, irun), "read");
+      RawDsTofCoincidence *tofCoin1 = NULL;
+      RawDsTofCoincidence *tofCoin2 = NULL;
+      TTree* dstofTree1 = (TTree*)dstofFile1->Get("tofCoinTree");
+      TTree* dstofTree2 = (TTree*)dstofFile2->Get("tofCoinTree");
+      dstofTree1->SetBranchAddress("tofCoin", &tofCoin1);
+      dstofTree2->SetBranchAddress("tofCoin", &tofCoin2);
+      dstofTree1->GetEntry(0);
+      UInt_t dstofStart = tofCoin1->unixTime[0];
+      // Make vectors of spill times
+      vector<double> ustofSpillTimes;
+      vector<double> dstofSpillTimes;
       for (int db=0; db<spillTree->GetEntries(); db++) {
 	spillTree->GetEntry(db);
-	dtofSpillTimes.push_back(globalSpillTime);
-	utofSpillTimes.push_back(ustofSpillTime);
+	if (globalSpillTime < startTime) continue;
+	if (globalSpillTime > endTime) break;
+	dstofSpillTimes.push_back(globalSpillTime - dstofStart);
+	ustofSpillTimes.push_back(ustofSpillTime - ustofStart);
       } // for (int db=0; db<spillTree->GetEntries(); db++)
+      cout<<ustofSpillTimes.size()<<" spills in run "<<irun<<endl;
       // For each matched spill make a vector of all the hit times in each system
-      for (int spill = 0; spill < utofSpillTimes.size(); spill++) {
-	// Calculate time walk for this spill by taking the 5 spills either side of it
-      } // for (int spill = 0; spill < utofSpillTimes.size(); spill++)
+      //for (int spill = 0; spill < utofSpillTimes.size(); spill++) {
+	// Calculate time drift for this spill by taking the 5 spills either side of it
+      //} // for (int spill = 0; spill < utofSpillTimes.size(); spill++)
+
+      // For second spill in the run make the vector of hits
+      if (ustofSpillTimes.size() > 10) {
+      TGraph *grTmp = new TGraph();
+	for (int i=0; i<10; i++) {
+	  grTmp->SetPoint(grTmp->GetN(), ustofSpillTimes[i], ustofSpillTimes[i] - dstofSpillTimes[i]);
+	} // for (int i=0; i<ustofSpillTimes; i++) 
+	// Fit straight line to the points
+	TF1 *f1 = new TF1("f1", "pol1");
+	grTmp->Fit(f1);
+	double grad = f1->GetParameter(1);
+	cout<<"Time drift is "<<grad<<" seconds / seconds"<<endl;
+
+	// Get dstof hits in the spill in vectors
+	vector<double> dstofHits1;
+	vector<double> dstofHits2;
+	vector<double> ustofHits;
+	cout<<"Dtof spill time is "<<dstofSpillTimes[1]<<endl;
+	
+	for (int d = 0; d < dstofTree1->GetEntries(); d++) {
+	  dstofTree1->GetEntry(d);
+	  if ((tofCoin1->fakeTimeNs[0]/1e9 - dstofSpillTimes[1]) < 0.) continue;
+	  if ((tofCoin1->fakeTimeNs[0]/1e9 - dstofSpillTimes[1]) > 1.) break;
+	  double deltat = TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1]);
+	  double dstofHitT = min(tofCoin1->fakeTimeNs[0], tofCoin1->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2.);
+	  dstofHits1.push_back(dstofHitT/1e9 - dstofSpillTimes[1]);
+	} // for (int d = 0; d < dstofTree1->GetEntries(); d++)
+	for (int d = 0; d < dstofTree2->GetEntries(); d++) {
+	  dstofTree2->GetEntry(d);
+	  if ((tofCoin2->fakeTimeNs[0]/1e9 - dstofSpillTimes[1]) < 0.) continue;
+	  if ((tofCoin2->fakeTimeNs[0]/1e9 - dstofSpillTimes[1]) > 1.) break;
+	  double deltat = TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1]);
+	  double dstofHitT = min(tofCoin2->fakeTimeNs[0], tofCoin2->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2.);
+	  dstofHits2.push_back(dstofHitT/1e9 - dstofSpillTimes[1]);
+	}
+	// Get ustof hits in a vector (accounting for time drift)
+	for (int u = 0; u < tree->GetEntries(); u++) {
+	  tree->GetEntry(u);
+	  if ((tS1/1e9 - ustofSpillTimes[1]) < 0.) continue;
+	  if ((tS1/1e9 - ustofSpillTimes[1]) > 1.) break;
+	  for (int n = 0; n < nhit; n++) {
+	    ustofHits.push_back((tToF[n]/1e9 - ustofSpillTimes[1]) / (1. - grad));
+	  } // for(int n = 0; n < nhit; n++) 
+	} // for (int u = 0; u < tree->GetEntries(); u++)
+
+	  cout<<"Have counted "<<dstofHits1.size()+dstofHits2.size()<<" dstof hits and "<<ustofHits.size()<<" ustof hits"<<endl;
+      } // if (ustofSpillTimes.size() > 10) 
+
 
       dbFile->Close();
+      delete tofCoin1; 
+      delete tofCoin2;
+      dstofFile1->Close();
+      dstofFile2->Close();
+
     } // for (int irun = runMin; irun < runMax+1; irun++) 
 
-    for (int itdc=0; itdc<2; itdc++) { 
-
-    } // for (int itdc=0; itdc<2; itdc++) 
+    ustofIn->Close();
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
 
 } // s4MomCalc
