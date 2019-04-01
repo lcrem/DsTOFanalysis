@@ -202,7 +202,7 @@ void deadtimeTimestamp(const char* utofFile,
 		       const char* ustofDir="/zfs_home/sjones/mylinktoutof") 
 {
   gROOT->SetBatch(kTRUE);
-
+  TFile *fout = new TFile(Form("%s/%s_out.root", saveDir, utofFile), "recreate");
   TH1D *hDeltatDtof = new TH1D(Form("hDeltaDtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in dtof: %s", utofFile), 300, 500, 1000000);
   TH1D *hDeltatUtof = new TH1D(Form("hDeltaUtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in utof: %s", utofFile), 300, 500, 1000000);
   TH1D *hUtofInSpill = new TH1D(Form("hUtofInSpill_%s", utofFile), Form("S1 #cap S2 time since start of spill: %s", utofFile), 400, 0.1, .7);
@@ -334,6 +334,7 @@ void deadtimeTimestamp(const char* utofFile,
     double lastS1S2Dtof = 0.;
     int lastdt = 0;
     for (int spill = 0; spill < tempDtofTimes.size(); spill++) {
+      TGraph *grTimeSinceSpillDtof = new TGraph();
       for (int t = lastdt; t < tofTree->GetEntries(); t++) {
 	tofTree->GetEntry(t);
 	if ((tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) > 1.) break;
@@ -346,9 +347,12 @@ void deadtimeTimestamp(const char* utofFile,
 	  nS1S2dtofTemp[spill]++;
 	  hDeltatDtof->Fill(tof->fakeTimeNs - lastS1S2Dtof);
 	  lastS1S2Dtof = tof->fakeTimeNs;
+	  grTimeSinceSpillDtof->SetPoint(grTimeSinceSpillDtof->GetN(), tof->fakeTimeNs/1e9 + firstTime - tempDtofTimes[spill], grTimeSinceSpillDtof->GetN());
 	  lastdt = t;
 	}
       } // for (int t = 0; t < tofTree->GetEntries(); t++)
+      fout->cd();
+      grTimeSinceSpillDtof->Write(Form("grTimeSinceSpillDtof%d",spill));
     } // for (int spill = 0; spill < tempDtofTimes.size(); spill++)
     // Add this to the larger spill vector 
 
@@ -371,7 +375,7 @@ void deadtimeTimestamp(const char* utofFile,
   // Count number of S1 x S2 hits
   // Only do this for the spills in the spillDB
   int lastut=0;
-  TFile *fout = new TFile(Form("%s/%s_out.root", saveDir, utofFile), "recreate");
+  
   for (int spill = 0; spill < nSpills; spill++) {
     TGraph *grTimeSinceSpill = new TGraph();
     double tempUtofSpill = utofTimes[spill];
