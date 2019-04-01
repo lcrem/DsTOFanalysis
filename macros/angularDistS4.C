@@ -67,12 +67,12 @@ void angularDistS4(const char* saveDir,
   THStack *hsBkgSub = new THStack("hsBkgSub", "Background subtracted and efficiency corrected S4 ToF spectrum; S4 - S1 / ns; Events / spill");
   THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; S4 - S1 / ns; Events / spill");
 
-  THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #times S2 #times S4 angular distribution of proton hits; #phi / degrees; Events / spill");
-  THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S1 #times S2 #times S4 angular distribution of MIP hits; #phi / degrees; Events / spill");
-  THStack *hsProS4Horz = new THStack("hsProS4Horz", "S1 #times S2 #times S4 angular distribution of proton hits; #theta / degrees; Events / spill");
-  THStack *hsPiS4Horz  = new THStack("hsPiS4Horz", "S1 #times S2 #times S4 angular distribution of MIP hits; #theta / degrees; Events / spill");
-  THStack *hsRatioS4Vert = new THStack("hsRatioS4Vert", "S1 #times S2 #times S4 angular distribution of proton/MIP ratio; #phi / degrees; Protons/MIPs");
-  THStack *hsRatioS4Horz = new THStack("hsRatioS4Horz", "S1 #times S2 #times S4 angular distribution of proton/MIP ratio; #theta / degrees; Protons/MIPs");
+  THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #cap S2 #cap S4 angular distribution of proton hits; #phi / degrees; Events / spill");
+  THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S1 #cap S2 #cap S4 angular distribution of MIP hits; #phi / degrees; Events / spill");
+  THStack *hsProS4Horz = new THStack("hsProS4Horz", "S1 #cap S2 #cap S4 angular distribution of proton hits; #theta / degrees; Events / spill");
+  THStack *hsPiS4Horz  = new THStack("hsPiS4Horz", "S1 #cap S2 #cap S4 angular distribution of MIP hits; #theta / degrees; Events / spill");
+  THStack *hsRatioS4Vert = new THStack("hsRatioS4Vert", "S1 #cap S2 #cap S4 angular distribution of proton/MIP ratio; #phi / degrees; Protons/MIPs");
+  THStack *hsRatioS4Horz = new THStack("hsRatioS4Horz", "S1 #cap S2 #cap S4 angular distribution of proton/MIP ratio; #theta / degrees; Protons/MIPs");
 
   TLegend *leg = new TLegend(0.65, 0.55, 0.85, .85);
 
@@ -177,6 +177,7 @@ void angularDistS4(const char* saveDir,
     // Calculating cosmic fluxes
     // Two different cases -- 0 block data with only 3 bars amplified
     // Everything else -- all bars apart from 1, 2, and 10 amplified
+    /*
     cout<<"Calculating cosmic flux"<<endl;
     int cosmicRunMin = -1;
     int cosmicRunMax = -1;
@@ -188,8 +189,8 @@ void angularDistS4(const char* saveDir,
       cosmicRunMin = 1035;
       cosmicRunMax = 1045;
     }
-
-// Now loop over these files and find the cosmic fluxes
+    
+    // Now loop over these files and find the cosmic fluxes
     int nSpillsCos = 0;    
     for (int itdc=0; itdc<2; itdc++) {
       nSpillsCos = 0;
@@ -257,7 +258,7 @@ void angularDistS4(const char* saveDir,
 	}
       }
     }
-
+    */
     // Need these to calculate bar efficiencies
     TH1D *hCoins = new TH1D(Form("hCoins_%d",nBlocks), Form("Bar coincidences + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
     TH1D *hHits  = new TH1D(Form("hHits_%d",nBlocks), Form("PMT hits + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
@@ -320,6 +321,7 @@ void angularDistS4(const char* saveDir,
 	  if (tof->channel > 10 || tof->channel == 0) continue;
 	  int ustofEntry = ustofTree->GetEntryNumberWithBestIndex(tof->fakeTimeNs);
 	  ustofTree->GetEntry(ustofEntry);
+
 	  if (tof->fakeTimeNs - ustofNs < 260. && tof->fakeTimeNs - ustofNs > 130.) {
 	    if (itdc == 0) { // TDC1
 	      if (tof->channel % 2 == 1) { // PMT B
@@ -424,7 +426,7 @@ void angularDistS4(const char* saveDir,
 	  hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	  double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	  if (tofCalc < piHi & tofCalc > piLow) { 
-	    nPi += (1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)/*hEff->GetBinContent(tofCoin->bar)*/);
+	    nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 	    // Calculate position of hit in global coordinates
 	    double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
 	    double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
@@ -432,11 +434,11 @@ void angularDistS4(const char* saveDir,
 	    // Calculate the angles relative to the nominal beamline
 	    double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	    double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-	    hPiS4Horz->Fill(angleTheta, 1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)/*hEff->GetBinContent(tofCoin->bar)*/);
-	    hPiS4Vert->Fill(anglePhi,   1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)  /*hEff->GetBinContent(tofCoin->bar)*/);
+	    hPiS4Horz->Fill(angleTheta, 1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/ hEff->GetBinContent(tofCoin->bar));
+	    hPiS4Vert->Fill(anglePhi,   1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 	  } // if (tofCalc < piHi & tofCalc > piLow)
 	  else if (tofCalc < proHi & tofCalc > proLow) {
-	    nP += (1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)/*hEff->GetBinContent(tofCoin->bar)*/);
+	    nP += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 	    // Calculate position of hit in global coordinates
 	    double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
 	    double positionY = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (baselineS1S4End - baselineS1S4Start) + baselineS1S4Start;
@@ -444,8 +446,8 @@ void angularDistS4(const char* saveDir,
 	    // Calculate the angles relative to the nominal beamline
 	    double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	    double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-	    hProS4Horz->Fill(angleTheta, 1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)/*hEff->GetBinContent(tofCoin->bar)*/);
-	    hProS4Vert->Fill(anglePhi,   1. / h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)/*hEff->GetBinContent(tofCoin->bar)*/);
+	    hProS4Horz->Fill(angleTheta, 1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
+	    hProS4Vert->Fill(anglePhi,   1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 	  } // else if (tofCalc < proHi & tofCalc > proLow) 
 	} // if (tofCalc < 160. && tofCalc > 30.) 
       } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
@@ -480,6 +482,7 @@ void angularDistS4(const char* saveDir,
     // Background subtracted tof spectrum
     TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
     hdtof1d_sub->Add(fSub, -1.);
+    hdtof1d_sub->Scale(1. / nSpillsTrue);
     // If the bin content drops below 0, set to 0
     for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
       if (hdtof1d_sub->GetBinContent(b) < 0.) {
@@ -487,32 +490,73 @@ void angularDistS4(const char* saveDir,
       } // if (hdtof1d_sub->GetBinContent(b) < 0.)
     } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
     TCanvas *cdtof_sub = new TCanvas(Form("%d_cdtof_sub",nBlocks));
+
+    // Integrate background function between proton and pion windows and then subtract
+    double piBkg  = fSub->Integral(piLow,  piHi) / (0.5*nSpillsTrue);
+    double proBkg = fSub->Integral(proLow, proHi) / (0.5*nSpillsTrue);
+    cout<<"Pion backgrounds "<<piBkg<<", proton backgrounds "<<proBkg<<endl;
+
     cdtof_sub->SetLogy();
     hdtof1d_sub->Draw("hist");
+    hdtof1d_sub->GetXaxis()->SetLabelSize(0.05);
+    hdtof1d_sub->GetYaxis()->SetLabelSize(0.05);
+    hdtof1d_sub->GetXaxis()->SetTitleSize(0.05);
+    hdtof1d_sub->GetYaxis()->SetTitleSize(0.05);
     hdtof1d_sub->Write();
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.png", saveDir, nBlocks));
     cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.pdf", saveDir, nBlocks));
 
+    cout<<"Spills "<<nSpills<<" ("<<nSpillsTrue<<" true)"<<endl;
+
+    // Subtract background hits
     TCanvas *cProS4Horz = new TCanvas(Form("cProS4Horz%d",nBlocks));
     hProS4Horz->Scale(1. / nSpillsTrue);
+    for (int b=1; b < 21; b++) {
+      hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) - (proBkg/20.));
+      if (hProS4Horz->GetBinContent(b) < 0.) {
+	hProS4Horz->SetBinContent(b, 0);
+	hProS4Horz->SetBinError(b, 0);
+      }
+    }
     hProS4Horz->Draw("hist e");
     cProS4Horz->Print(Form("%s/%d_proS4Horz.png",saveDir,nBlocks));
     cProS4Horz->Print(Form("%s/%d_proS4Horz.pdf",saveDir,nBlocks));
     cProS4Horz->Print(Form("%s/%d_proS4Horz.tex",saveDir,nBlocks));
     TCanvas *cPiS4Horz  = new TCanvas(Form("cPiS4Horz%d",nBlocks));
     hPiS4Horz->Scale(1. / nSpillsTrue);
+    for (int b=1; b < 21; b++) {
+      hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) - (piBkg/20.));
+      if (hPiS4Horz->GetBinContent(b) < 0.) {
+	hPiS4Horz->SetBinError(b, 0);
+	hPiS4Horz->SetBinContent(b, 0);
+      }
+    }
     hPiS4Horz->Draw("hist e");
     cPiS4Horz->Print(Form("%s/%d_piS4Horz.png",saveDir,nBlocks));
     cPiS4Horz->Print(Form("%s/%d_piS4Horz.pdf",saveDir,nBlocks));
     cPiS4Horz->Print(Form("%s/%d_piS4Horz.tex",saveDir,nBlocks));
     TCanvas *cProS4Vert = new TCanvas(Form("cProS4Vert%d",nBlocks));
     hProS4Vert->Scale(1. / nSpillsTrue);
+    for (int b=1; b < 10; b++) {
+      hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) - (proBkg/9.));
+      if (hProS4Vert->GetBinContent(b) < 0.) {
+	hProS4Vert->SetBinError(b, 0);
+	hProS4Vert->SetBinContent(b, 0);
+      }
+    }
     hProS4Vert->Draw("hist e");
     cProS4Vert->Print(Form("%s/%d_proS4Vert.png",saveDir,nBlocks));
     cProS4Vert->Print(Form("%s/%d_proS4Vert.pdf",saveDir,nBlocks));
     cProS4Vert->Print(Form("%s/%d_proS4Vert.tex",saveDir,nBlocks));
     TCanvas *cPiS4Vert  = new TCanvas(Form("cPiS4Vert%d",nBlocks));
     hPiS4Vert->Scale(1. / nSpillsTrue);
+    for (int b=1; b < 10; b++) {
+      hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) - (piBkg/9.));
+      if (hPiS4Vert->GetBinContent(b) < 0.) {
+	hPiS4Vert->SetBinError(b, 0);
+	hPiS4Vert->SetBinContent(b, 0);
+      }
+    }
     hPiS4Vert->Draw("hist e");
     cPiS4Vert->Print(Form("%s/%d_piS4Vert.png",saveDir,nBlocks));
     cPiS4Vert->Print(Form("%s/%d_piS4Vert.pdf",saveDir,nBlocks));
@@ -623,7 +667,6 @@ void angularDistS4(const char* saveDir,
       legRatioVert->AddEntry(hProPiRatioS4Vert, "4 blocks", "l");
     }
     hdtof1d->Scale(1. / nSpillsTrue);
-    hdtof1d_sub->Scale(1. / nSpillsTrue);
     hsDtof->Add(hdtof1d);
     hsBkgSub->Add(hdtof1d_sub);
     hsProS4Vert->Add(hProS4Vert);
@@ -714,6 +757,14 @@ void angularDistS4(const char* saveDir,
   csBkgSub->SetLogy();
   hsBkgSub->Draw("hist nostack");
   hsBkgSub->GetYaxis()->SetRangeUser(1e-2, 2e2);
+  hsBkgSub->GetXaxis()->SetLabelSize(0.06);
+  hsBkgSub->GetYaxis()->SetLabelSize(0.06);
+  hsBkgSub->GetXaxis()->SetTitleSize(0.06);
+  hsBkgSub->GetYaxis()->SetTitleSize(0.06);
+  csBkgSub->SetLeftMargin(0.13);
+  csBkgSub->SetBottomMargin(0.13);
+  csBkgSub->SetGridx();
+  csBkgSub->SetGridy();
   csBkgSub->Update();
   leg->Draw();
   hsBkgSub->Write();
@@ -723,10 +774,12 @@ void angularDistS4(const char* saveDir,
 
   TCanvas *cspros4vert = new TCanvas("cspros4vert");
   hsProS4Vert->Draw("hist e nostack");
-  hsProS4Vert->GetXaxis()->SetLabelSize(0.05);
-  hsProS4Vert->GetYaxis()->SetLabelSize(0.05);
-  hsProS4Vert->GetXaxis()->SetTitleSize(0.05);
-  hsProS4Vert->GetYaxis()->SetTitleSize(0.05);
+  hsProS4Vert->GetXaxis()->SetLabelSize(0.06);
+  hsProS4Vert->GetYaxis()->SetLabelSize(0.06);
+  hsProS4Vert->GetXaxis()->SetTitleSize(0.06);
+  hsProS4Vert->GetYaxis()->SetTitleSize(0.06);
+  cspros4vert->SetGridx();
+  cspros4vert->SetGridy();
   leg->Draw();
   hsProS4Vert->Write();
   cspros4vert->Print(Form("%s/proS4Vert.png",saveDir));
@@ -738,6 +791,8 @@ void angularDistS4(const char* saveDir,
   hsPiS4Vert->GetYaxis()->SetLabelSize(0.05);
   hsPiS4Vert->GetXaxis()->SetTitleSize(0.05);
   hsPiS4Vert->GetYaxis()->SetTitleSize(0.05);
+  cspis4vert->SetGridx();
+  cspis4vert->SetGridy();
   leg->Draw();
   hsPiS4Vert->Write();
   cspis4vert->Print(Form("%s/piS4Vert.png",saveDir));
@@ -745,10 +800,14 @@ void angularDistS4(const char* saveDir,
   cspis4vert->Print(Form("%s/piS4Vert.tex",saveDir));
   TCanvas *cspros4horz = new TCanvas("cspros4horz");
   hsProS4Horz->Draw("hist e nostack");
-  hsProS4Horz->GetXaxis()->SetLabelSize(0.05);
-  hsProS4Horz->GetYaxis()->SetLabelSize(0.05);
-  hsProS4Horz->GetXaxis()->SetTitleSize(0.05);
-  hsProS4Horz->GetYaxis()->SetTitleSize(0.05);
+  hsProS4Horz->GetXaxis()->SetLabelSize(0.06);
+  hsProS4Horz->GetYaxis()->SetLabelSize(0.06);
+  hsProS4Horz->GetXaxis()->SetTitleSize(0.06);
+  hsProS4Horz->GetYaxis()->SetTitleSize(0.06);
+  cspros4horz->SetLeftMargin(0.13);
+  cspros4horz->SetBottomMargin(0.13);
+  cspros4horz->SetGridx();
+  cspros4horz->SetGridy();
   legProS4Horz->Draw();
   legProS4Horz->Write("legproS4Horz");
   hsProS4Horz->Write();
@@ -757,10 +816,14 @@ void angularDistS4(const char* saveDir,
   cspros4horz->Print(Form("%s/proS4Horz.tex",saveDir));
   TCanvas *cspis4horz  = new TCanvas("cspis4horz");
   hsPiS4Horz->Draw("hist e nostack");
-  hsPiS4Horz->GetXaxis()->SetLabelSize(0.05);
-  hsPiS4Horz->GetYaxis()->SetLabelSize(0.05);
-  hsPiS4Horz->GetXaxis()->SetTitleSize(0.05);
-  hsPiS4Horz->GetYaxis()->SetTitleSize(0.05);
+  hsPiS4Horz->GetXaxis()->SetLabelSize(0.06);
+  hsPiS4Horz->GetYaxis()->SetLabelSize(0.06);
+  hsPiS4Horz->GetXaxis()->SetTitleSize(0.06);
+  hsPiS4Horz->GetYaxis()->SetTitleSize(0.06);
+  cspis4horz->SetLeftMargin(0.13);
+  cspis4horz->SetBottomMargin(0.13);
+  cspis4horz->SetGridx();
+  cspis4horz->SetGridy();
   legPiS4Horz->Draw();
   legPiS4Horz->Write("legpiS4Horz");
   hsPiS4Horz->Write();
@@ -770,10 +833,14 @@ void angularDistS4(const char* saveDir,
 
   TCanvas *csratios4vert = new TCanvas("csratios4vert");
   hsRatioS4Vert->Draw("hist e nostack");
-  hsRatioS4Vert->GetXaxis()->SetLabelSize(0.05);
-  hsRatioS4Vert->GetYaxis()->SetLabelSize(0.05);
-  hsRatioS4Vert->GetXaxis()->SetTitleSize(0.05);
-  hsRatioS4Vert->GetYaxis()->SetTitleSize(0.05);
+  hsRatioS4Vert->GetXaxis()->SetLabelSize(0.06);
+  hsRatioS4Vert->GetYaxis()->SetLabelSize(0.06);
+  hsRatioS4Vert->GetXaxis()->SetTitleSize(0.06);
+  hsRatioS4Vert->GetYaxis()->SetTitleSize(0.06);
+  csratios4vert->SetLeftMargin(0.13);
+  csratios4vert->SetBottomMargin(0.13);
+  csratios4vert->SetGridx();
+  csratios4vert->SetGridy();
   legRatioVert->Draw();
   leg->Write("legOrdinary");
   hsRatioS4Vert->Write();
@@ -782,10 +849,14 @@ void angularDistS4(const char* saveDir,
   csratios4vert->Print(Form("%s/ratioS4Vert.tex", saveDir));
   TCanvas *csratios4horz = new TCanvas("csratios4horz");
   hsRatioS4Horz->Draw("hist e nostack");
-  hsRatioS4Horz->GetXaxis()->SetLabelSize(0.05);
-  hsRatioS4Horz->GetYaxis()->SetLabelSize(0.05);
-  hsRatioS4Horz->GetXaxis()->SetTitleSize(0.05);
-  hsRatioS4Horz->GetYaxis()->SetTitleSize(0.05);
+  hsRatioS4Horz->GetXaxis()->SetLabelSize(0.06);
+  hsRatioS4Horz->GetYaxis()->SetLabelSize(0.06);
+  hsRatioS4Horz->GetXaxis()->SetTitleSize(0.06);
+  hsRatioS4Horz->GetYaxis()->SetTitleSize(0.06);
+  csratios4horz->SetLeftMargin(0.13);
+  csratios4horz->SetBottomMargin(0.13);
+  csratios4horz->SetGridx();
+  csratios4horz->SetGridy();
   leg->Draw();
   hsRatioS4Horz->Write();
   csratios4horz->Print(Form("%s/ratioS4Horz.png", saveDir));
