@@ -302,9 +302,21 @@ void deadtimeTimestamp(const char* utofFile,
   // Now go over the spill DB files for these runs and 
   // make two vectors of the appropriate matching spill times
   int spillCount = 0;
+
+  TTree *dtofSpillTree = new TTree("dtofSpillTree", "Dtof spills");
+  TTree *utofSpillTree = new TTree("utofSpillTree", "Utof spills");
+  int dtofHits;
+  int dtofHitsEarly;
+  dtofSpillTree->Branch("dtofHits", &dtofHits);
+  dtofSpillTree->Branch("dtofHitsEarly", &dtofHitsEarly);
+  int utofHits;
+  int utofHitsEarly;
+  utofSpillTree->Branch("utofHits", &utofHits);
+  utofSpillTree->Branch("utofHitsEarly", &utofHitsEarly);
+
   for (int irun = runMin; irun < runMax+1; irun++) {
     cout<<"Getting hits for dtof run "<<irun<<endl;
-    // if (irun == 1058) continue;
+
     TFile *dbFile = new TFile(Form("~/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
     std::vector<double> tempDtofTimes;
     TTree *spillTree = (TTree*)dbFile->Get("spillTree");
@@ -343,6 +355,8 @@ void deadtimeTimestamp(const char* utofFile,
     int lastdt = 0;
 
     for (int spill = 0; spill < tempDtofTimes.size(); spill++) {
+      dtofHits = 0;
+      dtofHitsEarly = 0;
       TGraph *grTimeSinceSpillDtof = new TGraph();
       for (int t = lastdt; t < tofTree->GetEntries(); t++) {
 	tofTree->GetEntry(t);
@@ -355,12 +369,14 @@ void deadtimeTimestamp(const char* utofFile,
 	    (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
 	  nS1S2dtofTemp[spill]++;
 	  nS1S2dtof++;
+	  dtofHits++;
 	  hDeltatDtof->Fill(tof->fakeTimeNs - lastS1S2Dtof);
 	  lastS1S2Dtof = tof->fakeTimeNs;
 	  grTimeSinceSpillDtof->SetPoint(grTimeSinceSpillDtof->GetN(), tof->fakeTimeNs/1e9 + firstTime - tempDtofTimes[spill], grTimeSinceSpillDtof->GetN());
 	  lastdt = t;
 	  if ((tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) < .29) {
 	    nS1S2dtofEarly++;
+	    dtofHitsEarly++;
 	    hDeltatDtofEarly->Fill(tof->fakeTimeNs - lastS1S2DtofEarly);
 	    lastS1S2DtofEarly = tof->fakeTimeNs;
 	  }
@@ -370,6 +386,7 @@ void deadtimeTimestamp(const char* utofFile,
       grTimeSinceSpillDtof->SetTitle(Form("Event number versus time since spill start in dtof, spill %d; Time since spill start / s; Event no.", spillCount));
       grTimeSinceSpillDtof->Write(Form("grTimeSinceSpillDtof%d", spillCount));
       spillCount++;
+      dtofSpillTree->Fill();
     } // for (int spill = 0; spill < tempDtofTimes.size(); spill++)
     // Add this to the larger spill vector 
 
@@ -397,6 +414,8 @@ void deadtimeTimestamp(const char* utofFile,
     TGraph *grTimeSinceSpill = new TGraph();
     double tempUtofSpill = utofTimes[spill];
     double tempDtofSpill = dtofTimes[spill];
+    utofHits = 0;
+    utofHitsEarly = 0;
     for (int t=lastut; t<tree->GetEntries(); t++ ) {
       tree->GetEntry(t);
       if ((tSoSd/1e9 + startTime) > tempUtofSpill) break;
@@ -404,6 +423,7 @@ void deadtimeTimestamp(const char* utofFile,
       if (tTrig !=0 && (tSoSd/1e9 + startTime) == tempUtofSpill) {
 	nS1S2utof++;
 	nS1S2utofVec[spill]++;
+	utofHits++;
 	hDeltatUtof->Fill(tTrig - lastS1S2utof);
 	hUtofInSpill->Fill(tTrig/1e9 + startTime - tempUtofSpill);
 	grTimeSinceSpill->SetPoint(grTimeSinceSpill->GetN(), tTrig/1e9 + startTime - tempUtofSpill, grTimeSinceSpill->GetN());
@@ -411,6 +431,7 @@ void deadtimeTimestamp(const char* utofFile,
 	lastut=t;
 	if ((tTrig - tSoSd) < 0.29e9) {
 	  nS1S2utofEarly++;
+	  utofHitsEarly++;
 	  hDeltatUtofEarly->Fill(tTrig - lastS1S2utofEarly);
 	  lastS1S2utofEarly = tTrig;
 	} // if ((tTrig - tSoSd) < 0.29e9)
@@ -419,6 +440,7 @@ void deadtimeTimestamp(const char* utofFile,
     cout<<"Utof spill at "<<tempUtofSpill<<", hits "<<nS1S2utofVec[spill]<<", Dtof spill at "<<tempDtofSpill<<", hits "<<nS1S2dtofVec[spill]<<endl;
     grTimeSinceSpill->SetTitle(Form("Event number versus time since spill start, spill %d; Time since spill start / s; Event no.", spill));
     grTimeSinceSpill->Write(Form("grTimeSinceSpill%d",spill));
+    utofSpillTree->Fill();
   } // for (int spill = 0; spill < nSpills; spill++) 
   
   cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<", Ratio "<<(double)nS1S2utof/(double)nS1S2dtof<<endl;
@@ -486,15 +508,19 @@ void deadtimeTimestamp(const char* utofFile,
 
   TGraph *grRatioDtof = new TGraph();
   TGraph *grUtofDtof  = new TGraph();
+  /*
   TTree *s1s2Tree = new TTree("s1s2Tree", "S1S2 Hits");
   s1s2Tree->SetDirectory(0);
   double utof;
   double dtof;
   s1s2Tree->Branch("utof", &utof);
   s1s2Tree->Branch("dtof", &dtof);
+  */
   for (int n=0; n < nSpills; n++) {
     grUtofDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], nS1S2utofVec[n]);
-    grRatioDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
+    if (nS1S2dtofVec[n] != 0) {
+      grRatioDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
+    }
   }
 
   TCanvas *cRatioDtof = new TCanvas("cRatioDtof");
@@ -514,6 +540,8 @@ void deadtimeTimestamp(const char* utofFile,
   cUtofInSpill->Print(Form("%s/%s_UtofInSpill.png", saveDir, utofFile));
   cUtofInSpill->Print(Form("%s/%s_UtofInSpill.pdf", saveDir, utofFile));
 
+  utofSpillTree->Write();
+  dtofSpillTree->Write();
   hDeltatDtof->Write();
   hDeltatUtof->Write();
   hUtofInSpill->Write();
