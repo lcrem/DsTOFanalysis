@@ -2,7 +2,7 @@
 // Calculate total number of protons per spill across the data with no electron target
 
 void intProtons(const char* saveDir,
-		const char* ustofDir="/zfs_home/sjones/mylinktoutof",
+		const char* ustofDir="/zfs_home/sjones/mylinktoutof/",
 		const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/") 
 {
   gROOT->SetBatch(kTRUE);
@@ -42,8 +42,10 @@ void intProtons(const char* saveDir,
   TTree *outTree = new TTree("outTree", "Particles in spill");
   int nP;
   int nPi;
+  double spillTime;
   outTree->Branch("nP", &nP);
   outTree->Branch("nPi", &nPi);
+  outTree->Branch("spillTime", &spillTime);
 
   const char* ext   = ".root";
   const char* pref  = "Data";
@@ -52,13 +54,16 @@ void intProtons(const char* saveDir,
   const char *entry;
 
   char *dir  = gSystem->ExpandPathName(ustofDir);
-  void *dirp = gSystem->ExpandPathName(dir);
+  void *dirp = gSystem->OpenDirectory(dir);
+
+  vector<pair<double, TString> > fileVec;
+
+  cout.precision(13);
 
   // Go through directory and open each utof file
   while (entry = (char*)gSystem->GetDirEntry(dirp)) {
     str = entry;
-    if (str.EndsWith(ext) && str.Contains(pref) && !str.Contains("3block")
-	&& !str.Contains("2block") && !str.Contains("1block") && !str.Contains("0block")) {
+    if (str.EndsWith(ext) && str.Contains(pref) && !str.Contains("3block") && !str.Contains("2block") && !str.Contains("1block") && !str.Contains("0block")) {
       cout<<"Checking utof file "<<str<<endl;
       TString strTemp = str;
       str.Prepend(ustofDir);
@@ -76,54 +81,77 @@ void intProtons(const char* saveDir,
       string unixend   = endstr.substr(23,10);
       double ustofStart = stod(unixstart);	 
       double ustofEnd   = stod(unixend);
-      // Go through file and count how many protons and pions in each spill
-      double tSoSd;
-      int nhit;
-      int nBar[50];
-      double tToF[50];
-      float A1ToF[50];
-      float A2ToF[50];
-      double tS1;
-      double tTrig;
-      tree->SetBranchAddress("tSoSd", &tSoSd);
-      tree->SetBranchAddress("tS1", &tS1);
-      tree->SetBranchAddress("tTrig", &tTrig);
-      tree->SetBranchAddress("tToF", tToF);
-      tree->SetBranchAddress("nhit", &nhit);
-      tree->SetBranchAddress("nBar", nBar);
-      tree->SetBranchAddress("A1ToF", A1ToF);
-      tree->SetBranchAddress("A2ToF", A2ToF);
-
-      int lastSpill = 0.;
-      for (int t = 0; t < tree->GetEntries(); t++) {
-	tree->GetEntry(t);
-	if ((tSoSd - lastSpill) > 2e9) {
-	  lastSpill = tSoSd;
-	  nPi = 0;
-	  nP  = 0;
-	} // if ((tSoSd - lastSpill) < 2e9)
-
-	for (int n = 0; n < hit; n++) {
-	  double tofCalc = tToF[n] - tS1 + (tLight - (piLow + piHi)/2.);
-	  if (tofCalc > (tLight - (piLow+piHi)/2.) + piLow && 
-	      tofCalc < (tLight - (piLow+piHi)/2.) + piHi &&
-	      (tToF[n] - tSoSd) < 1e9) {
-	    nPi++;
-	  } // Is a pion
-	  else if (tofCalc > (tLight - (proLow + proHi)/2.) + proLow && 
-		   tofCalc < (tLight - (proLow + proHi)/2.) + proHi && 
-		   A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]] &&
-		   (tToF[n] - tSoSd) < 1e9) {
-	    nP++;
-	  } // Is a proton	    
-	} // for (int n = 0; n < hit; n++)
-      } // for (int t = 0; t < tree->GetEntries(); t++)      
-
-      delete start;
-      delete end;
-      ustofFile->Close();
+      fileVec.push_back(make_pair(ustofStart, strTemp));
+            
     } // if (str.EndsWith(ext) && str.Contains(pref) && str.Contains("4block"))
   } // while (entry = (char*)gSystem->GetDirEntry(dirp))
+  sort(begin(fileVec), end(fileVec));
+  cout<<"Files: "<<fileVec.size()<<endl;
+
+  for (int i=0; i<fileVec.size(); i++){ 
+    cout<<fileVec[i].second<<", "<<fileVec[i].first<<endl;
+  }
+
+  // Now go through files and count the protons
+  for (int i=0; i<fileVec.size(); i++) {
+    TString path = fileVec[i].second;
+    path.Prepend(ustofDir);
+    TFile *ustofFile = new TFile(path, "read");
+    TTree *tree = (TTree*)ustofFile->Get("tree");
+    // Go through file and count how many protons and pions in each spill
+    double tSoSd;
+    int nhit;
+    int nBar[50];
+    double tToF[50];
+    float A1ToF[50];
+    float A2ToF[50];
+    double tS1;
+    double tTrig;
+    tree->SetBranchAddress("tSoSd", &tSoSd);
+    tree->SetBranchAddress("tS1", &tS1);
+    tree->SetBranchAddress("tTrig", &tTrig);
+    tree->SetBranchAddress("tToF", tToF);
+    tree->SetBranchAddress("nhit", &nhit);
+    tree->SetBranchAddress("nBar", nBar);
+    tree->SetBranchAddress("A1ToF", A1ToF);
+    tree->SetBranchAddress("A2ToF", A2ToF);
+
+    spillTime = fileVec[i].first;
+    fout->cd();
+    double lastSpill=0.;
+    for (int t = 0; t < tree->GetEntries(); t++) {
+      tree->GetEntry(t);
+      if ((tSoSd - lastSpill) > 2e9) {
+	cout<<"Spill at "<<spillTime<<", nP, nPi, "<<nP<<", "<<nPi<<endl;
+	outTree->Fill();
+	lastSpill = tSoSd;
+	spillTime = fileVec[i].first + (tSoSd/1e9);
+	nPi = 0;
+	nP  = 0;
+      } // if ((tSoSd - lastSpill) < 2e9)
+
+      for (int n = 0; n < nhit; n++) {
+	double tofCalc = tToF[n] - tS1; //+ (tLight - (piLow + piHi)/2.);
+	if (tofCalc > /*(tLight - (piLow+piHi)/2.) +*/ piLow && 
+	    tofCalc < /*(tLight - (piLow+piHi)/2.) +*/ piHi &&
+	    (tToF[n] - tSoSd) < 1e9) {
+	  nPi++;
+	} // Is a pion
+	else if (tofCalc > /*(tLight - (piLow + piHi)/2.) +*/ proLow && 
+		 tofCalc < /*(tLight - (piLow + piHi)/2.) +*/ proHi && 
+		 A1ToF[n] > A1CutVec[nBar[n]] && A2ToF[n] > A2CutVec[nBar[n]] &&
+		 (tToF[n] - tSoSd) < 1e9) 
+	  {
+	  nP++;
+	} // Is a proton	    
+      } // for (int n = 0; n < hit; n++)
+    } // for (int t = 0; t < tree->GetEntries(); t++)
+
+    ustofFile->Close();
+  }
+  fout->cd();
+  outTree->Write();
+  cout<<outTree->GetEntries()<<" recorded"<<endl;
   fout->Close();
 
 } // intProtons
