@@ -205,10 +205,14 @@ void deadtimeTimestamp(const char* utofFile,
   TFile *fout = new TFile(Form("%s/%s_out.root", saveDir, utofFile), "recreate");
   TH1D *hDeltatDtof = new TH1D(Form("hDeltaDtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in dtof: %s", utofFile), 300, 500, 1000000);
   TH1D *hDeltatUtof = new TH1D(Form("hDeltaUtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in utof: %s", utofFile), 300, 500, 1000000);
+  TH1D *hDeltatDtofEarly = new TH1D(Form("hDeltaDtofEarly_%s", utofFile), Form("S1 #cap S2 #deltat measured in dtof (first 0.29s of spill): %s", utofFile), 300, 500, 1000000);
+  TH1D *hDeltatUtofEarly = new TH1D(Form("hDeltaUtofEarly_%s", utofFile), Form("S1 #cap S2 #deltat measured in utof (first 0.29s of spill): %s", utofFile), 300, 500, 1000000);
   TH1D *hUtofInSpill = new TH1D(Form("hUtofInSpill_%s", utofFile), Form("S1 #cap S2 time since start of spill: %s", utofFile), 400, 0.1, .7);
 
   // Ustof-dstof cable delay
   const double ustofDelay = 184.7;
+  // Apparent cut off time from spill profiles
+  const double cutOffT = 0.29;
 
   double startTime = 0;
   double endTime   = 0;
@@ -293,8 +297,11 @@ void deadtimeTimestamp(const char* utofFile,
   cout << "Min and max runs are " << runMin << " " << runMax << endl;
   
   std::vector<int> nS1S2dtofVec;
+  int nS1S2dtof      = 0;
+  int nS1S2dtofEarly = 0;
   // Now go over the spill DB files for these runs and 
   // make two vectors of the appropriate matching spill times
+  int spillCount = 0;
   for (int irun = runMin; irun < runMax+1; irun++) {
     cout<<"Getting hits for dtof run "<<irun<<endl;
     // if (irun == 1058) continue;
@@ -332,7 +339,9 @@ void deadtimeTimestamp(const char* utofFile,
     // Loop over only the spill times in this particular dtof file
     // Saves us having to open loads of dtof files to check if the spill is there
     double lastS1S2Dtof = 0.;
+    double lastS1S2DtofEarly = 0.;
     int lastdt = 0;
+
     for (int spill = 0; spill < tempDtofTimes.size(); spill++) {
       TGraph *grTimeSinceSpillDtof = new TGraph();
       for (int t = lastdt; t < tofTree->GetEntries(); t++) {
@@ -345,14 +354,22 @@ void deadtimeTimestamp(const char* utofFile,
 	    (tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) > 0. &&
 	    (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
 	  nS1S2dtofTemp[spill]++;
+	  nS1S2dtof++;
 	  hDeltatDtof->Fill(tof->fakeTimeNs - lastS1S2Dtof);
 	  lastS1S2Dtof = tof->fakeTimeNs;
 	  grTimeSinceSpillDtof->SetPoint(grTimeSinceSpillDtof->GetN(), tof->fakeTimeNs/1e9 + firstTime - tempDtofTimes[spill], grTimeSinceSpillDtof->GetN());
 	  lastdt = t;
-	}
+	  if ((tof->fakeTimeNs/1e9 - tempDtofTimes[spill] + firstTime) < .29) {
+	    nS1S2dtofEarly++;
+	    hDeltatDtofEarly->Fill(tof->fakeTimeNs - lastS1S2DtofEarly);
+	    lastS1S2DtofEarly = tof->fakeTimeNs;
+	  }
+	} // Is an S1S2 coincidence
       } // for (int t = 0; t < tofTree->GetEntries(); t++)
       fout->cd();
-      grTimeSinceSpillDtof->Write(Form("grTimeSinceSpillDtof%d",spill));
+      grTimeSinceSpillDtof->SetTitle(Form("Event number versus time since spill start in dtof, spill %d; Time since spill start / s; Event no.", spillCount));
+      grTimeSinceSpillDtof->Write(Form("grTimeSinceSpillDtof%d", spillCount));
+      spillCount++;
     } // for (int spill = 0; spill < tempDtofTimes.size(); spill++)
     // Add this to the larger spill vector 
 
@@ -368,14 +385,14 @@ void deadtimeTimestamp(const char* utofFile,
   cout<<"Counting over "<<nSpills<<" matched spills"<<endl;
 
   int nS1S2utof = 0;
-  int nS1S2dtof = 0;
+  int nS1S2utofEarly = 0;
   std::vector<int> nS1S2utofVec;
   nS1S2utofVec.resize(nSpills, 0);
   //nS1S2dtofVec.resize(nSpills, 0);
   // Count number of S1 x S2 hits
   // Only do this for the spills in the spillDB
   int lastut=0;
-  
+  double lastS1S2utofEarly = 0.;
   for (int spill = 0; spill < nSpills; spill++) {
     TGraph *grTimeSinceSpill = new TGraph();
     double tempUtofSpill = utofTimes[spill];
@@ -392,6 +409,11 @@ void deadtimeTimestamp(const char* utofFile,
 	grTimeSinceSpill->SetPoint(grTimeSinceSpill->GetN(), tTrig/1e9 + startTime - tempUtofSpill, grTimeSinceSpill->GetN());
 	lastS1S2utof = tTrig;
 	lastut=t;
+	if ((tTrig - tSoSd) < 0.29e9) {
+	  nS1S2utofEarly++;
+	  hDeltatUtofEarly->Fill(tTrig - lastS1S2utofEarly);
+	  lastS1S2utofEarly = tTrig;
+	} // if ((tTrig - tSoSd) < 0.29e9)
       }
     }
     cout<<"Utof spill at "<<tempUtofSpill<<", hits "<<nS1S2utofVec[spill]<<", Dtof spill at "<<tempDtofSpill<<", hits "<<nS1S2dtofVec[spill]<<endl;
@@ -400,11 +422,13 @@ void deadtimeTimestamp(const char* utofFile,
   } // for (int spill = 0; spill < nSpills; spill++) 
   
   cout<<"Dtof S1 S2 "<<nS1S2dtof<<", Utof S1 S2 "<<nS1S2utof<<", Ratio "<<(double)nS1S2utof/(double)nS1S2dtof<<endl;
+  cout<<"Early hits, Dtof S1 S2 "<<nS1S2dtofEarly<<", Utof S1 S2 "<<nS1S2utofEarly<<", Ratio "<<(double)nS1S2utofEarly/(double)nS1S2dtofEarly<<endl;
 
-  cout<<"There are "<<nDtofSpills<<" dtof spills, "<<nUtofSpills<<" utof spills"<<endl;
+  // cout<<"There are "<<nDtofSpills<<" dtof spills, "<<nUtofSpills<<" utof spills"<<endl;
 
   gStyle->SetOptFit(1);
   TCanvas *cdtof = new TCanvas("cdtof");
+  hDeltatDtof->Write();
   TF1 *f1 = new TF1("f1", "exp([0]+[1]*x)", 500, 1000000);
   hDeltatDtof->Fit("f1", "R");
   hDeltatDtof->Draw("hist");
@@ -415,6 +439,7 @@ void deadtimeTimestamp(const char* utofFile,
   cdtof->Print(Form("%s/%s_deltatDtof.pdf", saveDir, utofFile));
 
   TCanvas *cutof = new TCanvas("cutof");
+  hDeltatUtof->Write();
   TF1 *f2 = new TF1("f2", "exp([0]+[1]*x)", 40000, 1000000);
   hDeltatUtof->Fit("f2", "R");
   cout<<"Utof integral below 40us "<<f2->Integral(0, 40000)/3200<<endl;
@@ -426,6 +451,28 @@ void deadtimeTimestamp(const char* utofFile,
   cutof->SetGridy();
   cutof->Print(Form("%s/%s_deltatUtof.png", saveDir, utofFile));
   cutof->Print(Form("%s/%s_deltatUtof.pdf", saveDir, utofFile));
+
+  TCanvas *cdtofE = new TCanvas("cdtofE");
+  hDeltatDtofEarly->Write();
+  TF1 *f3 = new TF1("f3", "exp([0]+[1]*x)", 500, 1000000);
+  hDeltatDtofEarly->Fit("f3", "R");
+  hDeltatDtofEarly->Draw("hist");
+  f3->Draw("same");
+  cdtofE->SetGridx();
+  cdtofE->SetGridy();
+  cdtofE->Print(Form("%s/%s_deltatDtofEarly.png", saveDir, utofFile));
+  cdtofE->Print(Form("%s/%s_deltatDtofEarly.pdf", saveDir, utofFile));
+
+  TCanvas *cutofE = new TCanvas("cutofE");
+  hDeltatUtofEarly->Write();
+  TF1 *f4 = new TF1("f4", "exp([0]+[1]*x)", 40000, 1000000);
+  hDeltatUtofEarly->Fit("f4", "R");
+  hDeltatUtofEarly->Draw("hist");
+  f4->Draw("same");
+  cutofE->SetGridx();
+  cutofE->SetGridy();
+  cutofE->Print(Form("%s/%s_deltatUtofEarly.png", saveDir, utofFile));
+  cutofE->Print(Form("%s/%s_deltatUtofEarly.pdf", saveDir, utofFile));
 
   TCanvas *cComb = new TCanvas("cComb");
   cComb->SetLogy();
