@@ -14,6 +14,9 @@ void intProtons(const char* saveDir,
   const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
   const char* str4Block = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
 
+  // Unix timestamp for start of electron target data
+  const double eTargetT = 1536145800.;
+
   // Time of flight cuts for S1 to S3
   // Particles travelling at c should cross the distance in between about 36.9ns
   // and 35.6ns
@@ -92,6 +95,13 @@ void intProtons(const char* saveDir,
     cout<<fileVec[i].second<<", "<<fileVec[i].first<<endl;
   }
 
+  TGraph *grNonE_nP    = new TGraph();
+  TGraph *grNonE_nPi   = new TGraph();
+  TGraph *grNonE_ratio = new TGraph();
+  TGraph *grAll_nP    = new TGraph();
+  TGraph *grAll_nPi   = new TGraph();
+  TGraph *grAll_ratio = new TGraph();
+
   // Now go through files and count the protons
   for (int i=0; i<fileVec.size(); i++) {
     TString path = fileVec[i].second;
@@ -123,6 +133,14 @@ void intProtons(const char* saveDir,
       tree->GetEntry(t);
       if ((tSoSd - lastSpill) > 2e9) {
 	cout<<"Spill at "<<spillTime<<", nP, nPi, "<<nP<<", "<<nPi<<endl;
+	if (spillTime < eTargetT) {
+	  grNonE_nP->SetPoint(grNonE_nP->GetN(), spillTime, nP);
+	  grNonE_nPi->SetPoint(grNonE_nPi->GetN(), spillTime, nPi);
+	  if (nPi!=0) grNonE_ratio->SetPoint(grNonE_ratio->GetN(), spillTime, (double)nP/(double)nPi);	  
+	}
+	grAll_nP->SetPoint(grAll_nP->GetN(), spillTime, nP);
+	grAll_nPi->SetPoint(grAll_nPi->GetN(), spillTime, nPi);
+	if (nPi!=0) grAll_ratio->SetPoint(grAll_ratio->GetN(), spillTime, (double)nP/(double)nPi);
 	outTree->Fill();
 	lastSpill = tSoSd;
 	spillTime = fileVec[i].first + (tSoSd/1e9);
@@ -150,6 +168,12 @@ void intProtons(const char* saveDir,
     ustofFile->Close();
   }
   fout->cd();
+  grNonE_nP->Write("grNonE_nP");
+  grNonE_nPi->Write("grNonE_nPi");
+  grNonE_ratio->Write("grNonE_ratio");
+  grAll_nP->Write("grAll_nP");
+  grAll_nPi->Write("grAll_nPi");
+  grAll_ratio->Write("grAll_ratio");
   outTree->Write();
   cout<<outTree->GetEntries()<<" recorded"<<endl;
   fout->Close();
