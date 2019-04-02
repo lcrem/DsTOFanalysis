@@ -203,71 +203,79 @@ int main(int argc, char *argv[]) {
 		dsHits2.push_back(tempcoin2->fakeTimeNs[0] - firstSpillNs);
 	      }
 	    }
-	    // See if the hits match between ustof and dstof
-	    for (int s=0; s < spills.size(); s++) {
-	      // Get ustof hits
-	      vector<double> usHits;
+	    // See if the hits match between ustof and dstof if there is more than one matching spill
+	    if (spills.size() > 1) {
+	      for (int s=0; s < spills.size(); s++) {
+		// Get ustof hits
+		vector<double> usHits;
 
-	      int nMatchedHits = 0;
-	      for (int i = 0; i<tree->GetEntries(); i++) {
-		tree->GetEntry(i);
-		// In spill
-		if (tToF[0] > spillsNs[s] && tToF[0] - spillsNs[s] < 1e9) {
-		  for (int h=0; h<nhit; h++) {
-		    // Use crude drift correction. Should work...
-		    usHits.push_back((tToF[h] - spillsNs[s]) / (1. + stdDrift));	  
-		  } // hits
-		}
-	      } // ustof tree
+		int nMatchedHits = 0;
+		for (int i = 0; i<tree->GetEntries(); i++) {
+		  tree->GetEntry(i);
+		  // In spill
+		  if (tToF[0] > spillsNs[s] && tToF[0] - spillsNs[s] < 1e9) {
+		    for (int h=0; h<nhit; h++) {
+		      // Use crude drift correction. Should work...
+		      usHits.push_back((tToF[h] - spillsNs[s]) / (1. + stdDrift));	  
+		    } // hits
+		  }
+		} // ustof tree
 
-	      // Match each ustof hit to a dstof hit
-	      for (int us=0; us<usHits.size(); us++) {
-		double diffLow1 = 9999999999.;
-		double diff1    = 9999999999.;
-		double diffLow2 = 9999999999.;
-		double diff2    = 9999999999.;
-		double lowest   = 9999999999999.;
-		int tdc = 0;
+		// Match each ustof hit to a dstof hit
+		for (int us=0; us<usHits.size(); us++) {
+		  double diffLow1 = 9999999999.;
+		  double diff1    = 9999999999.;
+		  double diffLow2 = 9999999999.;
+		  double diff2    = 9999999999.;
+		  double lowest   = 9999999999999.;
+		  int tdc = 0;
 		
-		for (int ds=0; ds<dsHits1.size(); ds++) {
-		  diff1 = usHits[us] - dsHits1[ds];
-		  if (abs(diff1) < abs(diffLow1)) {
-		    diffLow1 = diff1;
-		    tdc = 1;
+		  for (int ds=0; ds<dsHits1.size(); ds++) {
+		    diff1 = usHits[us] - dsHits1[ds];
+		    if (abs(diff1) < abs(diffLow1)) {
+		      diffLow1 = diff1;
+		      tdc = 1;
+		    }
+		  } // ds1 hits
+		  for (int ds=0; ds<dsHits2.size(); ds++) {
+		    diff2 = usHits[us] - dsHits2[ds];
+		    if (abs(diff2) < abs(diffLow2)) {
+		      diffLow2 = diff2;
+		      tdc = 2;
+		    }
+		  } // ds2 hits
+		  if(abs(diffLow1) < abs(diffLow2)) {
+		    lowest = diffLow1;
 		  }
-		} // ds1 hits
-		for (int ds=0; ds<dsHits2.size(); ds++) {
-		  diff2 = usHits[us] - dsHits2[ds];
-		  if (abs(diff2) < abs(diffLow2)) {
-		    diffLow2 = diff2;
-		    tdc = 2;
+		  else {
+		    lowest = diffLow2;
 		  }
-		} // ds2 hits
-		if(abs(diffLow1) < abs(diffLow2)) {
-		  lowest = diffLow1;
+		  // Put the cut on number of matched hits required to be matched at 75
+		  // Count the number of matched (<500ns separation) hits
+		  if (abs(lowest) <= 750) {
+		    nMatchedHits++;
+		  }
+		}
+		cout<<nMatchedHits<<" matched hits: ";
+	      
+		if(nMatchedHits > 1) {
+		  spillTimes.at(2) = spillsNs[s];
+		  spillTimes.at(3) = spills[s];
+		  cout<<"PASSED"<<endl;
+		  break;
 		}
 		else {
-		  lowest = diffLow2;
+		  cout<<"FAILED"<<endl;
 		}
-		// Put the cut on number of matched hits required to be matched at 75
-		// Count the number of matched (<500ns separation) hits
-		if (abs(lowest) <= 750) {
-		  nMatchedHits++;
-		}
-	      }
-	      cout<<nMatchedHits<<" matched hits: ";
-	      
-	      if(nMatchedHits >= 2) {
-		spillTimes.at(2) = spillsNs[s];
-		spillTimes.at(3) = spills[s];
-		cout<<"PASSED"<<endl;
-		break;
-	      }
-	      else {
-		cout<<"FAILED"<<endl;
-	      }
    
-	    } // for (int s=0; s < spills.size(); s++)
+	      } // for (int s=0; s < spills.size(); s++)
+	    } // if (spills > 1) 
+	    // Else if there if only one matching spill use that
+	    else if (spills.size() == 1) {
+	      spillTimes.at(2) = spillsNs[0];
+	      spillTimes.at(3) = spills[0];
+	      cout<<"PASSED"<<endl;
+	    } // else if (spills == 1) 
 	    // If there has been a matching spill, attempt to match everything else
 
 	    if (spillTimes.at(2) != -1) {
