@@ -33,11 +33,16 @@ void s4MomCalc(const char* saveDir,
   // 4 moderator blocks with -4cm bend
   const double start4Block = 1535836129;
   const double end4Block   = 1535879634;
-  // Timing cuts
-  const double piLow  = 80.;
-  const double piHi   = 95.;
-  const double proLow = 106.;
-  const double proHi  = 140.;
+  // Timing cuts for S3
+  const double proLowS3 = -45;
+  const double proHiS3  = 10.;
+  const double piLowS3  = -63;
+  const double piHiS3   = -57;
+  // Timing cuts for S4
+  const double piLowS4  = 80.;
+  const double piHiS4   = 95.;
+  const double proLowS4 = 106.;
+  const double proHiS4  = 140.;
   // S1 -> S4 baseline length
   const double baselineS1S4 = 13.97;
   const double baselineS1S3 = 10.9;
@@ -69,8 +74,9 @@ void s4MomCalc(const char* saveDir,
   TLegend *leg = new TLegend(0.15, 0.5, 0.45, 0.88);
   
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots.root", saveDir), "recreate");
-
-  for (int nBlocks = 0; nBlocks < 3; nBlocks++) {
+  
+  for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
+    TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -173,6 +179,26 @@ void s4MomCalc(const char* saveDir,
     
     cout << "Min and max runs are " << runMin << " " << runMax << endl;
 
+    vector<double> tempdstofHitsS4_1;
+    vector<double> tempdstofHitsS4_2;
+    vector<double> tempdstofHitsS2_1;
+    vector<double> tempdstofHitsS2_2;
+    vector<double> tempustofHitsS2;
+    vector<double> tempustofHitsS2Drift;
+    vector<double> tempustofHitsS3;
+    double tempDstofSpill;
+    double tempUstofSpill;
+
+    outTree->Branch("dstofHitsS4_1", &tempdstofHitsS4_1);
+    outTree->Branch("dstofHitsS4_2", &tempdstofHitsS4_2);
+    outTree->Branch("dstofHitsS2_1", &tempdstofHitsS2_1);
+    outTree->Branch("dstofHitsS2_2", &tempdstofHitsS2_2);
+    outTree->Branch("ustofHitsS2", &tempustofHitsS2);
+    outTree->Branch("ustofHitsS2Drift", &tempustofHitsS2Drift);
+    outTree->Branch("ustofHitsS3", &tempustofHitsS3);	
+    outTree->Branch("DstofSpillTime", &tempDstofSpill);
+    outTree->Branch("UstofSpillTime", &tempUstofSpill);
+
     // Use the spill DB files to match the spills
     for (int irun = runMin; irun < runMax+1; irun++) {
       // Open spill DB files
@@ -208,15 +234,10 @@ void s4MomCalc(const char* saveDir,
       cout<<ustofSpillTimes.size()<<" spills in run "<<irun<<endl;
       fout->cd();
       grTDiff->Write(Form("grTDiffRun%d_%dblocks", irun, nBlocks));
-      
-      // For each matched spill make a vector of all the hit times in each system
-      //for (int spill = 0; spill < utofSpillTimes.size(); spill++) {
-	// Calculate time drift for this spill by taking the 5 spills either side of it
-      //} // for (int spill = 0; spill < utofSpillTimes.size(); spill++)
 
       // For each spill in the run make the vector of hits
       if (ustofSpillTimes.size() > 4) {
-	TH1D *s3s4TofAll = new TH1D(Form("s3s4TofRun%d_%dblocks", irun, nBlocks), Form("S3 - S4 ToF, run %d, %d blocks", irun, nBlocks), 400, -200, 200);
+	TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
 	for (int spill = 0; spill < ustofSpillTimes.size(); spill++) {
 	  TH1D *s3s4Tof = new TH1D(Form("s3s4TofRun%dspill%d_%dblocks", irun, spill, nBlocks), Form("S3 - S4 ToF, run %d, spill, %d, %d blocks", irun, spill, nBlocks), 100, -200, 200);
 	  TH1D *s3s4TofShift = new TH1D(Form("s3s4TofShiftRun%dspill%d_%dblocks", irun, spill, nBlocks), Form("S3 - S4 ToF, run %d, spill, %d, %d blocks", irun, spill, nBlocks), 100, -200, 200);
@@ -254,7 +275,20 @@ void s4MomCalc(const char* saveDir,
 	  vector<double> ustofHitsS3;
 	  cout<<"Dtof spill time is "<<dstofSpillTimes[spill]/1e9<<endl;
 	  vector<double> s3s4TofVec;
-	
+
+	  tempDstofSpill = dstofSpillTimes[spill]/1e9;
+	  tempUstofSpill = ustofSpillTimes[spill]/1e9;
+
+	  // These are for the matched hits only 
+	  // After differences have all been calculated
+	  vector<double> dstofHitsS4_1M;
+	  vector<double> dstofHitsS4_2M;
+	  vector<double> dstofHitsS2_1M;
+	  vector<double> dstofHitsS2_2M;
+	  vector<double> ustofHitsS2M;
+	  vector<double> ustofHitsS2DriftM;
+	  vector<double> ustofHitsS3M;
+
 	  for (int d = 0; d < dstofTree1->GetEntries(); d++) {
 	    dstofTree1->GetEntry(d);
 	    if ((tofCoin1->fakeTimeNs[0] - dstofSpillTimes[spill]) < 0.) continue;
@@ -326,16 +360,52 @@ void s4MomCalc(const char* saveDir,
 		tdc = 2;
 		//lastdh2 = dh2;
 	      }
-	      //	    else { break; }
+
 	    } // for (int dh=0; dh<dstofHits2.size(); dh++)
 	    if (tdc == 1) {
-	      s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
-	      s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+	      // Make sure we are only plotting events where particles are ID'd
+	      // as the same kind in both TOFs
+	      if (((ustofHitsS3[uh] - ustofHitsS2[uh]) < piHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS2[uh]) > piLowS3 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) > piLowS4 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) < piHiS4) ||
+		  ((ustofHitsS3[uh] - ustofHitsS2[uh]) < proHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS2[uh]) > proLowS3 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) > proLowS4 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) < proHiS4))
+		{
+		  dstofHitsS2_1M.push_back(dstofHitsS2_1[hitLow]);
+		  dstofHitsS4_1M.push_back(dstofHitsS4_1[hitLow]);
+		  dstofHitsS2_2M.push_back(0.);
+		  dstofHitsS4_2M.push_back(0.);
+		  ustofHitsS2M.push_back(ustofHitsS2[uh]);
+		  ustofHitsS3M.push_back(ustofHitsS3[uh]);
+		  
+		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 	    }
 	    else if (tdc == 2) {
-	      s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
-	      s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+	      if (((ustofHitsS3[uh] - ustofHitsS2[uh]) < piHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS2[uh]) > piLowS3 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) > piLowS4 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) < piHiS4) ||
+		  ((ustofHitsS3[uh] - ustofHitsS2[uh]) < proHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS2[uh]) > proLowS3 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) > proLowS4 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) < proHiS4))
+		{
+		  dstofHitsS2_2M.push_back(dstofHitsS2_2[hitLow]);
+		  dstofHitsS4_2M.push_back(dstofHitsS4_2[hitLow]);
+		  dstofHitsS2_1M.push_back(0.);
+		  dstofHitsS4_1M.push_back(0.);
+		  ustofHitsS2M.push_back(ustofHitsS2[uh]);
+		  ustofHitsS3M.push_back(ustofHitsS3[uh]);
+
+		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 	    }
 	    
@@ -357,7 +427,15 @@ void s4MomCalc(const char* saveDir,
 	  s3s4TofShift->Write();
 	  */
 	  s3s4Tof->Write();
-	}
+	  tempdstofHitsS4_1 = dstofHitsS4_1M;
+	  tempdstofHitsS4_2 = dstofHitsS4_2M;
+	  tempdstofHitsS2_1 = dstofHitsS2_1M;
+	  tempdstofHitsS2_2 = dstofHitsS2_2M;
+	  tempustofHitsS2 = ustofHitsS2M;
+	  tempustofHitsS3 = ustofHitsS3M;
+	  tempustofHitsS2Drift = ustofHitsS2Drift;
+	  outTree->Fill();
+	} // Loop over spills
 	s3s4TofAll->Write();
       } // if (ustofSpillTimes.size() > 10) 
 
@@ -370,6 +448,8 @@ void s4MomCalc(const char* saveDir,
     } // for (int irun = runMin; irun < runMax+1; irun++) 
 
     ustofIn->Close();
+    fout->cd();
+    outTree->Write();
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
 
   fout->Close();
