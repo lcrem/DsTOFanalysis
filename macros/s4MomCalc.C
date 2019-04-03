@@ -436,6 +436,26 @@ void s4MomCalc(const char* saveDir,
 	  tempustofHitsS2Drift = ustofHitsS2Drift;
 	  outTree->Fill();
 	} // Loop over spills
+	// Signals are gaussians
+	TF1 *sPro = new TF1("sPro", "gaus", 151, 170);
+	TF1 *sPi  = new TF1("sPi", "gaus", 142, 153);
+	TF1 *fSignal = new TF1("signal", "gaus(0)+gaus(3)", 140, 180);
+	fSignal->SetParNames("const 1", "mean 1", "sigma 1",
+			     "const 2", "mean 2", "sigma 2");
+	fSignal->SetLineColor(kBlack);
+	s3s4TofAll->Fit(sPi, "R");
+	s3s4TofAll->Fit(sPro, "R");
+	Double_t parExp[6];
+	sPro->GetParameters(&parExp[0]);
+	sPi->GetParameters(&parExp[3]);
+	fSignal->SetParameters(parExp);
+	s3s4TofAll->Fit(fSignal, "R");
+	TCanvas *c1 = new TCanvas("c1");
+	c1->SetLogy();
+	s3s4TofAll->Draw("hist");
+	fSignal->Draw("same");
+	c1->Print(Form("%s/S3S4Tof%dblocks.png", saveDir, nBlocks));
+	c1->Print(Form("%s/S3S4Tof%dblocks.pdf", saveDir, nBlocks));
 	s3s4TofAll->Write();
       } // if (ustofSpillTimes.size() > 10) 
 
