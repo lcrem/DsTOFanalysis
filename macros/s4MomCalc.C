@@ -180,23 +180,21 @@ void s4MomCalc(const char* saveDir,
     
     cout << "Min and max runs are " << runMin << " " << runMax << endl;
 
-    vector<double> tempdstofHitsS4_1;
-    vector<double> tempdstofHitsS4_2;
-    vector<double> tempdstofHitsS2_1;
-    vector<double> tempdstofHitsS2_2;
+    vector<double> tempdstofHitsS4;
+    vector<double> tempdstofHitsS2;
     vector<double> tempustofHitsS2;
     vector<double> tempustofHitsS2Drift;
     vector<double> tempustofHitsS3;
+    vector<double> temps3s4T;
     double tempDstofSpill;
     double tempUstofSpill;
 
-    outTree->Branch("dstofHitsS4_1", &tempdstofHitsS4_1);
-    outTree->Branch("dstofHitsS4_2", &tempdstofHitsS4_2);
-    outTree->Branch("dstofHitsS2_1", &tempdstofHitsS2_1);
-    outTree->Branch("dstofHitsS2_2", &tempdstofHitsS2_2);
+    outTree->Branch("dstofHitsS4", &tempdstofHitsS4);
+    outTree->Branch("dstofHitsS2", &tempdstofHitsS2);
     outTree->Branch("ustofHitsS2", &tempustofHitsS2);
     outTree->Branch("ustofHitsS2Drift", &tempustofHitsS2Drift);
     outTree->Branch("ustofHitsS3", &tempustofHitsS3);	
+    outTree->Branch("s3s4T", &temps3s4T);
     outTree->Branch("DstofSpillTime", &tempDstofSpill);
     outTree->Branch("UstofSpillTime", &tempUstofSpill);
 
@@ -284,10 +282,9 @@ void s4MomCalc(const char* saveDir,
 
 	  // These are for the matched hits only 
 	  // After differences have all been calculated
-	  vector<double> dstofHitsS4_1M;
-	  vector<double> dstofHitsS4_2M;
-	  vector<double> dstofHitsS2_1M;
-	  vector<double> dstofHitsS2_2M;
+	  vector<double> dstofHitsS4M;
+	  vector<double> dstofHitsS2M;
+	  vector<double> s3s4TM;
 	  vector<double> ustofHitsS2M;
 	  vector<double> ustofHitsS2DriftM;
 	  vector<double> ustofHitsS3M;
@@ -364,6 +361,10 @@ void s4MomCalc(const char* saveDir,
 	      } // if (abs(diff) < abs(diffLow))
 
 	    } // for (int dh=0; dh<dstofHits2.size(); dh++)
+
+	    ustofHitsS2M.push_back(ustofHitsS2[uh]);
+	    ustofHitsS3M.push_back(ustofHitsS3[uh]);
+
 	    if (tdc == 1) {
 	      // Make sure we are only plotting events where particles are ID'd
 	      // as the same kind in both TOFs
@@ -376,15 +377,11 @@ void s4MomCalc(const char* saveDir,
 		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) > proLowS4 &&
 		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) < proHiS4))
 		{
-		  dstofHitsS2_1M.push_back(dstofHitsS2_1[hitLow]);
-		  dstofHitsS4_1M.push_back(dstofHitsS4_1[hitLow]);
-		  dstofHitsS2_2M.push_back(0.);
-		  dstofHitsS4_2M.push_back(0.);
-		  ustofHitsS2M.push_back(ustofHitsS2[uh]);
-		  ustofHitsS3M.push_back(ustofHitsS3[uh]);
-		  
+		  dstofHitsS2M.push_back(dstofHitsS2_1[hitLow]);
+		  dstofHitsS4M.push_back(dstofHitsS4_1[hitLow]);
 		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		  s3s4TM.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 	    }
@@ -398,15 +395,11 @@ void s4MomCalc(const char* saveDir,
 		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) > proLowS4 &&
 		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) < proHiS4))
 		{
-		  dstofHitsS2_2M.push_back(dstofHitsS2_2[hitLow]);
-		  dstofHitsS4_2M.push_back(dstofHitsS4_2[hitLow]);
-		  dstofHitsS2_1M.push_back(0.);
-		  dstofHitsS4_1M.push_back(0.);
-		  ustofHitsS2M.push_back(ustofHitsS2[uh]);
-		  ustofHitsS3M.push_back(ustofHitsS3[uh]);
-
+		  dstofHitsS2M.push_back(dstofHitsS2_2[hitLow]);
+		  dstofHitsS4M.push_back(dstofHitsS4_2[hitLow]);
 		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		  s3s4TM.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 	    }
@@ -429,12 +422,11 @@ void s4MomCalc(const char* saveDir,
 	  s3s4TofShift->Write();
 	  */
 	  s3s4Tof->Write();
-	  tempdstofHitsS4_1 = dstofHitsS4_1M;
-	  tempdstofHitsS4_2 = dstofHitsS4_2M;
-	  tempdstofHitsS2_1 = dstofHitsS2_1M;
-	  tempdstofHitsS2_2 = dstofHitsS2_2M;
+	  tempdstofHitsS4 = dstofHitsS4M;
+	  tempdstofHitsS2 = dstofHitsS2M;
 	  tempustofHitsS2 = ustofHitsS2M;
 	  tempustofHitsS3 = ustofHitsS3M;
+	  temps3s4T = s3s4TM;
 	  tempustofHitsS2Drift = ustofHitsS2Drift;
 	  outTree->Fill();
 	} // Loop over spills
@@ -456,8 +448,8 @@ void s4MomCalc(const char* saveDir,
 	c1->SetLogy();
 	s3s4TofAll->Draw("hist");
 	fSignal->Draw("same");
-	c1->Print(Form("%s/S3S4Tof%dblocks.png", saveDir, nBlocks));
-	c1->Print(Form("%s/S3S4Tof%dblocks.pdf", saveDir, nBlocks));
+	c1->Print(Form("%s/s3s4Tof%dblocks.png", saveDir, nBlocks));
+	c1->Print(Form("%s/s3s4Tof%dblocks.pdf", saveDir, nBlocks));
 	s3s4TofAll->Write();
       } // if (ustofSpillTimes.size() > 10) 
 
