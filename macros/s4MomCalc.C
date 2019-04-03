@@ -75,8 +75,9 @@ void s4MomCalc(const char* saveDir,
   
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots.root", saveDir), "recreate");
   
-  for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
+  for (int nBlocks = 0; nBlocks < 2; nBlocks++) {
     TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
+    TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -237,8 +238,11 @@ void s4MomCalc(const char* saveDir,
 
       // For each spill in the run make the vector of hits
       if (ustofSpillTimes.size() > 4) {
-	TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
 	for (int spill = 0; spill < ustofSpillTimes.size(); spill++) {
+	  if (spill % 25 == 0) {
+	    cout<<"Spill "<<spill<<" of "<<ustofSpillTimes.size()<<" in run "<<irun<<" of "<<runMax<<endl;
+	  }
+
 	  TH1D *s3s4Tof = new TH1D(Form("s3s4TofRun%dspill%d_%dblocks", irun, spill, nBlocks), Form("S3 - S4 ToF, run %d, spill, %d, %d blocks", irun, spill, nBlocks), 100, -200, 200);
 	  TH1D *s3s4TofShift = new TH1D(Form("s3s4TofShiftRun%dspill%d_%dblocks", irun, spill, nBlocks), Form("S3 - S4 ToF, run %d, spill, %d, %d blocks", irun, spill, nBlocks), 100, -200, 200);
 	  TGraph *grs3s4= new TGraph();
@@ -263,7 +267,6 @@ void s4MomCalc(const char* saveDir,
 	  TF1 *f1 = new TF1("f1", "pol1");
 	  grTmp->Fit(f1, "Q");
 	  double grad = f1->GetParameter(1);
-	  cout<<"Time drift is "<<grad<<" ns / ns"<<endl;
 
 	  // Get dstof hits in the spill in vectors
 	  vector<double> dstofHitsS4_1;
@@ -273,7 +276,7 @@ void s4MomCalc(const char* saveDir,
 	  vector<double> ustofHitsS2;
 	  vector<double> ustofHitsS2Drift;
 	  vector<double> ustofHitsS3;
-	  cout<<"Dtof spill time is "<<dstofSpillTimes[spill]/1e9<<endl;
+	  
 	  vector<double> s3s4TofVec;
 
 	  tempDstofSpill = dstofSpillTimes[spill]/1e9;
@@ -331,7 +334,7 @@ void s4MomCalc(const char* saveDir,
 	    } // if (tTrig !=0)
 	  } // for (int u = 0; u < tree->GetEntries(); u++)
 
-	  cout<<"Have counted "<<dstofHitsS4_1.size()+dstofHitsS4_2.size()<<" dstof hits and "<<ustofHitsS3.size()<<" ustof hits"<<endl;
+	  //cout<<"Have counted "<<dstofHitsS4_1.size()+dstofHitsS4_2.size()<<" dstof hits and "<<ustofHitsS3.size()<<" ustof hits"<<endl;
 	  // Now we want to try and match these hits together
 	  // Match S2 hits in one filesystem with another
 	  // Try and match each of these with the corresponding closest dtof S2 hit
@@ -348,9 +351,8 @@ void s4MomCalc(const char* saveDir,
 		diffLow = diff;
 		hitLow = dh1;
 		tdc = 1;
-		//lastdh1 = dh1;
-	      }
-	      //	    else { break; }
+		lastdh1 = dh1;
+	      } // if (abs(diff) < abs(diffLow))
 	    } // for (int dh=0; dh<dstofHits1.size(); dh++) 
 	    for (int dh2=lastdh2; dh2<dstofHitsS2_2.size(); dh2++) {
 	      diff = ustofHitsS2Drift[uh] - dstofHitsS2_1[dh2];
@@ -358,8 +360,8 @@ void s4MomCalc(const char* saveDir,
 		diffLow = diff;
 		hitLow = dh2;
 		tdc = 2;
-		//lastdh2 = dh2;
-	      }
+		lastdh2 = dh2;
+	      } // if (abs(diff) < abs(diffLow))
 
 	    } // for (int dh=0; dh<dstofHits2.size(); dh++)
 	    if (tdc == 1) {
