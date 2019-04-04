@@ -45,7 +45,10 @@ void s4MomCalc(const char* saveDir,
   const double proHiS4  = 140.;
   // S1 -> S4 baseline length
   const double baselineS1S4 = 13.97;
+  // S1 -> S4 baseline length
   const double baselineS1S3 = 10.9;
+  // S3 -> S4 baseline length
+  const double baselineS3S4 = 3.3;
   // Define the runs to be used for varying number of blocks
   const char* str0Block = "Data_2018_8_31_b2_800MeV_0block.root";
   const char* str1Block = "Data_2018_9_1_b4_800MeV_1block_bend4cm.root";
@@ -77,10 +80,10 @@ void s4MomCalc(const char* saveDir,
   
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots.root", saveDir), "recreate");
   
-  for (int nBlocks = 0; nBlocks < 1; nBlocks++) {
+  for (int nBlocks = 0; nBlocks < 2; nBlocks++) {
     TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
     TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
-    TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 220, 90, 200);
+    TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 250, 120, 200);
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -418,18 +421,7 @@ void s4MomCalc(const char* saveDir,
 	  fout->cd();
 	  grs3s4->SetTitle(Form("Time difference vs. time since spill, Run %d, %d blocks; S3-S4 / ns; Time since spill start / ns", irun, nBlocks));
 	  grs3s4->Write(Form("grs3s4Run%dspill%d_%dblocks", irun, spill, nBlocks)); 
-	  /*
-	  TF1 *f2 = new TF1(Form("f2%d%d", spill, nBlocks), "[0]*exp(-0.5*((x-[1])/[2])^2)",-200,200);
-	  f2->SetParameter(1, 0.);
-	  f2->SetParameter(2, 10.);
-	  s3s4Tof->Fit(f2);
-	  cout<<"Shift by "<<(f2->GetParameter(1)-11.)<<" ns"<<endl;
-	  for (int i=0; i<s3s4TofVec.size(); i++) {
-	    s3s4TofShift->Fill(s3s4TofVec[i] - (f2->GetParameter(1) - 11.));
-	    // s3s4TofAll->Fill(s3s4TofVec[i] - (f2->GetParameter(1) - 11.));
-	  }
-	  s3s4TofShift->Write();
-	  */
+	  
 	  s3s4Tof->Write();
 	  tempdstofHitsS4 = dstofHitsS4M;
 	  tempdstofHitsS2 = dstofHitsS2M;
@@ -440,29 +432,30 @@ void s4MomCalc(const char* saveDir,
 	  outTree->Fill();
 	} // Loop over spills
 	// Signals are gaussians
+	TCanvas *c1 = new TCanvas(Form("c1%d",nBlocks));
+	c1->SetLogy();
+	s3s4TofAll->Draw("hist");
+	c1->Print(Form("%s/s3s4Tof%dblocks.png", saveDir, nBlocks));
+	c1->Print(Form("%s/s3s4Tof%dblocks.pdf", saveDir, nBlocks));
+
+	TCanvas *c2 = new TCanvas(Form("c2%d",nBlocks));
 	TF1 *sPro = new TF1("sPro", "gaus", 151, 170);
 	TF1 *sPi  = new TF1("sPi", "gaus", 142, 153);
 	TF1 *fSignal = new TF1("signal", "gaus(0)+gaus(3)", 140, 180);
 	fSignal->SetParNames("const 1", "mean 1", "sigma 1",
 			     "const 2", "mean 2", "sigma 2");
 	fSignal->SetLineColor(kBlack);
-	s3s4TofAll->Fit(sPi, "R");
-	s3s4TofAll->Fit(sPro, "R");
+	s3s4TofAllMatched->Fit(sPi, "R");
+	s3s4TofAllMatched->Fit(sPro, "R");
 	Double_t parExp[6];
 	sPro->GetParameters(&parExp[0]);
 	sPi->GetParameters(&parExp[3]);
 	fSignal->SetParameters(parExp);
-	s3s4TofAll->Fit(fSignal, "R");
-	TCanvas *c1 = new TCanvas(Form("c1%d",nBlocks));
-	c1->SetLogy();
-	s3s4TofAll->Draw("hist");
-	fSignal->Draw("same");
-	c1->Print(Form("%s/s3s4Tof%dblocks.png", saveDir, nBlocks));
-	c1->Print(Form("%s/s3s4Tof%dblocks.pdf", saveDir, nBlocks));
-	TCanvas *c2 = new TCanvas(Form("c2%d",nBlocks));
+	s3s4TofAllMatched->Fit(fSignal, "R");
 	s3s4TofAllMatched->Draw("hist");
-	c1->Print(Form("%s/s3s4TofMatched%dblocks.png", saveDir, nBlocks));
-	c1->Print(Form("%s/s3s4TofMatchedf%dblocks.pdf", saveDir, nBlocks));
+	fSignal->Draw("same");
+	c2->Print(Form("%s/s3s4TofMatched%dblocks.png", saveDir, nBlocks));
+	c2->Print(Form("%s/s3s4TofMatchedf%dblocks.pdf", saveDir, nBlocks));
 	s3s4TofAll->Write();
 	s3s4TofAllMatched->Write();
 
