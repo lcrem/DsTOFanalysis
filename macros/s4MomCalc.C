@@ -69,15 +69,18 @@ void s4MomCalc(const char* saveDir,
   const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.3, 0.3, 0.15, 0.225, 0.25, 0.25,
 				       0.225, 0.225, 0.2, 0.225, 0.225, 0.225, 0.2, 0.275, 0.25, 
 				       0.225, 0.3, 0.3};
+  // Window for matching hits between utof and dtof
+  const double matchWindow = 10000.;
 
   THStack *hsMom = new THStack("hsMom", "Proton momentum as measured in S4; Proton momentum [GeV/c]; Events / spill");
   TLegend *leg = new TLegend(0.15, 0.5, 0.45, 0.88);
   
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots.root", saveDir), "recreate");
   
-  for (int nBlocks = 0; nBlocks < 2; nBlocks++) {
+  for (int nBlocks = 0; nBlocks < 1; nBlocks++) {
     TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
     TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
+    TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 220, 90, 200);
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -382,6 +385,9 @@ void s4MomCalc(const char* saveDir,
 		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 		  s3s4TM.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		  if (abs(ustofHitsS2Drift[uh] - dstofHitsS2_1[hitLow]) < matchWindow) {
+		    s3s4TofAllMatched->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		  } // if (abs(ustofHitsS2Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 	    }
@@ -400,6 +406,9 @@ void s4MomCalc(const char* saveDir,
 		  s3s4TofAll->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		  s3s4Tof->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		  s3s4TM.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		  if (abs(ustofHitsS2Drift[uh] - dstofHitsS2_2[hitLow]) < matchWindow) {
+		    s3s4TofAllMatched->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		  } // if (abs(ustofHitsS2Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 	    }
@@ -444,13 +453,19 @@ void s4MomCalc(const char* saveDir,
 	sPi->GetParameters(&parExp[3]);
 	fSignal->SetParameters(parExp);
 	s3s4TofAll->Fit(fSignal, "R");
-	TCanvas *c1 = new TCanvas("c1");
+	TCanvas *c1 = new TCanvas(Form("c1%d",nBlocks));
 	c1->SetLogy();
 	s3s4TofAll->Draw("hist");
 	fSignal->Draw("same");
 	c1->Print(Form("%s/s3s4Tof%dblocks.png", saveDir, nBlocks));
 	c1->Print(Form("%s/s3s4Tof%dblocks.pdf", saveDir, nBlocks));
+	TCanvas *c2 = new TCanvas(Form("c2%d",nBlocks));
+	s3s4TofAllMatched->Draw("hist");
+	c1->Print(Form("%s/s3s4TofMatched%dblocks.png", saveDir, nBlocks));
+	c1->Print(Form("%s/s3s4TofMatchedf%dblocks.pdf", saveDir, nBlocks));
 	s3s4TofAll->Write();
+	s3s4TofAllMatched->Write();
+
       } // if (ustofSpillTimes.size() > 10) 
 
       dbFile->Close();
