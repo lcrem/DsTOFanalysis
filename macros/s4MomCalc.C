@@ -83,7 +83,8 @@ void s4MomCalc(const char* saveDir,
   for (int nBlocks = 0; nBlocks < 2; nBlocks++) {
     TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
     TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
-    TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 250, 120, 200);
+    TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 350, 70, 200);
+    TH1D *s3s4TofAlls1 = new TH1D(Form("s3s4TofMatcheds1_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 350, 70, 200);
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -190,6 +191,8 @@ void s4MomCalc(const char* saveDir,
     vector<double> tempdstofHitsS2;
     vector<double> tempustofHitsS2;
     vector<double> tempustofHitsS2Drift;
+    vector<double> tempustofHitsS1;
+    vector<double> tempustofHitsS1Drift;
     vector<double> tempustofHitsS3;
     vector<double> temps3s4T;
     double tempDstofSpill;
@@ -199,6 +202,8 @@ void s4MomCalc(const char* saveDir,
     outTree->Branch("dstofHitsS2", &tempdstofHitsS2);
     outTree->Branch("ustofHitsS2", &tempustofHitsS2);
     outTree->Branch("ustofHitsS2Drift", &tempustofHitsS2Drift);
+    outTree->Branch("ustofHitsS1", &tempustofHitsS1);
+    outTree->Branch("ustofHitsS1Drift", &tempustofHitsS1Drift);
     outTree->Branch("ustofHitsS3", &tempustofHitsS3);	
     outTree->Branch("s3s4T", &temps3s4T);
     outTree->Branch("DstofSpillTime", &tempDstofSpill);
@@ -279,6 +284,8 @@ void s4MomCalc(const char* saveDir,
 	  vector<double> dstofHitsS2_2;
 	  vector<double> ustofHitsS2;
 	  vector<double> ustofHitsS2Drift;
+	  vector<double> ustofHitsS1;
+	  vector<double> ustofHitsS1Drift;
 	  vector<double> ustofHitsS3;
 	  
 	  vector<double> s3s4TofVec;
@@ -293,6 +300,8 @@ void s4MomCalc(const char* saveDir,
 	  vector<double> s3s4TM;
 	  vector<double> ustofHitsS2M;
 	  vector<double> ustofHitsS2DriftM;
+	  vector<double> ustofHitsS1M;
+	  vector<double> ustofHitsS1DriftM;
 	  vector<double> ustofHitsS3M;
 
 	  for (int d = 0; d < dstofTree1->GetEntries(); d++) {
@@ -327,14 +336,16 @@ void s4MomCalc(const char* saveDir,
 	    if ((tS1 - ustofSpillTimes[spill]) < 0.) continue;
 	    if ((tS1 - ustofSpillTimes[spill]) > 1e9) break;
 	    // We only want the events with an S1-S2 coincidence
-	    if (tTrig !=0) {
+	    //if (tTrig !=0) {
 	      // Vector of unshifted hit times and also one of drifted one
 	      for (int n = 0; n < nhit; n++) {
 		ustofHitsS3.push_back(tToF[n] - ustofSpillTimes[spill]);
 		ustofHitsS2.push_back(tTrig - ustofSpillTimes[spill]);
+		ustofHitsS1.push_back(tS1 - ustofSpillTimes[spill]);
 		ustofHitsS2Drift.push_back((tTrig - ustofSpillTimes[spill]) / (1. + grad));
+		ustofHitsS1Drift.push_back((tS1 - ustofSpillTimes[spill]) / (1. + grad));
 	      } // for(int n = 0; n < nhit; n++) 
-	    } // if (tTrig !=0)
+	      //} // if (tTrig !=0)
 	  } // for (int u = 0; u < tree->GetEntries(); u++)
 
 	  //cout<<"Have counted "<<dstofHitsS4_1.size()+dstofHitsS4_2.size()<<" dstof hits and "<<ustofHitsS3.size()<<" ustof hits"<<endl;
@@ -343,13 +354,13 @@ void s4MomCalc(const char* saveDir,
 	  // Try and match each of these with the corresponding closest dtof S2 hit
 	  int lastdh1 = 0;
 	  int lastdh2 = 0;
-	  for (int uh = 0; uh < ustofHitsS2Drift.size(); uh++) {
+	  for (int uh = 0; uh < ustofHitsS1Drift.size(); uh++) {
 	    double diffLow = 999999999999.;
 	    double diff = 0.;
 	    int hitLow = -1;
 	    int tdc = 0;
 	    for (int dh1=lastdh1; dh1<dstofHitsS2_1.size(); dh1++) {
-	      diff = ustofHitsS2Drift[uh] - dstofHitsS2_1[dh1];
+	      diff = ustofHitsS1Drift[uh] - dstofHitsS2_1[dh1];
 	      if (abs(diff) < abs(diffLow)) {
 		diffLow = diff;
 		hitLow = dh1;
@@ -358,7 +369,7 @@ void s4MomCalc(const char* saveDir,
 	      } // if (abs(diff) < abs(diffLow))
 	    } // for (int dh=0; dh<dstofHits1.size(); dh++) 
 	    for (int dh2=lastdh2; dh2<dstofHitsS2_2.size(); dh2++) {
-	      diff = ustofHitsS2Drift[uh] - dstofHitsS2_1[dh2];
+	      diff = ustofHitsS1Drift[uh] - dstofHitsS2_1[dh2];
 	      if (abs(diff) < abs(diffLow)) {
 		diffLow = diff;
 		hitLow = dh2;
@@ -368,6 +379,7 @@ void s4MomCalc(const char* saveDir,
 
 	    } // for (int dh=0; dh<dstofHits2.size(); dh++)
 
+	    ustofHitsS1M.push_back(ustofHitsS1[uh]);
 	    ustofHitsS2M.push_back(ustofHitsS2[uh]);
 	    ustofHitsS3M.push_back(ustofHitsS3[uh]);
 
@@ -392,6 +404,22 @@ void s4MomCalc(const char* saveDir,
 		    s3s4TofAllMatched->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 		  } // if (abs(ustofHitsS2Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
+	      
+	      // Do this but for matched S1 utof hits 
+	      if (((ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) < piHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) > piLowS3 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) > piLowS4 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) < piHiS4) ||
+		  ((ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) < proHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) > proLowS3 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) > proLowS4 &&
+		   (dstofHitsS4_1[hitLow] - dstofHitsS2_1[hitLow]) < proHiS4))
+		{
+
+		  if (abs(ustofHitsS1Drift[uh] - dstofHitsS2_1[hitLow]) < matchWindow) {
+		    s3s4TofAlls1->Fill((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		  } // if (abs(ustofHitsS1Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
+		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
 	    }
 	    else if (tdc == 2) {
@@ -412,6 +440,22 @@ void s4MomCalc(const char* saveDir,
 		  if (abs(ustofHitsS2Drift[uh] - dstofHitsS2_2[hitLow]) < matchWindow) {
 		    s3s4TofAllMatched->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		  } // if (abs(ustofHitsS2Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
+		} // Is same particle in each TOF
+	      
+	      // Do this but for matched S1 utof hits 
+	      if (((ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) < piHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) > piLowS3 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) > piLowS4 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) < piHiS4) ||
+		  ((ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) < proHiS3 &&
+		   (ustofHitsS3[uh] - ustofHitsS1[uh] - 34.) > proLowS3 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) > proLowS4 &&
+		   (dstofHitsS4_2[hitLow] - dstofHitsS2_2[hitLow]) < proHiS4))
+		{
+
+		  if (abs(ustofHitsS1Drift[uh] + 34. - dstofHitsS2_2[hitLow]) < matchWindow) {
+		    s3s4TofAlls1->Fill((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		  } // if (abs(ustofHitsS1Drift[uh]-dstofHitsS2_2[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 	    }
@@ -455,10 +499,16 @@ void s4MomCalc(const char* saveDir,
 	s3s4TofAllMatched->Draw("hist");
 	fSignal->Draw("same");
 	c2->Print(Form("%s/s3s4TofMatched%dblocks.png", saveDir, nBlocks));
-	c2->Print(Form("%s/s3s4TofMatchedf%dblocks.pdf", saveDir, nBlocks));
+	c2->Print(Form("%s/s3s4TofMatched%dblocks.pdf", saveDir, nBlocks));
+
+	TCanvas *c3 = new TCanvas("c3");
+	s3s4TofAlls1->Draw("hist");
+	c3->Print(Form("%s/s3s4Tofs1Matched%dblocks.png", saveDir, nBlocks));
+	c3->Print(Form("%s/s3s4Tofs1Matched%dblocks.pdf", saveDir, nBlocks));
+
 	s3s4TofAll->Write();
 	s3s4TofAllMatched->Write();
-
+	s3s4TofAlls1->Write();
       } // if (ustofSpillTimes.size() > 10) 
 
       dbFile->Close();
