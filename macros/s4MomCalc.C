@@ -49,6 +49,8 @@ void s4MomCalc(const char* saveDir,
   const double baselineS1S3 = 10.9;
   // S3 -> S4 baseline length
   const double baselineS3S4 = 3.3;
+  // Shift required to put MIP peak at 11ns
+  const double s3s4Shift = 115. - 11.;
   // Define the runs to be used for varying number of blocks
   const char* str0Block = "Data_2018_8_31_b2_800MeV_0block.root";
   const char* str1Block = "Data_2018_9_1_b4_800MeV_1block_bend4cm.root";
@@ -75,16 +77,17 @@ void s4MomCalc(const char* saveDir,
   // Window for matching hits between utof and dtof
   const double matchWindow = 10000.;
 
-  THStack *hsMom = new THStack("hsMom", "Proton momentum as measured in S4; Proton momentum [GeV/c]; Events / spill");
+  THStack *hsMom = new THStack("hsMom", "Proton momentum as measured between S3 & S4; Proton momentum [GeV/c]; Events / spill");
   TLegend *leg = new TLegend(0.15, 0.5, 0.45, 0.88);
   
   TFile *fout = new TFile(Form("%s/s4MomCalcPlots.root", saveDir), "recreate");
   
-  for (int nBlocks = 0; nBlocks < 2; nBlocks++) {
+  for (int nBlocks = 0; nBlocks < 4; nBlocks++) {
     TTree *outTree = new TTree(Form("outTree%dBlocks", nBlocks), "Spill tree");
     TH1D *s3s4TofAll = new TH1D(Form("s3s4Tof_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 440, 90, 200);
     TH1D *s3s4TofAllMatched = new TH1D(Form("s3s4TofMatched_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 350, 70, 200);
-    TH1D *s3s4TofAlls1 = new TH1D(Form("s3s4TofMatcheds1_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 350, 70, 200);
+    TH1D *s3s4TofAlls1 = new TH1D(Form("s3s4TofMatcheds1_%dblocks", nBlocks), Form("S3 - S4 ToF, %d blocks; S4 - S3 / ns; Events", nBlocks), 400, 70, 200);
+    TH1D *s3s4Mom = new TH1D(Form("s3s4Mom_%dblocks", nBlocks), Form("S3 - S4 proton momentum spectrum, %d blocks; Momentum [GeV/c]; Events", nBlocks), 100, 0.2, 0.8);
     cout<<nBlocks<<" block case"<<endl;
     // Find the correct dstof files
     Int_t runMin=-1;
@@ -418,6 +421,10 @@ void s4MomCalc(const char* saveDir,
 
 		  if (abs(ustofHitsS1Drift[uh] - dstofHitsS2_1[hitLow]) < matchWindow) {
 		    s3s4TofAlls1->Fill((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
+		    if (((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow])) > 120) 
+		      {
+			s3s4Mom->Fill(momFromTime(0.938, baselineS3S4, (ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]) - s3s4Shift));
+		      }
 		  } // if (abs(ustofHitsS1Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_1[hitLow] - dstofHitsS4_1[hitLow]));
@@ -439,6 +446,7 @@ void s4MomCalc(const char* saveDir,
 		  s3s4TM.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
 		  if (abs(ustofHitsS2Drift[uh] - dstofHitsS2_2[hitLow]) < matchWindow) {
 		    s3s4TofAllMatched->Fill((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		    
 		  } // if (abs(ustofHitsS2Drift[uh]-dstofHitsS2_1[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      
@@ -455,6 +463,10 @@ void s4MomCalc(const char* saveDir,
 
 		  if (abs(ustofHitsS1Drift[uh] + 34. - dstofHitsS2_2[hitLow]) < matchWindow) {
 		    s3s4TofAlls1->Fill((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
+		    if (((ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow])) > 118) 
+		      {
+			s3s4Mom->Fill(momFromTime(0.938, baselineS3S4, (ustofHitsS1[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]) - s3s4Shift));
+		      }
 		  } // if (abs(ustofHitsS1Drift[uh]-dstofHitsS2_2[hitLow]) < matchWindow)
 		} // Is same particle in each TOF
 	      s3s4TofVec.push_back((ustofHitsS2[uh] - ustofHitsS3[uh]) - (dstofHitsS2_2[hitLow] - dstofHitsS4_2[hitLow]));
@@ -465,7 +477,7 @@ void s4MomCalc(const char* saveDir,
 	  fout->cd();
 	  grs3s4->SetTitle(Form("Time difference vs. time since spill, Run %d, %d blocks; S3-S4 / ns; Time since spill start / ns", irun, nBlocks));
 	  grs3s4->Write(Form("grs3s4Run%dspill%d_%dblocks", irun, spill, nBlocks)); 
-	  
+     
 	  s3s4Tof->Write();
 	  tempdstofHitsS4 = dstofHitsS4M;
 	  tempdstofHitsS2 = dstofHitsS2M;
@@ -483,29 +495,45 @@ void s4MomCalc(const char* saveDir,
 	c1->Print(Form("%s/s3s4Tof%dblocks.pdf", saveDir, nBlocks));
 
 	TCanvas *c2 = new TCanvas(Form("c2%d",nBlocks));
-	TF1 *sPro = new TF1("sPro", "gaus", 151, 170);
-	TF1 *sPi  = new TF1("sPi", "gaus", 142, 153);
-	TF1 *fSignal = new TF1("signal", "gaus(0)+gaus(3)", 140, 180);
-	fSignal->SetParNames("const 1", "mean 1", "sigma 1",
-			     "const 2", "mean 2", "sigma 2");
-	fSignal->SetLineColor(kBlack);
-	s3s4TofAllMatched->Fit(sPi, "R");
-	s3s4TofAllMatched->Fit(sPro, "R");
-	Double_t parExp[6];
-	sPro->GetParameters(&parExp[0]);
-	sPi->GetParameters(&parExp[3]);
-	fSignal->SetParameters(parExp);
-	s3s4TofAllMatched->Fit(fSignal, "R");
 	s3s4TofAllMatched->Draw("hist");
-	fSignal->Draw("same");
 	c2->Print(Form("%s/s3s4TofMatched%dblocks.png", saveDir, nBlocks));
 	c2->Print(Form("%s/s3s4TofMatched%dblocks.pdf", saveDir, nBlocks));
 
 	TCanvas *c3 = new TCanvas("c3");
+	TF1 *sPro = new TF1("sPro", "gaus", 115, 140);
+	TF1 *sPi  = new TF1("sPi", "gaus", 105, 120);
+	TF1 *fSignal = new TF1("signal", "gaus(0)+gaus(3)", 105, 140);
+	fSignal->SetParNames("const 1", "mean 1", "sigma 1",
+			     "const 2", "mean 2", "sigma 2");
+	fSignal->SetLineColor(kBlack);
+	s3s4TofAlls1->Fit(sPi, "R");
+	s3s4TofAlls1->Fit(sPro, "R");
+	Double_t parExp[6];
+	sPro->GetParameters(&parExp[0]);
+	sPi->GetParameters(&parExp[3]);
+	fSignal->SetParameters(parExp);
+	s3s4TofAlls1->Fit(fSignal, "R");
 	s3s4TofAlls1->Draw("hist");
+	fSignal->Draw("same");
 	c3->Print(Form("%s/s3s4Tofs1Matched%dblocks.png", saveDir, nBlocks));
 	c3->Print(Form("%s/s3s4Tofs1Matched%dblocks.pdf", saveDir, nBlocks));
 
+	TCanvas *c4 = new TCanvas(Form("c4%d",nBlocks));
+	s3s4Mom->Draw("hist");
+	c4->Print(Form("%s/s3s4Mom%dblocks.png", saveDir, nBlocks));
+	c4->Print(Form("%s/s3s4Mom%dblocks.pdf", saveDir, nBlocks));
+
+	s3s4Mom->SetLineWidth(2);
+	if (nBlocks==0) s3s4Mom->SetLineColor(kBlack);
+	else if (nBlocks==1) s3s4Mom->SetLineColor(kRed);
+	else if (nBlocks==2) s3s4Mom->SetLineColor(kBlue);
+	else if (nBlocks==3) s3s4Mom->SetLineColor(kCyan+1);
+	else if (nBlocks==4) s3s4Mom->SetLineColor(kOrange+1);
+
+	hsMom->Add(s3s4Mom);
+
+
+	s3s4Mom->Write();
 	s3s4TofAll->Write();
 	s3s4TofAllMatched->Write();
 	s3s4TofAlls1->Write();
@@ -523,6 +551,7 @@ void s4MomCalc(const char* saveDir,
     fout->cd();
     outTree->Write();
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
-
+  fout->cd();
+  hsMom->Write();
   fout->Close();
 } // s4MomCalc
