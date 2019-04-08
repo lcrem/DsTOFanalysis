@@ -309,7 +309,7 @@ void angularDistS3(const char* saveDir,
 	    // Is within a spill
 	    if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
 		(tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
-		tof->channel == 13 && tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
+		tof->channel == 13 && (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
 	      dtofS1S2Hits[s]++;
 	      lastt = t;
 	      lastS1S2Dtof = tof->fakeTimeNs;
