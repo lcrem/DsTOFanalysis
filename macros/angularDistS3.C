@@ -9,7 +9,9 @@ double momFromTime(const double mass, const double baseline, const double time)
 }
 
 void angularDistS3(const char* saveDir,
-		   const char* ustofDir="/zfs_home/sjones/mylinktoutof/") 
+		   const char* ustofDir="/zfs_home/sjones/mylinktoutof/",
+		   const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
+		   const char* spillDir="/zfs_home/sjones/spillDB/") 
 {
   gROOT->SetBatch(kTRUE);
   // Edges of S3 in beam coordinate system
@@ -26,7 +28,39 @@ void angularDistS3(const char* saveDir,
   const char* str2Block = "Data_2018_9_1_b2_800MeV_2block_bend4cm.root";
   const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
   const char* str4Block = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
-
+  // Unix timestamps for variable block moves
+  // 0.8GeV/c, 0 blocks
+  // 31/08/2018
+  const double start0Block = 1535713289;
+  const double end0Block   = 1535716132;
+  // 0.8GeV/c, 1 block
+  // 01/09/2018
+  const double start1Block = 1535796057;
+  const double end1Block   = 1535799112;
+  // 0.8GeV/c, 2 blocks
+  // 01/09/2018
+  const double start2Block = 1535789157;
+  const double end2Block   = 1535792026;
+  // 0.8GeV/c, 3 block
+  // 01/09/2018
+  const double start3Block = 1535792404;
+  const double end3Block   = 1535795300;
+  // const double end3Block   = 1535798437;
+  // 0.8GeV/c, 4 block
+  // 4 moderator blocks with -4cm bend
+  const double start4Block = 1535836129;
+  const double end4Block   = 1535879634;
+  // Deadtime corrections
+  // Just use a constant ratio for the 0 block case
+  const double block0Ratio = 0.0948;
+  const double block1Slope = -0.0002209;
+  const double block1Const =  0.3588;
+  const double block2Slope = -0.0001351;
+  const double block2Const =  0.3543;
+  const double block3Slope = -0.0001011;
+  const double block3Const =  0.3375;
+  const double block4Slope = -0.00005666;
+  const double block4Const =  0.2577;
   // Time of flight cuts for S1 to S3
   // Particles travelling at c should cross the distance in between about 36.9ns
   // and 35.6ns
@@ -151,13 +185,170 @@ void angularDistS3(const char* saveDir,
     TF1 *sPro = new TF1("sPro", "gaus", (tLight - (piLow+piHi)/2.) + proLow, (tLight - (piLow+piHi)/2.) + proHi);
     TF1 *sPi  = new TF1("sPi", "gaus", (tLight - (piLow+piHi)/2.) + piLow, (tLight - (piLow+piHi)/2.) + piHi);
 
-    const char* nustof;
-    if (nBlocks==0) nustof = Form("%sData_2018_8_31_b2_800MeV_0block.root", ustofDir);
-    else if (nBlocks==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
-    else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
-    else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
-    else if (nBlocks==4) nustof = Form("%sData_2018_9_1_b8_800MeV_4block_bend4cm.root", ustofDir);
+    // Find the correct dstof files
+    Int_t runMin=-1;
+    Int_t runMax=-1;
 
+    double startTime = 0;
+    double endTime   = 0;
+
+    const char* nustof;
+    if (nBlocks==0) {
+      nustof = str0Block;
+      startTime = start0Block;
+      endTime   = end0Block;
+    }
+    else if (nBlocks==1) {
+      nustof = str1Block;
+      startTime = start1Block;
+      endTime   = end1Block;
+    }
+    else if (nBlocks==2) {
+      nustof = str2Block;
+      startTime = start2Block;
+      endTime   = end2Block;
+    }
+    else if (nBlocks==3) {
+      nustof = str3Block;
+      startTime = start3Block;
+      endTime   = end3Block;
+    }
+    else if (nBlocks==4) {
+      nustof = str4Block;
+      startTime = start4Block;
+      endTime   = end4Block;
+    }
+    // Find dtof runs
+    for (int irun=950; irun<1400; irun++) {
+      TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+      RawDsTofCoincidence *tofCoinTemp = NULL;
+      TTree *tree = (TTree*) fin->Get("tofCoinTree");
+      tree->SetBranchAddress("tofCoin", &tofCoinTemp);
+      tree->GetEntry(0);
+      UInt_t firstTemp = tofCoinTemp->unixTime[0];
+      tree->GetEntry(tree->GetEntries()-1);
+      UInt_t lastTemp = tofCoinTemp->unixTime[0];
+      
+      fin->Close();
+      delete fin;
+      
+      if (firstTemp>endTime){
+	break;
+      }
+      
+      if (firstTemp<startTime && lastTemp>startTime){
+	runMin = irun;
+      }
+      
+      if (firstTemp<endTime && lastTemp>endTime){
+	runMax = irun;
+      }   
+    } // for (int irun=950; irun<1400; irun++) 
+    
+    cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
+
+    std::vector<double> dtofTimes;
+    std::vector<int> dtofS1S2Hits;
+    std::vector<double> utofTimes;
+    std::vector<int> utofS1S2Hits;
+
+    // Open the appropriate spill DB files and get the spill times
+    for (int irun = runMin; irun < runMax+1; irun++) {
+      TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDir, irun, irun), "read");
+      TTree *spillTree = (TTree*)dbFile->Get("spillTree");
+      double globalSpillTime;
+      double ustofSpillTime;
+      spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
+      spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
+      for (int t = 0; t < spillTree->GetEntries(); t++) {
+	spillTree->GetEntry(t);
+	dtofTimes.push_back(globalSpillTime);
+	utofTimes.push_back(ustofSpillTime);
+      } // for (int t = 0; t < spillTree->GetEntries(); t++)
+
+      dbFile->Close();
+      delete dbFile;
+    } // for (int irun = runMin; irun < runMax+1; irun++) 
+
+    dtofS1S2Hits.resize(dtofTimes.size(), 0);
+    utofS1S2Hits.resize(dtofTimes.size(), 0);
+
+    cout<<"Finding number of dtof hits in each spill"<<endl;
+    for (int s=0; s<dtofTimes.size(); s++) {
+      cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
+      // Loop over the all the files
+      for (int irun = runMin; irun < runMax+1; irun++) {
+	
+	TFile *dtofFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun), "read");
+	RawDsTofHeader *tof = NULL;
+	TTree *tofTree = (TTree*)dtofFile->Get("tofTree");
+	tofTree->SetBranchAddress("tof", &tof);
+	tofTree->GetEntry(0);
+	double firstTime = tof->unixTime;
+	tofTree->GetEntry(tofTree->GetEntries()-1);
+	double lastTime = tof->unixTime;
+	// Spill is in this file
+	if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s]) {
+	  // Loop over all entries and count the number of S1 S2 hits within the spill
+	  for (int t=0; t<tofTree->GetEntries(); t++) {
+	    tofTree->GetEntry(t);
+	    if ((tof->fakeTimeNs/1e9)+firstTime < dtofTimes[s]) continue;
+	    if ((tof->fakeTimeNs/1e9)+firstTime > dtofTimes[s]+1.) break;
+	    // Is within a spill
+	    if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
+		(tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1.) {
+	      dtofS1S2Hits[s]++;
+	    } // Is within the spill
+	  } // for (int t=0; t<tofTree->GetEntries(); t++)
+       	} // if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s])
+
+	delete tof;
+	dtofFile->Close();
+	delete dtofFile;
+      } // for (int irun = runMin; irun < runMax+1; irun++) 
+      // Do the same thing but for the utof files
+    
+      TFile *futof = new TFile(Form("%s/%s", ustofDir, nustof), "read");
+      double tTrig;
+      double tS1;
+      double tSoSd;
+
+      TNamed *start = 0;
+      TNamed *end   = 0;
+      futof->GetObject("start_of_run", start);
+      futof->GetObject("end_of_run", end);
+
+      const char* startchar = start->GetTitle();
+      std::string startstr(startchar);
+      std::string unixstart = startstr.substr(25,10);
+      int startTimeUtof = stoi(unixstart);
+  
+      const char* endchar = end->GetTitle();
+      std::string endstr(endchar);
+      std::string unixend = endstr.substr(23,10);
+      int endTimeUtof = stoi(unixend);
+
+      TTree *tree = (TTree*)futof->Get("tree");
+      tree->SetBranchAddress("tS1", &tS1);
+      tree->SetBranchAddress("tSoSd", &tSoSd);
+      tree->SetBranchAddress("tTrig", &tTrig);
+
+      for (int t=0; t<tree->GetEntries(); t++) {
+	tree->GetEntry(t);
+	if ((tS1/1e9)+(double)startTimeUtof <= utofTimes[s]) continue;
+	if ((tS1/1e9)+(double)startTimeUtof >= utofTimes[s]+1.) break;
+	// Is in a spill
+	if (tTrig !=0 && (tS1/1e9)+(double)startTimeUtof >= utofTimes[s] &&
+	    (tS1/1e9)+(double)startTimeUtof <= utofTimes[s] + 1.) {
+	  utofS1S2Hits[s]++;
+	} // Is in a spill
+      } // for (int t=0; t<tree->GetEntries(); t++)
+
+      futof->Close();
+      
+    } // for (int s=0; s<dtofTimes.size(); s++)
+
+    cout<<dtofTimes.size()<<" spills"<<endl;
     TFile *futof = new TFile(nustof, "read");
 
     double tToF[50];
@@ -321,6 +512,22 @@ void angularDistS3(const char* saveDir,
       legTheta->AddEntry(hThetaS1ratio, "0 blocks", "l");
       legTof->AddEntry(hutof1dS1, "0 blocks", "l");
       legPhiRatio->AddEntry(hPhiS1ratio, "0 blocks", "l");
+
+      hPhiS1S2pro->Scale(1. / block0Ratio);
+      hPhiS1S2pi->Scale(1. / block0Ratio);
+      hThetaS1S2pro->Scale(1. / block0Ratio);
+      hThetaS1S2pi->Scale(1. / block0Ratio);
+
+      hPhiS1pro->Scale(1. / block0Ratio);
+      hPhiS1pi->Scale(1. / block0Ratio);
+      hThetaS1pro->Scale(1. / block0Ratio);
+      hThetaS1pi->Scale(1. / block0Ratio);
+
+      hMomS1S2->Scale(1. / block0Ratio);
+      hMomS1->Scale(1. / block0Ratio);
+
+      hutof1dS1S2->Scale(1. / block0Ratio);
+      hutof1dS1->Scale(1. / block0Ratio);
 
       hMom2D_0blkQ->Scale(1. / (double)nSpills);
       hMom2D_0blkS->Scale(1. / (double)nSpills);
