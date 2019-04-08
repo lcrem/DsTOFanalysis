@@ -307,7 +307,7 @@ void angularDistS3(const char* saveDir,
 	delete dtofFile;
       } // for (int irun = runMin; irun < runMax+1; irun++) 
       // Do the same thing but for the utof files
-    
+      /*
       TFile *futof = new TFile(Form("%s/%s", ustofDir, nustof), "read");
       double tTrig;
       double tS1;
@@ -345,7 +345,7 @@ void angularDistS3(const char* saveDir,
       } // for (int t=0; t<tree->GetEntries(); t++)
 
       futof->Close();
-      
+      */
     } // for (int s=0; s<dtofTimes.size(); s++)
 
     cout<<dtofTimes.size()<<" spills"<<endl;
