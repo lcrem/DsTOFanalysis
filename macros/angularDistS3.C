@@ -284,6 +284,8 @@ void angularDistS3(const char* saveDir,
     utofS1S2Hits.resize(dtofTimes.size(), 0);
 
     cout<<"Finding number of dtof hits in each spill"<<endl;
+    int lastt = 0;
+    int lastrun = 0;
     for (int s=0; s<dtofTimes.size(); s++) {
       cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
       // Loop over the all the files
@@ -297,10 +299,13 @@ void angularDistS3(const char* saveDir,
 	double firstTime = tof->unixTime;
 	tofTree->GetEntry(tofTree->GetEntries()-1);
 	double lastTime = tof->unixTime;
-	int lastt = 0;
 	double lastS1S2Dtof = 0.;
 	// Spill is in this file
 	if (firstTime <= dtofTimes[s] && lastTime >= dtofTimes[s]) {
+	  if (irun != lastrun) {
+	    lastt = 0;
+	    lastrun = irun;
+	  }
 	  // Loop over all entries and count the number of S1 S2 hits within the spill
 	  for (int t=lastt; t<tofTree->GetEntries(); t++) {
 	    tofTree->GetEntry(t);
@@ -324,7 +329,7 @@ void angularDistS3(const char* saveDir,
     } // for (int s=0; s<dtofTimes.size(); s++)
 
     cout<<dtofTimes.size()<<" spills"<<endl;
-    TFile *futof = new TFile(nustof, "read");
+    TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
 
     double tToF[50];
     float xToF[50];
@@ -367,7 +372,6 @@ void angularDistS3(const char* saveDir,
       double deadtimeWeight = 0.;
       if (nBlocks !=0) {deadtimeWeight = dtofS1S2Hits[s] * slope + constant;}
       else {deadtimeWeight = 1.;}
-      cout<<deadtimeWeight<<endl;
       for (int t=0; t<tree->GetEntries(); t++) {
 	tree->GetEntry(t);
 	if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
@@ -440,21 +444,10 @@ void angularDistS3(const char* saveDir,
 	} // if (nhit == 1)
       } // for (int t=0; t<tree->GetEntries(); t++)
     } 
+
+    nSpills = utofTimes.size();
+
     fout->cd();
-    hThetaS1S2pro->Write();
-    hThetaS1S2pi->Write();
-    hPhiS1S2pro->Write();
-    hPhiS1S2pi->Write();
-    hThetaS1pro->Write();
-    hThetaS1pi->Write();
-    hPhiS1pro->Write();
-    hPhiS1pi->Write();
-
-    hMomS1S2->Write();
-    hMomS1->Write();
-
-    hutof1dS1S2->Write();
-    hutof1dS1->Write();
 
     hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
     hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
@@ -694,6 +687,21 @@ void angularDistS3(const char* saveDir,
     cprotonXY->Print(Form("%s/%d_protonXY.png", saveDir, nBlocks));
     cprotonXY->Print(Form("%s/%d_protonXY.pdf", saveDir, nBlocks));
     cprotonXY->Print(Form("%s/%d_protonXY.tex", saveDir, nBlocks));
+
+    hThetaS1S2pro->Write();
+    hThetaS1S2pi->Write();
+    hPhiS1S2pro->Write();
+    hPhiS1S2pi->Write();
+    hThetaS1pro->Write();
+    hThetaS1pi->Write();
+    hPhiS1pro->Write();
+    hPhiS1pi->Write();
+
+    hMomS1S2->Write();
+    hMomS1->Write();
+
+    hutof1dS1S2->Write();
+    hutof1dS1->Write();
 
     hMomYS1->Write();
     hMomYS12->Write();
