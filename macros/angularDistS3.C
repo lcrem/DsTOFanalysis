@@ -193,6 +193,8 @@ void angularDistS3(const char* saveDir,
     double endTime   = 0;
 
     const char* nustof;
+    double slope;
+    double constant;
     if (nBlocks==0) {
       nustof = str0Block;
       startTime = start0Block;
@@ -202,21 +204,29 @@ void angularDistS3(const char* saveDir,
       nustof = str1Block;
       startTime = start1Block;
       endTime   = end1Block;
+      slope = block1Slope;
+      constant = block1Const;
     }
     else if (nBlocks==2) {
       nustof = str2Block;
       startTime = start2Block;
       endTime   = end2Block;
+      slope = block2Slope;
+      constant = block2Const;
     }
     else if (nBlocks==3) {
       nustof = str3Block;
       startTime = start3Block;
       endTime   = end3Block;
+      slope    = block3Slope;
+      constant = block3Const;
     }
     else if (nBlocks==4) {
       nustof = str4Block;
       startTime = start4Block;
       endTime   = end4Block;
+      slope    = block4Slope;
+      constant = block4Const;
     }
     // Find dtof runs
     for (int irun=950; irun<1400; irun++) {
@@ -312,16 +322,6 @@ void angularDistS3(const char* saveDir,
       double tTrig;
       double tS1;
       double tSoSd;
-
-      TNamed *start = 0;
-      TNamed *end   = 0;
-      futof->GetObject("start_of_run", start);
-      futof->GetObject("end_of_run", end);
-
-      const char* startchar = start->GetTitle();
-      std::string startstr(startchar);
-      std::string unixstart = startstr.substr(25,10);
-      int startTimeUtof = stoi(unixstart);
   
       const char* endchar = end->GetTitle();
       std::string endstr(endchar);
@@ -377,43 +377,60 @@ void angularDistS3(const char* saveDir,
 
     double lastSpill = 0.; 
 
-    for (int t=0; t<tree->GetEntries(); t++) {
-      tree->GetEntry(t);
+    TNamed *start = 0;
+    TNamed *end   = 0;
+    futof->GetObject("start_of_run", start);
+    futof->GetObject("end_of_run", end);
+    
+    const char* startchar = start->GetTitle();
+    std::string startstr(startchar);
+    std::string unixstart = startstr.substr(25,10);
+    int startTimeUtof = stoi(unixstart);
 
-      // Count number of spills
-      if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) {
-	nSpills++;
-	lastSpill = tSoSd;
-      } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
+    // Loop over the spills and perform the adjustment for each spill
+    for (int s = 0; s < utofTimes.size(); s++) {
+      double deadtimeWeight = 0.;
+      if (nBlocks !=0) {deadtimeWeight = dtofS1S2Hits[s] * slope + constant;}
+      else {deadtimeWeight = 1.;}
+      cout<<deadtimeWeight<<endl;
+      for (int t=0; t<tree->GetEntries(); t++) {
+	tree->GetEntry(t);
+	if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
+	if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
+	// Count number of spills
+	if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) {
+	  nSpills++;
+	  lastSpill = tSoSd;
+	} // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
 
-      // Only select those events with multiplicity of 1 - advice from AK
-      if (nhit == 1) {
-	double tofCalc = tToF[0] - tS1 + (tLight - (piLow + piHi)/2.);
-	// Calculate x, y z positions relative to S1
-	double positionX = ((xToF[0] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
-	double positionY = ((xToF[0] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-	double positionZ = (yToF[0] + s3BarBottom + 2.75) / 100.;
-	double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
-	double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-	// All triggers
-	//	if (tTrig == 0) {
-	  hutof1dS1->Fill(tofCalc);
+	// Only select those events with multiplicity of 1 - advice from AK
+	if (nhit == 1) {
+	  double tofCalc = tToF[0] - tS1 + (tLight - (piLow + piHi)/2.);
+	  // Calculate x, y z positions relative to S1
+	  double positionX = ((xToF[0] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
+	  double positionY = ((xToF[0] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+	  double positionZ = (yToF[0] + s3BarBottom + 2.75) / 100.;
+	  double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
+	  double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
+	  // All triggers
+	  //	if (tTrig == 0) {
+	  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 	  // Separate protons and MIPs using timing and amplitude cuts
 	  // Is a MIP
 	  if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
 	    nPi++;
-	    hThetaS1pi->Fill(angleTheta);
-	    hPhiS1pi->Fill(anglePhi);
+	    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
+	    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
 	    hpionXY->Fill(xToF[0], yToF[0]);
 	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	  // Is a proton
 	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
 	    nP++;
-	    hThetaS1pro->Fill(angleTheta);
-	    hPhiS1pro->Fill(anglePhi);
+	    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
+	    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
 	    hprotonXY->Fill(xToF[0], yToF[0]);
 
-	    hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc));
+	    hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc), 1./deadtimeWeight);
 	    hMomZS1->Fill(momFromTime(0.938, 10.75, tofCalc), nBar[0]);
 	    hMomYS1->Fill(momFromTime(0.938, 10.75, tofCalc), xToF[0]);
 	    if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
@@ -425,29 +442,29 @@ void angularDistS3(const char* saveDir,
 	    
 	  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	  //	}
-	// S1 & S2 trigger only
-	if (tTrig !=0) {
-	  hutof1dS1S2->Fill(tofCalc);
-	  // Separate protons and MIPs using timing and amplitude cuts
-	  // Is a MIP
-	  if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
-	    nPi++;
-	    hThetaS1S2pi->Fill(angleTheta);
-	    hPhiS1S2pi->Fill(anglePhi);
-	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
-	  // Is a proton
-	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
-	    nP++;
-	    hThetaS1S2pro->Fill(angleTheta);
-	    hPhiS1S2pro->Fill(anglePhi);
-	    hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc));
-	    hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[0]);
-	    hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[0]);
-	  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-	} // S1 + S2 trigger
-      } // if (nhit == 1)
-    } // for (int t=0; t<tree->GetEntries(); t++)
-
+	  // S1 & S2 trigger only
+	  if (tTrig !=0) {
+	    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+	    // Separate protons and MIPs using timing and amplitude cuts
+	    // Is a MIP
+	    if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
+	      nPi++;
+	      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
+	      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+	    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+	    // Is a proton
+	    else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
+	      nP++;
+	      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
+	      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
+	      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+	      hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[0]);
+	      hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[0]);
+	    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
+	  } // S1 + S2 trigger
+	} // if (nhit == 1)
+      } // for (int t=0; t<tree->GetEntries(); t++)
+    } 
     fout->cd();
     hThetaS1S2pro->Write();
     hThetaS1S2pi->Write();
