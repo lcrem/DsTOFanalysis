@@ -297,17 +297,22 @@ void angularDistS3(const char* saveDir,
 	double firstTime = tof->unixTime;
 	tofTree->GetEntry(tofTree->GetEntries()-1);
 	double lastTime = tof->unixTime;
+	int lastt = 0;
+	double lastS1S2Dtof = 0.;
 	// Spill is in this file
-	if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s]) {
+	if (firstTime <= dtofTimes[s] && lastTime >= dtofTimes[s]) {
 	  // Loop over all entries and count the number of S1 S2 hits within the spill
-	  for (int t=0; t<tofTree->GetEntries(); t++) {
+	  for (int t=lastt; t<tofTree->GetEntries(); t++) {
 	    tofTree->GetEntry(t);
 	    if ((tof->fakeTimeNs/1e9)+firstTime < dtofTimes[s]) continue;
 	    if ((tof->fakeTimeNs/1e9)+firstTime > dtofTimes[s]+1.) break;
 	    // Is within a spill
 	    if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
-		(tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1.) {
+		(tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
+		tof->channel == 13 && tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
 	      dtofS1S2Hits[s]++;
+	      lastt = t;
+	      lastS1S2Dtof = tof->fakeTimeNs;
 	    } // Is within the spill
 	  } // for (int t=0; t<tofTree->GetEntries(); t++)
        	} // if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s])
@@ -316,36 +321,6 @@ void angularDistS3(const char* saveDir,
 	dtofFile->Close();
 	delete dtofFile;
       } // for (int irun = runMin; irun < runMax+1; irun++) 
-      // Do the same thing but for the utof files
-      /*
-      TFile *futof = new TFile(Form("%s/%s", ustofDir, nustof), "read");
-      double tTrig;
-      double tS1;
-      double tSoSd;
-  
-      const char* endchar = end->GetTitle();
-      std::string endstr(endchar);
-      std::string unixend = endstr.substr(23,10);
-      int endTimeUtof = stoi(unixend);
-
-      TTree *tree = (TTree*)futof->Get("tree");
-      tree->SetBranchAddress("tS1", &tS1);
-      tree->SetBranchAddress("tSoSd", &tSoSd);
-      tree->SetBranchAddress("tTrig", &tTrig);
-
-      for (int t=0; t<tree->GetEntries(); t++) {
-	tree->GetEntry(t);
-	if ((tS1/1e9)+(double)startTimeUtof <= utofTimes[s]) continue;
-	if ((tS1/1e9)+(double)startTimeUtof >= utofTimes[s]+1.) break;
-	// Is in a spill
-	if (tTrig !=0 && (tS1/1e9)+(double)startTimeUtof >= utofTimes[s] &&
-	    (tS1/1e9)+(double)startTimeUtof <= utofTimes[s] + 1.) {
-	  utofS1S2Hits[s]++;
-	} // Is in a spill
-      } // for (int t=0; t<tree->GetEntries(); t++)
-
-      futof->Close();
-      */
     } // for (int s=0; s<dtofTimes.size(); s++)
 
     cout<<dtofTimes.size()<<" spills"<<endl;
