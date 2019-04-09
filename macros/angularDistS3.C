@@ -134,20 +134,20 @@ void angularDistS3(const char* saveDir,
 
   for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
     int nSpills = 0;
-    TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
+    TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     hThetaS1pro->Sumw2();
     TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1S2pro->Sumw2();
-    TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
+    TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.15, 3.25);
     hPhiS1pro->Sumw2();
     TH1D *hPhiS1S2pro = new TH1D(Form("hPhiS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pro->Sumw2();
 
-    TH1D *hThetaS1pi   = new TH1D(Form("hThetaS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
+    TH1D *hThetaS1pi   = new TH1D(Form("hThetaS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     hThetaS1pi->Sumw2();
     TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1S2pi->Sumw2();
-    TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
+    TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.15, 3.25);
     hPhiS1pi->Sumw2();
     TH1D *hPhiS1S2pi = new TH1D(Form("hPhiS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.15, 3.25);
     hPhiS1S2pi->Sumw2();
@@ -645,8 +645,15 @@ void angularDistS3(const char* saveDir,
 
     hPhiS1pro->Scale(1. / (double)nSpills);
     hPhiS1pi->Scale(1. / (double)nSpills);
+    hPhiS1pro->Scale(22./6.4);
+    hPhiS1pi->Scale(22./6.4);
     hThetaS1pro->Scale(1. / (double)nSpills);
     hThetaS1pi->Scale(1. / (double)nSpills);
+    for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
+      double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
+      hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
+      hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
+    }
 
     hMomS1S2->Scale(1. / (double)nSpills);
     hMomS1->Scale(1. / (double)nSpills);
