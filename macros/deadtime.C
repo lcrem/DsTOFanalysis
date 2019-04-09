@@ -507,6 +507,7 @@ void deadtimeTimestamp(const char* utofFile,
   cComb->Print(Form("%s/%s_deltatComb.pdf", saveDir, utofFile));
 
   TGraph *grRatioDtof = new TGraph();
+  TGraph *grRatioDtofFit = new TGraph();
   TGraph *grUtofDtof  = new TGraph();
   /*
   TTree *s1s2Tree = new TTree("s1s2Tree", "S1S2 Hits");
@@ -520,8 +521,13 @@ void deadtimeTimestamp(const char* utofFile,
     grUtofDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], nS1S2utofVec[n]);
     if (nS1S2dtofVec[n] != 0) {
       grRatioDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
-    }
-  }
+      // Is in the region we want to fit
+      if ((((double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]) > 0.06) &&
+	  (nS1S2dtofVec[n] > 300)) {
+	grRatioDtofFit->SetPoint(grRatioDtofFit->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
+      } // if (((double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]) > 0.05)
+    } // if (nS1S2dtofVec[n] != 0) 
+  } // for (int n=0; n < nSpills; n++)
 
   TCanvas *cRatioDtof = new TCanvas("cRatioDtof");
   grRatioDtof->SetTitle(Form("Utof/Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof/dtof", utofFile));
@@ -546,6 +552,7 @@ void deadtimeTimestamp(const char* utofFile,
   hDeltatUtof->Write();
   hUtofInSpill->Write();
   grRatioDtof->Write("grRatioDtof");
+  grRatioDtofFit->Write("grRatioDtofFit");
   grUtofDtof->Write("grUtofDtof");
   fout->Close();
 } // deadtimeTimestamp
