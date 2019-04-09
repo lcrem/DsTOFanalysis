@@ -132,7 +132,7 @@ void angularDistS3(const char* saveDir,
 		        6.2};
   int binnum = sizeof(binsTheta)/sizeof(double) - 1;
 
-  for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
+  for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
     int nSpills = 0;
     TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     hThetaS1pro->Sumw2();
@@ -272,8 +272,10 @@ void angularDistS3(const char* saveDir,
       spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
       for (int t = 0; t < spillTree->GetEntries(); t++) {
 	spillTree->GetEntry(t);
-	dtofTimes.push_back(globalSpillTime);
-	utofTimes.push_back(ustofSpillTime);
+	if (globalSpillTime >= startTime && globalSpillTime <= endTime) {
+	  dtofTimes.push_back(globalSpillTime);
+	  utofTimes.push_back(ustofSpillTime);
+	}
       } // for (int t = 0; t < spillTree->GetEntries(); t++)
 
       dbFile->Close();
@@ -287,7 +289,9 @@ void angularDistS3(const char* saveDir,
     int lastt = 0;
     int lastrun = 0;
     for (int s=0; s<dtofTimes.size(); s++) {
-      cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
+      if (s % 25 == 0) {
+	cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
+      }
       // Loop over the all the files
       for (int irun = runMin; irun < runMax+1; irun++) {
 	
@@ -328,7 +332,6 @@ void angularDistS3(const char* saveDir,
       } // for (int irun = runMin; irun < runMax+1; irun++) 
     } // for (int s=0; s<dtofTimes.size(); s++)
 
-    cout<<dtofTimes.size()<<" spills"<<endl;
     TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
 
     double tToF[50];
@@ -367,12 +370,14 @@ void angularDistS3(const char* saveDir,
     std::string unixstart = startstr.substr(25,10);
     int startTimeUtof = stoi(unixstart);
 
+    int lastut = 0;
     // Loop over the spills and perform the adjustment for each spill
     for (int s = 0; s < utofTimes.size(); s++) {
+      if (s % 25 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
       double deadtimeWeight = 0.;
       if (nBlocks !=0) {deadtimeWeight = dtofS1S2Hits[s] * slope + constant;}
       else {deadtimeWeight = 1.;}
-      for (int t=0; t<tree->GetEntries(); t++) {
+      for (int t=lastut; t<tree->GetEntries(); t++) {
 	tree->GetEntry(t);
 	if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
 	if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
@@ -401,6 +406,7 @@ void angularDistS3(const char* saveDir,
 	    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 	    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
 	    hpionXY->Fill(xToF[0], yToF[0]);
+	    lastut = t;
 	  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	  // Is a proton
 	  else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
@@ -412,6 +418,7 @@ void angularDistS3(const char* saveDir,
 	    hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc), 1./deadtimeWeight);
 	    hMomZS1->Fill(momFromTime(0.938, 10.75, tofCalc), nBar[0]);
 	    hMomYS1->Fill(momFromTime(0.938, 10.75, tofCalc), xToF[0]);
+	    lastut = t;
 	    if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
 	    else if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[0], nBar[0]);
 	    else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[0], nBar[0]);
@@ -446,7 +453,7 @@ void angularDistS3(const char* saveDir,
     } 
 
     nSpills = utofTimes.size();
-
+    cout<<"Utof spills "<<nSpills<<endl;
     fout->cd();
 
     hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
