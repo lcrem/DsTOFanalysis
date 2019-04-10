@@ -339,16 +339,16 @@ void s4MomCalc(const char* saveDir,
 	    if ((tS1 - ustofSpillTimes[spill]) < 0.) continue;
 	    if ((tS1 - ustofSpillTimes[spill]) > 1e9) break;
 	    // We only want the events with an S1-S2 coincidence
-	    //if (tTrig !=0) {
+	    if (tTrig !=0) {
 	      // Vector of unshifted hit times and also one of drifted one
 	      for (int n = 0; n < nhit; n++) {
 		ustofHitsS3.push_back(tToF[n] - ustofSpillTimes[spill]);
 		ustofHitsS2.push_back(tTrig - ustofSpillTimes[spill]);
 		ustofHitsS1.push_back(tS1 - ustofSpillTimes[spill]);
 		ustofHitsS2Drift.push_back((tTrig - ustofSpillTimes[spill]) / (1. + grad));
-		ustofHitsS1Drift.push_back((tS1 - ustofSpillTimes[spill]) / (1. + grad));
+		ustofHitsS1Drift.push_back((tS1-ustofSpillTimes[spill]) / (1. + grad));
 	      } // for(int n = 0; n < nhit; n++) 
-	      //} // if (tTrig !=0)
+	    } // if (tTrig !=0)
 	  } // for (int u = 0; u < tree->GetEntries(); u++)
 
 	  //cout<<"Have counted "<<dstofHitsS4_1.size()+dstofHitsS4_2.size()<<" dstof hits and "<<ustofHitsS3.size()<<" ustof hits"<<endl;
@@ -357,13 +357,13 @@ void s4MomCalc(const char* saveDir,
 	  // Try and match each of these with the corresponding closest dtof S2 hit
 	  int lastdh1 = 0;
 	  int lastdh2 = 0;
-	  for (int uh = 0; uh < ustofHitsS1Drift.size(); uh++) {
+	  for (int uh = 0; uh < ustofHitsS2Drift.size(); uh++) {
 	    double diffLow = 999999999999.;
 	    double diff = 0.;
 	    int hitLow = -1;
 	    int tdc = 0;
 	    for (int dh1=lastdh1; dh1<dstofHitsS2_1.size(); dh1++) {
-	      diff = ustofHitsS1Drift[uh] - dstofHitsS2_1[dh1];
+	      diff = ustofHitsS2Drift[uh] - dstofHitsS2_1[dh1];
 	      if (abs(diff) < abs(diffLow)) {
 		diffLow = diff;
 		hitLow = dh1;
@@ -372,14 +372,13 @@ void s4MomCalc(const char* saveDir,
 	      } // if (abs(diff) < abs(diffLow))
 	    } // for (int dh=0; dh<dstofHits1.size(); dh++) 
 	    for (int dh2=lastdh2; dh2<dstofHitsS2_2.size(); dh2++) {
-	      diff = ustofHitsS1Drift[uh] - dstofHitsS2_1[dh2];
+	      diff = ustofHitsS2Drift[uh] - dstofHitsS2_2[dh2];
 	      if (abs(diff) < abs(diffLow)) {
 		diffLow = diff;
 		hitLow = dh2;
 		tdc = 2;
 		lastdh2 = dh2;
 	      } // if (abs(diff) < abs(diffLow))
-
 	    } // for (int dh=0; dh<dstofHits2.size(); dh++)
 
 	    ustofHitsS1M.push_back(ustofHitsS1[uh]);
