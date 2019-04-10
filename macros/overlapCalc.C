@@ -18,7 +18,7 @@ void overlapCalc(const char* saveDir)
   TVector3 vs2_activeBL(-0.3472, 0.0344, -0.0496);
   TVector3 vs2TopRight(-0.3498, -0.0725, 0.0679);
   TVector3 vs2_activeBR(-0.3498, -0.0725, -0.0521);
-  TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
+   TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
 
   TVector3 vs3TopLeft(9.0650, 0.5215, 0.6244);
   TVector3 vs3TopRight(8.9245, -0.9928, 0.6220);
@@ -60,7 +60,7 @@ void overlapCalc(const char* saveDir)
   s2Vec.push_back(vs2_activeBL);
   s2Vec.push_back(vs2_activeBR);
   s2Vec.push_back(vs2TopRight);
-  s2Vec.push_back(vs2Bottom);
+  //  s2Vec.push_back(vs2Bottom);
   
   std::vector<TVector3> s3Vec;
   s3Vec.push_back(vs3TopLeft);
@@ -177,7 +177,8 @@ void overlapCalc(const char* saveDir)
   mg_noProj->Draw("AP");
   legnoProj->Draw();
   cnoProj->Print(Form("%s/beamlineOrig.png", saveDir));
-  cnoProj->Print(Form("%s/beamlineOrig.pdf", saveDir));   
+  cnoProj->Print(Form("%s/beamlineOrig.pdf", saveDir));
+  cnoProj->Print(Form("%s/beamlineOrig.tex", saveDir));   
 
   // To find angle to rotate
   // Vector pointing down beamline
@@ -244,6 +245,7 @@ void overlapCalc(const char* saveDir)
   legRot->Draw();
   crot->Print(Form("%s/beamlineRotated.png",saveDir));
   crot->Print(Form("%s/beamlineRotated.pdf",saveDir));
+  crot->Print(Form("%s/beamlineRotated.tex",saveDir));
   // Now project down the z axis with the paddle in the drawing plane
   // Origin still at S1
   TMultiGraph *mg_proj = new TMultiGraph();
@@ -289,14 +291,15 @@ void overlapCalc(const char* saveDir)
   TCanvas *cproj = new TCanvas("cproj");
   mg_proj->SetTitle("T10 points projected along S1-S2 axis (S1 origin); -y / m; z / m");
   mg_proj->Draw("AP");
-  TLegend *legProj = new TLegend(0.1, 0.15, 0.30, 0.35);
+  TLegend *legProj = new TLegend(0.15, 0.3, 0.35, 0.57);
   legProj->AddEntry(grs2_noProj, "S2", "p");
   legProj->AddEntry(grs3_noProj, "S3", "p");
-  legProj->AddEntry(grs4_noProj, "S4", "p");
+  //  legProj->AddEntry(grs4_noProj, "S4", "p");
   legProj->AddEntry(grs4Act_noProj, "S4 Active", "p");
   legProj->Draw();
   cproj->Print(Form("%s/beamlineProjected.png",saveDir));
   cproj->Print(Form("%s/beamlineProjected.pdf",saveDir));
+  cproj->Print(Form("%s/beamlineProjected.tex",saveDir));
 
   // Project but without draw distance to S2
   TMultiGraph *mg_nproh = new TMultiGraph();
@@ -344,53 +347,71 @@ void overlapCalc(const char* saveDir)
   legProj->Draw();
   cnproh->Print(Form("%s/beamlineProjectedNew.png",saveDir));
   cnproh->Print(Form("%s/beamlineProjectedNew.pdf",saveDir));
+  cnproh->Print(Form("%s/beamlineProjectedNew.tex",saveDir));
 
   // Change the axes so we're doing this in terms of angle
   TMultiGraph *mg_ang = new TMultiGraph();
   TGraph *grs1_ang = new TGraph();
   grs1_ang->SetMarkerColor(kBlack);
   grs1_ang->SetMarkerSize(2);
-  grs1_ang->SetMarkerStyle(49);
+  grs1_ang->SetMarkerStyle(20);
   TGraph *grs2_ang = new TGraph();
   grs2_ang->SetMarkerColor(kOrange);
   grs2_ang->SetMarkerSize(2);
-  grs2_ang->SetMarkerStyle(49);
+  grs2_ang->SetMarkerStyle(20);
   TGraph *grs3_ang = new TGraph();
-  grs3_ang->SetMarkerColor(kGreen);
+  grs3_ang->SetMarkerColor(kBlue);
   grs3_ang->SetMarkerSize(2);
-  grs3_ang->SetMarkerStyle(49);
+  grs3_ang->SetMarkerStyle(20);
   TGraph *grs4_ang = new TGraph();
   grs4_ang->SetMarkerColor(kRed);
   grs4_ang->SetMarkerSize(2);
-  grs4_ang->SetMarkerStyle(49);
+  grs4_ang->SetMarkerStyle(20);
   TGraph *grs4Act_ang = new TGraph();
   grs4Act_ang->SetMarkerColor(kRed+2);
   grs4Act_ang->SetMarkerSize(2);
-  grs4Act_ang->SetMarkerStyle(49);
+  grs4Act_ang->SetMarkerStyle(20);
   
   for (int i=0; i<s2Vec.size(); i++) {
     grs2_ang->SetPoint(grs2_ang->GetN(), (TMath::ATan(s2Vec[i].Y()/s2Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s2Vec[i].Z()/s2Vec[i].X())*(180./TMath::Pi()));
   }
-  grs2_ang->SetPoint(grs2_ang->GetN(), (TMath::ATan(vs2Centre.Y()/vs2Centre.X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(vs2Centre.Z()/vs2Centre.X())*(180./TMath::Pi()));
+  // grs2_ang->SetPoint(grs2_ang->GetN(), (TMath::ATan(vs2Centre.Y()/vs2Centre.X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(vs2Centre.Z()/vs2Centre.X())*(180./TMath::Pi()));
   for (int i=0; i<s3Vec.size(); i++) {
     grs3_ang->SetPoint(grs3_ang->GetN(), (TMath::ATan(s3Vec[i].Y()/s3Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s3Vec[i].Z()/s3Vec[i].X())*(180./TMath::Pi()));
   }
+  /*
   for (int i=0; i<s4Vec.size(); i++) {
     grs4_ang->SetPoint(grs4_ang->GetN(), (TMath::ATan(s4Vec[i].Y()/s4Vec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s4Vec[i].Z()/s4Vec[i].X())*(180./TMath::Pi()));
   }
+  */
   for (int i=0; i<s4ActiveVec.size(); i++) {
     grs4Act_ang->SetPoint(grs4Act_ang->GetN(), (TMath::ATan(s4ActiveVec[i].Y()/s4ActiveVec[i].X())+s2Angle)*(180./TMath::Pi()), TMath::ATan(s4ActiveVec[i].Z()/s4ActiveVec[i].X())*(180./TMath::Pi()) );
   }
   mg_ang->Add(grs2_ang);
   mg_ang->Add(grs3_ang);
-  mg_ang->Add(grs4_ang);
+  //  mg_ang->Add(grs4_ang);
   mg_ang->Add(grs4Act_ang);
+
+  TLegend *legang = new TLegend(0.15, 0.33, 0.35, 0.63);
+  legang->AddEntry(grs2_ang, "S2", "p");
+  legang->AddEntry(grs3_ang, "S3", "p");
+  legang->AddEntry(grs4Act_ang, "S4 Active", "p");
+  legang->Draw();
   TCanvas *cang = new TCanvas("cang");
-  mg_ang->SetTitle("Angular distribution of T10 (S1 origin); #theta / degrees; #phi / degrees");
+  mg_ang->SetTitle("Angular distribution of detector components in T10 (S1 origin); #theta / degrees; #phi / degrees");
   mg_ang->Draw("AP");
-  legProj->Draw();
+  legang->Draw();
+  cang->SetGridx();
+  cang->SetGridy();
+  mg_ang->GetXaxis()->SetTitleSize(0.05);
+  mg_ang->GetXaxis()->SetLabelSize(0.05);
+  mg_ang->GetYaxis()->SetTitleSize(0.05);
+  mg_ang->GetYaxis()->SetLabelSize(0.05);
+  cang->SetLeftMargin(0.13);
+  cang->SetBottomMargin(0.13);
   cang->Print(Form("%s/beamlineAng.png",saveDir));
   cang->Print(Form("%s/beamlineAng.pdf",saveDir));
+  cang->Print(Form("%s/beamlineAng.tex",saveDir));
 
   cout<<"S4 angular positions"<<endl;
   for (int i=0; i<s4ActiveVec.size(); i++) {
@@ -408,7 +429,7 @@ void overlapCalc(const char* saveDir)
   std::vector<TVector3> vectorVec;
   vectorVec.push_back(vs2TopLeft);
   vectorVec.push_back(vs2TopRight);
-  vectorVec.push_back(vs2Bottom);
+  //  vectorVec.push_back(vs2Bottom);
   vectorVec.push_back(vs3TopLeft);
   vectorVec.push_back(vs3TopRight);
   vectorVec.push_back(vs3BottomLeft);
