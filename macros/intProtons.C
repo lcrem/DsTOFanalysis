@@ -139,7 +139,7 @@ void intProtons(const char* saveDir,
       file = pathNoSuff;
       if ((tSoSd - lastSpill) > 2e9) {
 	cout<<"Spill at "<<spillTime<<", nP, nPi, "<<nP<<", "<<nPi<<endl;
-	if (spillTime < eTargetT) {
+	if (spillTime < eTargetT && spillTime >1534.8e6) {
 	  grNonE_nP->SetPoint(grNonE_nP->GetN(), spillTime, nP);
 	  if (nPi < 5000) {
 	    grNonE_nPi->SetPoint(grNonE_nPi->GetN(), spillTime, nPi);
@@ -148,13 +148,15 @@ void intProtons(const char* saveDir,
 	    grNonE_ratio->SetPoint(grNonE_ratio->GetN(), spillTime, (double)nP/(double)nPi);	  
 	  } // if (nPi!=0)
 	} // if (spillTime < eTargetT) 
-	grAll_nP->SetPoint(grAll_nP->GetN(), spillTime, nP);
-	if (nPi < 5000) {
-	  grAll_nPi->SetPoint(grAll_nPi->GetN(), spillTime, nPi);
+	if (spillTime > 1534.8e6) {
+	  grAll_nP->SetPoint(grAll_nP->GetN(), spillTime, nP);
+	  if (nPi < 5000) {
+	    grAll_nPi->SetPoint(grAll_nPi->GetN(), spillTime, nPi);
+	  }
+	  if (nPi!=0) {
+	    grAll_ratio->SetPoint(grAll_ratio->GetN(),spillTime,(double)nP/(double)nPi);
+	  } // if (nPi!=0)
 	}
-	if (nPi!=0) {
-	  grAll_ratio->SetPoint(grAll_ratio->GetN(), spillTime, (double)nP/(double)nPi);
-	} // if (nPi!=0)
 	outTree->Fill();
 	lastSpill = tSoSd;
 	spillTime = fileVec[i].first + (tSoSd/1e9);
