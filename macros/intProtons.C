@@ -23,7 +23,7 @@ void intProtons(const char* saveDir,
   const double tLight = 35.8; // Expected time in ns of light speed particles according to AK
   // This is before the shift is applied
   const double proLow  = -12.5;
-  const double proHi   = 40.5;
+  const double proHi   = 60.;
   const double piLow = -29.06;
   const double piHi  = -28.06;
   // S3 amplitude cut for protons
@@ -46,9 +46,11 @@ void intProtons(const char* saveDir,
   int nP;
   int nPi;
   double spillTime;
+  TString file;
   outTree->Branch("nP", &nP);
   outTree->Branch("nPi", &nPi);
   outTree->Branch("spillTime", &spillTime);
+  outTree->Branch("file", &file);
 
   const char* ext   = ".root";
   const char* pref  = "Data";
@@ -105,6 +107,9 @@ void intProtons(const char* saveDir,
   // Now go through files and count the protons
   for (int i=0; i<fileVec.size(); i++) {
     TString path = fileVec[i].second;
+    TString pathNoSuff = path.ReplaceAll(".root", "");
+    TH1D *hFileTof = new TH1D(Form("hFileTof_%s", pathNoSuff.Data()), Form("%s time of flight", pathNoSuff.Data()), 300, -100, 200);
+    path.Append(".root");
     path.Prepend(ustofDir);
     TFile *ustofFile = new TFile(path, "read");
     TTree *tree = (TTree*)ustofFile->Get("tree");
@@ -131,16 +136,25 @@ void intProtons(const char* saveDir,
     double lastSpill=0.;
     for (int t = 0; t < tree->GetEntries(); t++) {
       tree->GetEntry(t);
+      file = pathNoSuff;
       if ((tSoSd - lastSpill) > 2e9) {
 	cout<<"Spill at "<<spillTime<<", nP, nPi, "<<nP<<", "<<nPi<<endl;
 	if (spillTime < eTargetT) {
 	  grNonE_nP->SetPoint(grNonE_nP->GetN(), spillTime, nP);
-	  grNonE_nPi->SetPoint(grNonE_nPi->GetN(), spillTime, nPi);
-	  if (nPi!=0) grNonE_ratio->SetPoint(grNonE_ratio->GetN(), spillTime, (double)nP/(double)nPi);	  
-	}
+	  if (nPi < 5000) {
+	    grNonE_nPi->SetPoint(grNonE_nPi->GetN(), spillTime, nPi);
+	  }
+	  if (nPi!=0) {
+	    grNonE_ratio->SetPoint(grNonE_ratio->GetN(), spillTime, (double)nP/(double)nPi);	  
+	  } // if (nPi!=0)
+	} // if (spillTime < eTargetT) 
 	grAll_nP->SetPoint(grAll_nP->GetN(), spillTime, nP);
-	grAll_nPi->SetPoint(grAll_nPi->GetN(), spillTime, nPi);
-	if (nPi!=0) grAll_ratio->SetPoint(grAll_ratio->GetN(), spillTime, (double)nP/(double)nPi);
+	if (nPi < 5000) {
+	  grAll_nPi->SetPoint(grAll_nPi->GetN(), spillTime, nPi);
+	}
+	if (nPi!=0) {
+	  grAll_ratio->SetPoint(grAll_ratio->GetN(), spillTime, (double)nP/(double)nPi);
+	} // if (nPi!=0)
 	outTree->Fill();
 	lastSpill = tSoSd;
 	spillTime = fileVec[i].first + (tSoSd/1e9);
@@ -150,21 +164,28 @@ void intProtons(const char* saveDir,
 
       for (int n = 0; n < nhit; n++) {
 	double tofCalc = tToF[n] - tS1; //+ (tLight - (piLow + piHi)/2.);
+	hFileTof->Fill(tofCalc);
 	if (tofCalc > /*(tLight - (piLow+piHi)/2.) +*/ piLow && 
 	    tofCalc < /*(tLight - (piLow+piHi)/2.) +*/ piHi &&
-	    (tToF[n] - tSoSd) < 1e9) {
-	  nPi++;
-	} // Is a pion
+	    (tToF[n] - tSoSd) < 1e9) 
+	  {
+	    nPi++;
+	  } // Is a pion
 	else if (tofCalc > /*(tLight - (piLow + piHi)/2.) +*/ proLow && 
 		 tofCalc < /*(tLight - (piLow + piHi)/2.) +*/ proHi && 
 		 A1ToF[n] > A1CutVec[nBar[n]] && A2ToF[n] > A2CutVec[nBar[n]] &&
 		 (tToF[n] - tSoSd) < 1e9) 
 	  {
-	  nP++;
-	} // Is a proton	    
+	    nP++;
+	  } // Is a proton	    
       } // for (int n = 0; n < hit; n++)
     } // for (int t = 0; t < tree->GetEntries(); t++)
 
+    hFileTof->Write();
+    TCanvas *c1 = new TCanvas(Form("c1_%s", pathNoSuff.Data()));
+    hFileTof->Draw("hist");
+    c1->Print(Form("%s/%sTof.png",saveDir,pathNoSuff.Data())); 
+    c1->Print(Form("%s/%sTof.pdf",saveDir,pathNoSuff.Data()));
     ustofFile->Close();
   }
   fout->cd();
