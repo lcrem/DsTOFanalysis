@@ -137,6 +137,7 @@ void intProtons(const char* saveDir,
     for (int t = 0; t < tree->GetEntries(); t++) {
       tree->GetEntry(t);
       file = pathNoSuff;
+      if (spillTime > eTargetT) break;
       if ((tSoSd - lastSpill) > 2e9) {
 	cout<<"Spill at "<<spillTime<<", nP, nPi, "<<nP<<", "<<nPi<<endl;
 	if (spillTime < eTargetT && spillTime >1534.8e6) {
@@ -148,6 +149,8 @@ void intProtons(const char* saveDir,
 	    grNonE_ratio->SetPoint(grNonE_ratio->GetN(), spillTime, (double)nP/(double)nPi);	  
 	  } // if (nPi!=0)
 	} // if (spillTime < eTargetT) 
+       
+	/*
 	if (spillTime > 1534.8e6) {
 	  grAll_nP->SetPoint(grAll_nP->GetN(), spillTime, nP);
 	  if (nPi < 5000) {
@@ -157,6 +160,7 @@ void intProtons(const char* saveDir,
 	    grAll_ratio->SetPoint(grAll_ratio->GetN(),spillTime,(double)nP/(double)nPi);
 	  } // if (nPi!=0)
 	}
+	*/
 	outTree->Fill();
 	lastSpill = tSoSd;
 	spillTime = fileVec[i].first + (tSoSd/1e9);
@@ -189,7 +193,165 @@ void intProtons(const char* saveDir,
     c1->Print(Form("%s/%sTof.png",saveDir,pathNoSuff.Data())); 
     c1->Print(Form("%s/%sTof.pdf",saveDir,pathNoSuff.Data()));
     ustofFile->Close();
-  }
+  } // Loop over utof files
+  // Now loop over dtof files and count number of S1-S2 hits 
+  // as well as the number of S4 hits
+  TTree *s1s2OutTree = new TTree("s1s2OutTree", "Particles in spill");
+  int nSpills = 0;
+  int nS1S2 = 0;
+  double dtofSpillTime;
+  int run;
+  s1s2OutTree->Branch("nS1S2", &nS1S2);
+  s1s2OutTree->Branch("dtofSpillTime", &dtofSpillTime);
+  s1s2OutTree->Branch("run", &run);
+
+  TTree *s4OutTree1 = new TTree("s4OutTree1", "Particles in spill");
+  TTree *s4OutTree2 = new TTree("s4OutTree2", "Particles in spill");
+  int nS4_1;
+  int nS4_2;
+  int nS4cut_1;
+  int nS4cut_2;
+  double s4SpillTime1;
+  double s4SpillTime2;
+  s4OutTree1->Branch("nS4_1", &nS4_1);
+  s4OutTree1->Branch("nS4cut_1", &nS4cut_1);
+  s4OutTree1->Branch("s4SpillTime1", &s4SpillTime1);
+  s4OutTree2->Branch("nS4_2", &nS4_2);
+  s4OutTree2->Branch("nS4cut_2", &nS4cut_2);
+  s4OutTree2->Branch("s4SpillTime2", &s4SpillTime2);
+
+  TGraph *grDtof = new TGraph();
+  TGraph *grS4_1 = new TGraph();
+  TGraph *grS4_2 = new TGraph();
+
+  for (int irun = 900; irun < 1400; ++irun) {
+    run = irun;
+    TFile *dstofIn = new TFile(Form("%s/run%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun));
+    RawDsTofHeader *tof = NULL;
+    TTree *tofTree = (TTree*)dstofIn->Get("tofTree");
+    tofTree->SetBranchAddress("tof", &tof);
+    tofTree->GetEntry(0);
+    int firstTime = tof->unixTime;
+    tofTree->GetEntry(tofTree->GetEntries()-1);
+    int lastTime = tof->unixTime;
+    dtofSpillTime = firstTime;
+    dstofIn->Close();
+    delete dstofIn;
+    delete tof;
+    if (firstTime > eTargetT) break;
+    if (lastTime < 1534.8e6) continue;
+
+    cout<<"Counting hits in run "<<irun<<endl;
+    TFile *dstofHits  = new TFile(Form("%s/run%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun));
+    TFile *dstofCoin1 = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun));
+    TFile *dstofCoin2 = new TFile(Form("%s/run%d/DsTOFcoincidenceRun%d_tdc2.root", dstofDir, irun, irun));
+    TTree *dstofHitsTree  = (TTree*)dstofHits->Get("tofTree");
+    TTree *dstofCoinTree1 = (TTree*)dstofCoin1->Get("tofCoinTree");
+    TTree *dstofCoinTree2 = (TTree*)dstofCoin2->Get("tofCoinTree");
+    RawDsTofHeader *tofHits = NULL;
+    RawDsTofCoincidence *tofCoin1 = NULL;
+    RawDsTofCoincidence *tofCoin2 = NULL;
+    dstofHitsTree->SetBranchAddress("tof", &tofHits);
+    dstofCoinTree1->SetBranchAddress("tofCoin", &tofCoin1);
+    dstofCoinTree2->SetBranchAddress("tofCoin", &tofCoin2);
+    double lastDelayedSpill   = 0.;
+    double lastRawBeamSpillNs = 0.;
+    for (int h=0; h<dstofHitsTree->GetEntries(); h++) {
+      dstofHitsTree->GetEntry(h);
+      if (tofHits->unixTime > eTargetT) break;
+      if (tofHits->unixTime < 1534.8e6) continue;
+
+      if (tofHits->channel == 15) {
+	lastRawBeamSpillNs = tofHits->fakeTimeNs;
+	continue;
+      } // if (tof->channel == 15) 
+
+      if (tofHits->channel == 14 && tofHits->fakeTimeNs>(lastRawBeamSpillNs+900.98e6) && tofHits->fakeTimeNs<(lastRawBeamSpillNs+900.982e6)) {
+	lastDelayedSpill = tofHits->fakeTimeNs;
+	grDtof->SetPoint(grDtof->GetN(), firstTime+tofHits->fakeTimeNs/1e9, nS1S2);
+	s1s2OutTree->Fill();
+	nS1S2 = 0;
+	dtofSpillTime = firstTime+tofHits->fakeTimeNs/1e9;
+	nSpills++;
+      } // Is a true delayed beam signal
+
+      // Is an S1-S2 coincidence signal in a beam spill
+      if (tofHits->channel == 13 && tofHits->fakeTimeNs > lastDelayedSpill &&
+	  tofHits->fakeTimeNs < (lastDelayedSpill + 1e9)) {
+	nS1S2++;
+      } // Is S1, S2 coincidence
+    } // for (int h=0; h<dstofHitsTree->GetEntries(); t++)
+
+    double lastS4Spill1 = 0.;
+    s4SpillTime1 = firstTime;
+    for (int t=0; t<dstofCoinTree1->GetEntries(); t++) {
+      dstofCoinTree1->GetEntry(t);
+      if (tofCoin1->unixTime[0] > eTargetT) break;
+      if (tofCoin1->unixTime[0] < 1534.8e6) continue;
+
+      if (lastS4Spill1 != tofCoin1->lastDelayedBeamSignal) {
+	s4OutTree1->Fill();
+	nS4_1 = 0;
+	nS4cut_1 = 0;
+	lastS4Spill1 = tofCoin1->lastDelayedBeamSignal;
+	s4SpillTime1 = firstTime+lastS4Spill1/1e9;
+      } // if (lastS4Spill1 != tofCoin1->lastDelayedBeamSignal)
+
+      // Is an S4 hit in a spill
+      if ((tofCoin1->fakeTimeNs[0]-tofCoin1->lastDelayedBeamSignal) < 1e9 &&
+	  (tofCoin1->fakeTimeNs[0]-tofCoin1->lastDelayedBeamSignal) > 0.) {
+	nS4_1++;
+	double deltat = TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1]);
+	double dstofHitT = min(tofCoin1->fakeTimeNs[0],tofCoin1->fakeTimeNs[1])-(10.-TMath::Abs(deltat)/2.);
+	double tofCalc = dstofHitT - tofCoin1->usTofSignal;
+	// Particle is caught in S4 and S1-S2
+	if (tofCalc > 70. && tofCalc < 200.) {
+	  nS4cut_1++;
+	} // if (tofCalc > 70. && tofCalc < 200.)
+      } // S4 hit in a spill
+
+    } // for (int t=0; t<dstofCoinTree1->GetEntries(); t++)
+    double lastS4Spill2 = 0.;
+    s4SpillTime2 = firstTime;
+    for (int t=0; t<dstofCoinTree2->GetEntries(); t++) {
+      dstofCoinTree2->GetEntry(t);
+      if (tofCoin2->unixTime[0] > eTargetT) break;
+      if (tofCoin2->unixTime[0] < 1534.8e6) continue;
+
+      if (lastS4Spill2 != tofCoin2->lastDelayedBeamSignal) {
+	s4OutTree2->Fill();
+	nS4_2    = 0;
+	nS4cut_2 = 0;
+	lastS4Spill2 = tofCoin2->lastDelayedBeamSignal;
+	s4SpillTime2 = firstTime+lastS4Spill2/1e9;
+      } // if (lastS4Spill2 != tofCoin2->lastDelayedBeamSignal)
+
+      // Is an S4 hit in a spill
+      if ((tofCoin2->fakeTimeNs[0]-tofCoin2->lastDelayedBeamSignal) < 1e9 &&
+	  (tofCoin2->fakeTimeNs[0]-tofCoin2->lastDelayedBeamSignal) > 0.) {
+	nS4_2++;
+	double deltat = TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1]);
+	double dstofHitT = min(tofCoin2->fakeTimeNs[0],tofCoin2->fakeTimeNs[1])-(10.-TMath::Abs(deltat)/2.);
+	double tofCalc = dstofHitT - tofCoin2->usTofSignal;
+	// Particle is caught in S4 and S1-S2
+	if (tofCalc > 70. && tofCalc < 200.) {
+	  nS4cut_2++;
+	} // if (tofCalc > 70. && tofCalc < 200.)
+      } // S4 hit in a spill
+      
+    } // for (int t=0; t<dstofCoinTree2->GetEntries(); t++)
+
+    dstofHits->Close();
+    dstofCoin1->Close();
+    dstofCoin2->Close();
+    delete dstofHits;
+    delete dstofCoin1;
+    delete dstofCoin2;
+    delete tofHits;
+    delete tofCoin1;
+    delete tofCoin2;
+  } // for (int irun = 900; irun < 1400; ++irun) 
+
   fout->cd();
   grNonE_nP->Write("grNonE_nP");
   grNonE_nPi->Write("grNonE_nPi");
@@ -197,8 +359,15 @@ void intProtons(const char* saveDir,
   grAll_nP->Write("grAll_nP");
   grAll_nPi->Write("grAll_nPi");
   grAll_ratio->Write("grAll_ratio");
+  grDtof->Write("grDtof");
+  grS4_1->Write("grS4_1");
+  grS4_2->Write("grS4_2");
   outTree->Write();
-  cout<<outTree->GetEntries()<<" recorded"<<endl;
+  s1s2OutTree->Write();
+  s4OutTree1->Write();
+  s4OutTree2->Write();
+  cout<<outTree->GetEntries()<<" utof spills recorded"<<endl;
+  cout<<s1s2OutTree->GetEntries()<<" dtof spills recorded"<<endl;
   fout->Close();
 
 } // intProtons
