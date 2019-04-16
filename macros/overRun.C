@@ -18,7 +18,14 @@ void overRun(const char* saveDir,
   char *dir  = gSystem->ExpandPathName(deadTimeDir);
   void *dirp = gSystem->OpenDirectory(dir);
 
-  TGraph *dtGr = new TGraph();
+  //  TGraphErrors *dtGr = new TGraphErrors();
+
+  vector<double> rmsVec;
+  vector<double> interceptVec;
+  vector<double> slopeVec;
+  vector<double> dtVec;
+  vector<double> timeVec;
+  vector<double> zeroVec;
 
   while (entry = (char*)gSystem->GetDirEntry(dirp)) {
     str = entry;
@@ -38,7 +45,7 @@ void overRun(const char* saveDir,
       string unixend   = endstr.substr(23,10);
       double dtStart = stod(unixstart);	 
       double dtEnd   = stod(unixend);
-
+      cout<<dtStart<<" "<<dtEnd<<endl;
       TObject* nS1S2dtof = 0;
       TObject* nS1S2utof = 0;
       dtFile->GetObject("nS1S2dtof", nS1S2dtof);
@@ -47,19 +54,34 @@ void overRun(const char* saveDir,
       double ratio = (double)nS1S2utof->GetUniqueID()/(double)nS1S2dtof->GetUniqueID();
       cout<<nS1S2dtof->GetUniqueID()<<" "<<nS1S2utof->GetUniqueID()<<" "<<ratio<<endl;
 
-      dtGr->SetPoint(dtGr->GetN(), (dtStart+dtEnd)/2., ratio);
+      TVectorD *rms = (TVectorD*)dtFile->Get("rms");
+      TVectorD *intercept = (TVectorD*)dtFile->Get("intercept");
+      TVectorD *slope = (TVectorD*)dtFile->Get("slope");
+      rmsVec.push_back((*rms)[0]);
+      interceptVec.push_back((*intercept)[0]);
+      slopeVec.push_back((*slope)[0]);
+      dtVec.push_back(ratio);
+      zeroVec.push_back(0.);
+      timeVec.push_back((dtStart+dtEnd)/2.);
+
+      //dtGr->SetPoint(dtGr->GetN(), (dtStart+dtEnd)/2., ratio);
+      cout<<(*rms)[0]<<" "<<(*intercept)[0]<<endl;
 
       delete nS1S2dtof;
       delete nS1S2utof;
       dtFile->Close();
+      delete dtFile;
     } // Is correct file
   } // while (entry = (char*)gSystem->GetDirEntry(dirp))
 
+  TGraphErrors *dtGr = new TGraphErrors(rmsVec.size(), &timeVec[0], &dtVec[0], &zeroVec[0], &rmsVec[0]);
+  TGraph *interceptGr = new TGraph(rmsVec.size(), &timeVec[0], &interceptVec[0]);
+  TGraph *slopeGr     = new TGraph(rmsVec.size(), &timeVec[0], &slopeVec[0]);
+
   fout->cd();
   dtGr->SetTitle("S1 #cap S2 (utof / dtof) for each utof run; Time; (S1 #cap S2 utof)/(S1 #cap S2 dtof)");
-  dtGr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
+  //  dtGr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
   dtGr->Write("dtGr");
-
   // Open protons per spill file
   TFile *filePro = new TFile(Form("%s/intProtons.root", protonDir));
   TGraph *proGr = new TGraph();
@@ -111,6 +133,8 @@ void overRun(const char* saveDir,
   proGr->Write("proGr");
   piGr->Write("piGr");
   ratioGr->Write("ratioGr");
+  slopeGr->Write("slopeGr");
+  interceptGr->Write("interceptGr");
 
   fout->Close();
   filePro->Close();
