@@ -125,16 +125,40 @@ void overRun(const char* saveDir,
   proGr->SetTitle("50 spill average of number of protons per spill for 4 block data; Time; Protons / spill"); 
   piGr->SetTitle("50 spill average of number of MIPs per spill for 4 block data; Time; MIPs / spill"); 
   ratioGr->SetTitle("50 spill average of number of proton/MIP ratio for 4 block data; Time; Protons / MIPs"); 
+  // Now get the S1S2 hits for the same time period
+  TTree *s1s2OutTree = (TTree*)filePro->Get("s1s2OutTree");
+  int nS1S2;
+  double dtofSpillTime;
+  s1s2OutTree->SetBranchAddress("nS1S2", &nS1S2);
+  s1s2OutTree->SetBranchAddress("dtofSpillTime", &dtofSpillTime);
+  int sumS1S2 = 0;
+  nSpills = 0;
+  TGraph *piS1S2Gr = new TGraph();
+  for (int i=0; i<s1s2OutTree->GetEntries(); i++) {
+    s1s2OutTree->GetEntry(i);
+    sumS1S2 += nS1S2;
+    sumTime += dtofSpillTime;
+    nSpills++;
+    if (nSpills % 50 == 0) {
+      if ((sumTime/50.) < 1537e6) {
+	piS1S2Gr->SetPoint(piS1S2Gr->GetN(), sumTime/50., (double)sumS1S2/50.);
+      }
+      sumTime = 0.;
+      sumS1S2 = 0;
+    } // if (nSpills == 50) 
+  } // for (int i=0; i<s1s2OutTree->GetEntries(); i++)
 
   fout->cd();
   proGr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
   piGr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
+  piS1S2Gr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
   ratioGr->GetXaxis()->SetRangeUser(1534.8e6, 1536.2e6);
   proGr->Write("proGr");
   piGr->Write("piGr");
   ratioGr->Write("ratioGr");
   slopeGr->Write("slopeGr");
   interceptGr->Write("interceptGr");
+  piS1S2Gr->Write("piS1S2Gr");
 
   fout->Close();
   filePro->Close();
