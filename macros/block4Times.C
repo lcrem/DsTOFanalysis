@@ -3,9 +3,50 @@
 void block4Times(const char* saveDir,
 		 const char* ustofDir="/zfs_home/sjones/mylinktoutof/",
 		 const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
-		 const char* spillDir="/scratch2/sjones/spillDB/") 
+		 const char* spillDir="/scratch2/sjones/spillDB/",
+		 const char* scintFile="/scratch2/sjones/DsTOFanalysis/files/Scintillator_info.txt") 
 {
-  //  gROOT->SetBatch(kTRUE);
+  TFile *fout = new TFile(Form("%s/block4Times_out.root", saveDir), "recreate");
+  gROOT->SetBatch(kTRUE);
+  // Get the scintillator values from the text file and put into a vector
+  std::vector<int> countVec;
+  std::vector<TTimeStamp> stampVec;
+  string line;
+  ifstream inFile;
+  inFile.open(scintFile);
+  while(!inFile.eof()) {
+    getline(inFile, line);
+    if (line.length()>20) {
+      stringstream ssyear(line.substr(0,4));
+      stringstream ssmonth(line.substr(5,2));
+      stringstream ssday(line.substr(8,2));
+      stringstream sshour(line.substr(11,2));
+      stringstream ssmin(line.substr(14,2));
+      stringstream sssec(line.substr(17,2));
+      stringstream sscount(line.substr(24));
+      int year = 0;//stoi(line.substr(0, 4), &sz);
+      int month = 0;//stoi(line.substr(5,2), &sz);
+      int day = 0;
+      int hour = 0;
+      int min = 0;
+      int sec = 0;
+      int count = 0;
+      ssyear >> year;
+      ssmonth >> month;
+      ssday >> day;
+      sshour >> hour;
+      ssmin >> min;
+      sssec >> sec;
+      sscount >> count;
+      cout<<year<<" "<<month<<" "<<day<<" "<<hour<<" "<<min<<" "<<sec<<endl;
+      TTimeStamp stamp(year, month, day, hour, min, sec, 0, "kTRUE", -7200);
+      cout<<stamp.GetSec()<<endl;
+      countVec.push_back(count);
+      stampVec.push_back(stamp);
+    } // if (line.length()>20)
+  } // while(!inFile.eof())
+  cout<<"Scintillator file has "<<countVec.size()<<" spills recorded"<<endl;
+
   // For each set of data get the start and end times and put in an individual graph
   const char* str4Block1 = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
   const char* str4Block2 = "Data_2018_9_3_b2_800MeV_4block_bend4cm.root";
@@ -21,6 +62,8 @@ void block4Times(const char* saveDir,
 				       str4Block4, str4Block5, str4Block6,
 				       str0Block, str1Block, str2Block, str3Block};
   TMultiGraph *mg = new TMultiGraph();
+  TMultiGraph *mgScint = new TMultiGraph();
+  TMultiGraph *mgScintAvg = new TMultiGraph();
   TGraph *grDtof = new TGraph();
   for (int b=0; b<blockVec.size(); b++) {
     TFile *futof = new TFile(Form("%s/%s",ustofDir,blockVec[b]), "read");
@@ -37,8 +80,12 @@ void block4Times(const char* saveDir,
     int startTimeUtof = stoi(unixstart);
     tree->GetEntry(tree->GetEntries()-1);
     int endTimeUtof = (tS1/1e9) + startTimeUtof;
+    TTimeStamp utofStartStamp(startTimeUtof);
+    TTimeStamp utofEndStamp(endTimeUtof);
 
     TGraph *grUtof = new TGraph();
+    TGraph *grScint = new TGraph();
+    TGraph *grScintAvg = new TGraph();
     if (b < 6) {
       grUtof->SetPoint(grUtof->GetN(), startTimeUtof, 3500);
       grUtof->SetPoint(grUtof->GetN(), endTimeUtof, 3500);
@@ -51,48 +98,83 @@ void block4Times(const char* saveDir,
     if (b==0) {
       grUtof->SetMarkerColor(kBlack);
       grUtof->SetMarkerStyle(21);
+      grScint->SetMarkerColor(kBlack);
+      grScintAvg->SetMarkerColor(kBlack);
+      grScintAvg->SetMarkerStyle(3);
     }
     else if (b==1) {
       grUtof->SetMarkerColor(kRed);
       grUtof->SetMarkerStyle(47);
+      grScint->SetMarkerColor(kRed);
+      grScintAvg->SetMarkerColor(kRed);
+      grScintAvg->SetMarkerStyle(3);
     }
     else if (b==2) {
       grUtof->SetMarkerColor(kBlue);
       grUtof->SetMarkerStyle(20);
+      grScint->SetMarkerColor(kBlue);
+      grScintAvg->SetMarkerColor(kBlue);
+      grScintAvg->SetMarkerStyle(3);
     }
     else if (b==3) {
       grUtof->SetMarkerColor(kCyan+1);
       grUtof->SetMarkerStyle(22);
+      grScint->SetMarkerColor(kCyan+1);
+      grScintAvg->SetMarkerColor(kCyan+1);
+      grScintAvg->SetMarkerStyle(3);
     }
     else if (b==4) {
       grUtof->SetMarkerColor(kGreen+2);
       grUtof->SetMarkerStyle(34);
+      grScint->SetMarkerColor(kGreen+2);
+      grScintAvg->SetMarkerColor(kGreen+1);
+      grScintAvg->SetMarkerStyle(3);
     }
     else if (b==5) {
       grUtof->SetMarkerColor(kOrange+1);
       grUtof->SetMarkerStyle(49);
+      grScint->SetMarkerColor(kOrange+1);
+      grScintAvg->SetMarkerColor(kOrange+1);
+      grScintAvg->SetMarkerStyle(3);
     }
-    else if (b==6) {
+    else {
       grUtof->SetMarkerColor(kMagenta+1);
       grUtof->SetMarkerStyle(39);
+      grScint->SetMarkerColor(kMagenta+1);
+      grScintAvg->SetMarkerColor(kMagenta+1);
+      grScintAvg->SetMarkerStyle(3);
     }
-    else if (b==7) {
-      grUtof->SetMarkerColor(kMagenta+1);
-      grUtof->SetMarkerStyle(39);
-    }
-    else if (b==8) {
-      grUtof->SetMarkerColor(kMagenta+1);
-      grUtof->SetMarkerStyle(39);
-    }
-    else if (b==9) {
-      grUtof->SetMarkerColor(kMagenta+1);
-      grUtof->SetMarkerStyle(39);
-    }
+    
     //grUtof->SetMarkerStyle(20);
     grUtof->SetMarkerSize(2);
     mg->Add(grUtof);
     futof->Close();
     delete futof;
+    fout->cd();
+    grUtof->Write(Form("grUtof_%s", blockVec[b]));
+
+    int nScint = 1;
+    int nCount = 1;
+    // Find appropriate scintillator values and put into graph
+    for (int s=0; s<stampVec.size(); ++s) {
+      if (stampVec[s] > utofEndStamp) break;
+      if (stampVec[s] < utofStartStamp) continue;
+
+      if (stampVec[s] > utofStartStamp && stampVec[s] < utofEndStamp) {
+	grScint->SetPoint(grScint->GetN(), stampVec[s], countVec[s]);
+	nScint++;
+	nCount+=countVec[s];
+	if (nScint % 20 == 0) {
+	  grScintAvg->SetPoint(grScintAvg->GetN(), stampVec[s], (double)nCount/20.); 
+	} // if (nScint % 20 == 0)
+      } // if (stampVec[s] > utofStartStamp && stampVec[s] < utofEndStamp)
+    } // for (int s=0; s<stampVec.size(); ++s)
+    mg->Add(grScint);
+    mgScint->Add(grScint);
+    mgScintAvg->Add(grScintAvg);
+    fout->cd();
+    grScint->Write(Form("grScint_%s", blockVec[b]));
+    grScintAvg->Write(Form("grScintAvg_%s", blockVec[b]));
 
     // Find dtof runs
     int runMin = -1;
@@ -123,6 +205,7 @@ void block4Times(const char* saveDir,
       }   
     } // for (int irun=950; irun<1400; irun++) 
     cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
+    int nDtof = 1;
     for (int irun = runMin; irun < runMax+1; irun++) {
       TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDir, irun, irun), "read");
       TTree *spillTree = (TTree*)dbFile->Get("spillTree");
@@ -142,6 +225,7 @@ void block4Times(const char* saveDir,
 	spillTree->GetEntry(t);
 	int hits = 0;
 	if (globalSpillTime >= startTime && globalSpillTime <= endTime) {
+
 	  for (int s = lasts; s<tofTree->GetEntries(); s++) {
 	    tofTree->GetEntry(s);
 	    if ((tof->fakeTimeNs/1e9)+firstTime >= globalSpillTime+1.) break;
@@ -157,6 +241,8 @@ void block4Times(const char* saveDir,
 	  } // for (int s = lasts; s<tofTree->GetEntries(); s++)
 	} // if (globalSpillTime >= startTime && globalSpillTime <= endTime)
 	grDtof->SetPoint(grDtof->GetN(), globalSpillTime, hits);
+	nDtof++;
+
       } // for (int t = 0; t < spillTree->GetEntries(); t++)
       fdtof->Close();
       delete fdtof;
@@ -169,7 +255,6 @@ void block4Times(const char* saveDir,
   TCanvas *c1 = new TCanvas("c1");
   mg->Draw("AP");
 
-  TFile *fout = new TFile(Form("%s/block4Times_out.root", saveDir), "recreate");
   fout->cd();
   mg->Write("mg");
 
