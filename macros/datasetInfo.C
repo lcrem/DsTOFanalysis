@@ -1,6 +1,33 @@
 // block4Times.C
+// Beam data about the various runs used in the analysis
 
-void block4Times(const char* saveDir,
+// Gets timestamp from input files
+TTimestamp getStampFromLine(string line) {
+  stringstream ssyear(line.substr(0,4));
+  stringstream ssmonth(line.substr(5,2));
+  stringstream ssday(line.substr(8,2));
+  stringstream sshour(line.substr(11,2));
+  stringstream ssmin(line.substr(14,2));
+  stringstream sssec(line.substr(17,2));
+  int year = 0;
+  int month = 0;
+  int day = 0;
+  int hour = 0;
+  int min = 0;
+  int sec = 0;
+  int count = 0;
+  ssyear >> year;
+  ssmonth >> month;
+  ssday >> day;
+  sshour >> hour;
+  ssmin >> min;
+  sssec >> sec;
+  // Times are in CEST so require a 2 hour offset to get to UTC
+  TTimeStamp stamp(year, month, day, hour, min, sec, 0, "kTRUE", -7200);
+  return stamp;
+}
+
+void datasetInfo(const char* saveDir,
 		 const char* ustofDir="/zfs_home/sjones/mylinktoutof/",
 		 const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
 		 const char* spillDir="/scratch2/sjones/spillDB/",
@@ -17,34 +44,16 @@ void block4Times(const char* saveDir,
   while(!inFile.eof()) {
     getline(inFile, line);
     if (line.length()>20) {
-      stringstream ssyear(line.substr(0,4));
-      stringstream ssmonth(line.substr(5,2));
-      stringstream ssday(line.substr(8,2));
-      stringstream sshour(line.substr(11,2));
-      stringstream ssmin(line.substr(14,2));
-      stringstream sssec(line.substr(17,2));
       stringstream sscount(line.substr(24));
-      int year = 0;//stoi(line.substr(0, 4), &sz);
-      int month = 0;//stoi(line.substr(5,2), &sz);
-      int day = 0;
-      int hour = 0;
-      int min = 0;
-      int sec = 0;
       int count = 0;
-      ssyear >> year;
-      ssmonth >> month;
-      ssday >> day;
-      sshour >> hour;
-      ssmin >> min;
-      sssec >> sec;
       sscount >> count;
-      cout<<year<<" "<<month<<" "<<day<<" "<<hour<<" "<<min<<" "<<sec<<endl;
-      TTimeStamp stamp(year, month, day, hour, min, sec, 0, "kTRUE", -7200);
+      TTimestamp = getStampFromLine(line);
       cout<<stamp.GetSec()<<endl;
       countVec.push_back(count);
       stampVec.push_back(stamp);
     } // if (line.length()>20)
   } // while(!inFile.eof())
+  // Do same thing for BZH01 (beam momentum magnet) and BZH03 (bending magnet) values
   cout<<"Scintillator file has "<<countVec.size()<<" spills recorded"<<endl;
 
   // For each set of data get the start and end times and put in an individual graph
@@ -257,6 +266,8 @@ void block4Times(const char* saveDir,
 
   fout->cd();
   mg->Write("mg");
+  mgScint->Write("mgScint");
+  mgScintAvg->Write("mgScintAvg");
 
   fout->Close();
   delete fout;
