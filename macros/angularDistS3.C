@@ -9,9 +9,9 @@ double momFromTime(const double mass, const double baseline, const double time)
 }
 
 void angularDistS3(const char* saveDir,
-		   const char* ustofDir="/zfs_home/sjones/mylinktoutof/",
-		   const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
-		   const char* spillDir="/zfs_home/sjones/spillDB/") 
+		   const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
+		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
+		   const char* spillDir="/scratch0/sjones/spillDB/") 
 {
   gROOT->SetBatch(kTRUE);
   // Edges of S3 in beam coordinate system

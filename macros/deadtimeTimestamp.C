@@ -2,14 +2,14 @@
 void deadtimeTimestamp(const char* utofFile,	    
 		       //	       const char* saveDir,
 		       //const char* spillDB,
-		       const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof",
-		       const char* ustofDir="/zfs_home/sjones/mylinktoutof") 
+		       const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/";
+		       const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/") 
 {
   gROOT->SetBatch(kTRUE);
 
-  gSystem->Exec(Form("mkdir ~/plots/deadtime/%s/", utofFile));
+  gSystem->Exec(Form("mkdir /scratch0/sjones/plots/deadtime/%s/", utofFile));
 
-  TFile *fout = new TFile(Form("~/plots/deadtime/%s/%s_out.root", utofFile, utofFile), "recreate");
+  TFile *fout = new TFile(Form("/scratch0/sjones/plots/deadtime/%s/%s_out.root", utofFile, utofFile), "recreate");
 
   TH1D *hDeltatDtof = new TH1D(Form("hDeltaDtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in dtof: %s", utofFile), 300, 500, 1000000);
   TH1D *hDeltatUtof = new TH1D(Form("hDeltaUtof_%s", utofFile), Form("S1 #cap S2 #deltat as measured in utof: %s", utofFile), 300, 500, 1000000);
@@ -125,7 +125,7 @@ void deadtimeTimestamp(const char* utofFile,
   for (int irun = runMin; irun < runMax+1; irun++) {
     cout<<"Getting hits for dtof run "<<irun<<endl;
 
-    TFile *dbFile = new TFile(Form("~/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
+    TFile *dbFile = new TFile(Form("/scratch0/sjones/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
     std::vector<double> tempDtofTimes;
     TTree *spillTree = (TTree*)dbFile->Get("spillTree");
     double globalSpillTime;
@@ -266,8 +266,8 @@ void deadtimeTimestamp(const char* utofFile,
   f1->Draw("same");
   cdtof->SetGridx();
   cdtof->SetGridy();
-  cdtof->Print(Form("~/plots/deadtime/%s/%s_deltatDtof.png", utofFile, utofFile));
-  cdtof->Print(Form("~/plots/deadtime/%s/%s_deltatDtof.pdf", utofFile, utofFile));
+  cdtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatDtof.png", utofFile, utofFile));
+  cdtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatDtof.pdf", utofFile, utofFile));
 
   TCanvas *cutof = new TCanvas("cutof");
   hDeltatUtof->Write();
@@ -280,8 +280,8 @@ void deadtimeTimestamp(const char* utofFile,
   f2->Draw("same");
   cutof->SetGridx();
   cutof->SetGridy();
-  cutof->Print(Form("~/plots/deadtime/%s/%s_deltatUtof.png", utofFile, utofFile));
-  cutof->Print(Form("~/plots/deadtime/%s/%s_deltatUtof.pdf", utofFile, utofFile));
+  cutof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatUtof.png", utofFile, utofFile));
+  cutof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatUtof.pdf", utofFile, utofFile));
 
   TCanvas *cdtofE = new TCanvas("cdtofE");
   hDeltatDtofEarly->Write();
@@ -291,8 +291,8 @@ void deadtimeTimestamp(const char* utofFile,
   f3->Draw("same");
   cdtofE->SetGridx();
   cdtofE->SetGridy();
-  cdtofE->Print(Form("~/plots/deadtime/%s/%s_deltatDtofEarly.png", utofFile, utofFile));
-  cdtofE->Print(Form("~/plots/deadtime/%s/%s_deltatDtofEarly.pdf", utofFile, utofFile));
+  cdtofE->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatDtofEarly.png", utofFile, utofFile));
+  cdtofE->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatDtofEarly.pdf", utofFile, utofFile));
 
   TCanvas *cutofE = new TCanvas("cutofE");
   hDeltatUtofEarly->Write();
@@ -302,8 +302,8 @@ void deadtimeTimestamp(const char* utofFile,
   f4->Draw("same");
   cutofE->SetGridx();
   cutofE->SetGridy();
-  cutofE->Print(Form("~/plots/deadtime/%s/%s_deltatUtofEarly.png", utofFile, utofFile));
-  cutofE->Print(Form("~/plots/deadtime/%s/%s_deltatUtofEarly.pdf", utofFile, utofFile));
+  cutofE->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatUtofEarly.png", utofFile, utofFile));
+  cutofE->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatUtofEarly.pdf", utofFile, utofFile));
 
   TCanvas *cComb = new TCanvas("cComb");
   cComb->SetLogy();
@@ -312,8 +312,8 @@ void deadtimeTimestamp(const char* utofFile,
   hDeltatUtof->Draw("hist same");
   cComb->SetGridx();
   cComb->SetGridy();
-  cComb->Print(Form("~/plots/deadtime/%s/%s_deltatComb.png", utofFile, utofFile));
-  cComb->Print(Form("~/plots/deadtime/%s/%s_deltatComb.pdf", utofFile, utofFile));
+  cComb->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatComb.png", utofFile, utofFile));
+  cComb->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatComb.pdf", utofFile, utofFile));
 
   TGraph *grRatioDtof = new TGraph();
   TGraph *grRatioDtofFit = new TGraph();
@@ -341,8 +341,8 @@ void deadtimeTimestamp(const char* utofFile,
   TCanvas *cRatioDtof = new TCanvas("cRatioDtof");
   grRatioDtof->SetTitle(Form("Utof/Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof/dtof", utofFile));
   grRatioDtof->Draw("AP*");
-  cRatioDtof->Print(Form("~/plots/deadtime/%s/%s_RatioDtof.png", utofFile, utofFile));
-  cRatioDtof->Print(Form("~/plots/deadtime/%s/%s_RatioDtof.pdf", utofFile, utofFile));
+  cRatioDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_RatioDtof.png", utofFile, utofFile));
+  cRatioDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_RatioDtof.pdf", utofFile, utofFile));
 
   TF1 *fFit = new TF1("fFit", "[0]+[1]*x", 300., 3000.);
   grRatioDtofFit->Fit("fFit", "R");
@@ -350,13 +350,13 @@ void deadtimeTimestamp(const char* utofFile,
   TCanvas *cUtofDtof = new TCanvas("cUtofDtof");
   grUtofDtof->SetTitle(Form("Utof vs. Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof", utofFile));
   grUtofDtof->Draw("AP*");
-  cUtofDtof->Print(Form("~/plots/deadtime/%s/%s_UtofDtof.png", utofFile, utofFile));
-  cUtofDtof->Print(Form("~/plots/deadtime/%s/%s_UtofDtof.pdf", utofFile, utofFile));
+  cUtofDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_UtofDtof.png", utofFile, utofFile));
+  cUtofDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_UtofDtof.pdf", utofFile, utofFile));
 
   TCanvas *cUtofInSpill = new TCanvas("cUtofInSpill");
   hUtofInSpill->Draw("hist");
-  cUtofInSpill->Print(Form("~/plots/deadtime/%s/%s_UtofInSpill.png", utofFile, utofFile));
-  cUtofInSpill->Print(Form("~/plots/deadtime/%s/%s_UtofInSpill.pdf", utofFile, utofFile));
+  cUtofInSpill->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_UtofInSpill.png", utofFile, utofFile));
+  cUtofInSpill->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_UtofInSpill.pdf", utofFile, utofFile));
 
   fout->cd();  
   TVectorD rms(1);
@@ -386,4 +386,5 @@ void deadtimeTimestamp(const char* utofFile,
   grRatioDtofFit->Write("grRatioDtofFit");
   grUtofDtof->Write("grUtofDtof");
   fout->Close();
+  delete fout;
 } // deadtimeTimestamp

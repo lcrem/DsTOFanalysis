@@ -2,8 +2,8 @@
 // Angular distribution of protons and pions for different moderator blocks
 // Use efficiency calculation and background subtraction
 void angularDistS4(const char* saveDir, 
-		   const char* dstofDir="/scratch0/dbrailsf/temp/mylinktodtof/",
-		   const char* ustofDir="/zfs_home/sjones/mylinktoutof/") 
+		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
+		   const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/") 
 {
  
   gROOT->SetBatch(kTRUE);

@@ -34,8 +34,8 @@ vector<pair<vector<double>, TString>> ustofFileVec();
 const double window = 3.;
 const int maxRunDs = 1442; // Last dstof run
 // File directories
-const char* usDir = "/home/sjones/mylinktoutof/";
-const char* dsDir = "/scratch0/dbrailsf/temp/mylinktodtof/";
+const char* usDir = "/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/";
+const char* dsDir = "/nfs/scratch0/dbrailsf/data_backup/dtof_backup/";
 const double stdDrift = -2.8e-6;
 
 // First pair dstof elements, second pair ustof elements. First is ns time, second is unix time
@@ -432,7 +432,7 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
   cout<<"Making vector of ustof start/end times"<<endl;
   const char* ext   = ".root";
   const char* pref  = "Data";
-  const char* indir = "/home/sjones/mylinktoutof/";
+  const char* indir = "/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/";
 
   TString str;
   const char *entry;
