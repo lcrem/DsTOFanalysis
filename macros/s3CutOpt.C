@@ -46,8 +46,8 @@ void s3CutOpt(const char* saveDir,
   std::vector<TH2D*> histA1Vec;
   std::vector<TH2D*> histA2Vec;
   for (int i=0; i < 22; i++) {
-    TH2D *hA1Time = new TH2D(Form("hA1Time%d", i), Form("Bar %d; #delta t / ns; A1 / V", i), 100, 0, 100, 100, 0, 0.5);
-    TH2D *hA2Time = new TH2D(Form("hA2Time%d", i), Form("Bar %d; #delta t / ns; A2 / V", i), 100, 0, 100, 100, 0, 0.5);
+    TH2D *hA1Time = new TH2D(Form("hA1Time%d", i), Form("Bar %d; #delta t / ns; A1 / V", i), 100, 20, 120, 100, 0, 0.45);
+    TH2D *hA2Time = new TH2D(Form("hA2Time%d", i), Form("Bar %d; #delta t / ns; A2 / V", i), 100, 20, 120, 100, 0, 0.45);
     histA1Vec.push_back(hA1Time);
     histA2Vec.push_back(hA2Time);
   } // for (int i=0; i < 22; i++) 
