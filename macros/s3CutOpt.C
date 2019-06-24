@@ -3,7 +3,7 @@
 
 void s3CutOpt(const char* saveDir,
 	      const int block,
-	      const char* ustofDir="/zfs_home/sjones/mylinktoutof/")
+	      const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/")
 {
   gROOT->SetBatch(kTRUE);
 
@@ -46,8 +46,8 @@ void s3CutOpt(const char* saveDir,
   std::vector<TH2D*> histA1Vec;
   std::vector<TH2D*> histA2Vec;
   for (int i=0; i < 22; i++) {
-    TH2D *hA1Time = new TH2D(Form("hA1Time%d", i), Form("Bar %d; #delta t / ns; A1 / V", i), 100, -40, 60, 100, 0, 0.5);
-    TH2D *hA2Time = new TH2D(Form("hA2Time%d", i), Form("Bar %d; #delta t / ns; A2 / V", i), 100, -40, 60, 100, 0, 0.5);
+    TH2D *hA1Time = new TH2D(Form("hA1Time%d", i), Form("Bar %d; #delta t / ns; A1 / V", i), 100, 0, 100, 100, 0, 0.5);
+    TH2D *hA2Time = new TH2D(Form("hA2Time%d", i), Form("Bar %d; #delta t / ns; A2 / V", i), 100, 0, 100, 100, 0, 0.5);
     histA1Vec.push_back(hA1Time);
     histA2Vec.push_back(hA2Time);
   } // for (int i=0; i < 22; i++) 

@@ -447,7 +447,6 @@ vector<pair<vector<double>, TString> >  ustofFileVec() {
     if (str.EndsWith(ext) && !str.Contains(bad) && str.Contains(pref)) {
       TString strTemp = str;
       str.Prepend(indir);
-
       TFile *ustofFile = new TFile(str, "read");
       TTree *tree = (TTree*)ustofFile->Get("tree");
       double subentries = tree->GetEntries();
