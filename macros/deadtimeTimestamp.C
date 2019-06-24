@@ -2,7 +2,7 @@
 void deadtimeTimestamp(const char* utofFile,	    
 		       //	       const char* saveDir,
 		       //const char* spillDB,
-		       const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/";
+		       const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 		       const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/") 
 {
   gROOT->SetBatch(kTRUE);
@@ -220,15 +220,17 @@ void deadtimeTimestamp(const char* utofFile,
   double lastS1S2utofEarly = 0.;
   for (int spill = 0; spill < nSpills; spill++) {
     TGraph *grTimeSinceSpill = new TGraph();
-    double tempUtofSpill = utofTimes[spill];
-    double tempDtofSpill = dtofTimes[spill];
+    double tempUtofSpill = utofTimes.at(spill);
+    double tempDtofSpill = dtofTimes.at(spill);
     utofHits = 0;
     utofHitsEarly = 0;
+    bool isGood = false;
     for (int t=lastut; t<tree->GetEntries(); t++ ) {
       tree->GetEntry(t);
-      if ((tSoSd/1e9 + startTime) > tempUtofSpill) break;
+      if ((tS1/1e9 + startTime) > tempUtofSpill + 1.) break;
 
-      if (tTrig !=0 && (tSoSd/1e9 + startTime) == tempUtofSpill) {
+      if (tTrig !=0 && (tTrig/1e9 + startTime) > tempUtofSpill && 
+	  (tTrig/1e9 + startTime) < tempUtofSpill + 1.) {
 	nS1S2utof++;
 	nS1S2utofVec[spill]++;
 	utofHits++;
@@ -243,8 +245,12 @@ void deadtimeTimestamp(const char* utofFile,
 	  hDeltatUtofEarly->Fill(tTrig - lastS1S2utofEarly);
 	  lastS1S2utofEarly = tTrig;
 	} // if ((tTrig - tSoSd) < 0.29e9)
+	// Throw out those spills that don't have any S1 x S2 hits more than 0.47s after the spill start
+	if ((tTrig/1e9 + startTime) > tempUtofSpill + 0.47) isGood = true;
       }
     }
+    // Throw away this spil
+    if (!isGood) nS1S2utofVec[spill] = -1;
     fout->cd();
     //cout<<"Utof spill at "<<tempUtofSpill<<", hits "<<nS1S2utofVec[spill]<<", Dtof spill at "<<tempDtofSpill<<", hits "<<nS1S2dtofVec[spill]<<endl;
     grTimeSinceSpill->SetTitle(Form("Event number versus time since spill start, spill %d; Time since spill start / s; Event no.", spill));
@@ -316,7 +322,7 @@ void deadtimeTimestamp(const char* utofFile,
   cComb->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_deltatComb.pdf", utofFile, utofFile));
 
   TGraph *grRatioDtof = new TGraph();
-  TGraph *grRatioDtofFit = new TGraph();
+  TGraphErrors *grRatioDtofFit = new TGraphErrors();
   TGraph *grUtofDtof  = new TGraph();
   /*
   TTree *s1s2Tree = new TTree("s1s2Tree", "S1S2 Hits");
@@ -326,15 +332,24 @@ void deadtimeTimestamp(const char* utofFile,
   s1s2Tree->Branch("utof", &utof);
   s1s2Tree->Branch("dtof", &dtof);
   */
+  int pnt = 0;
   for (int n=0; n < nSpills; n++) {
     grUtofDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], nS1S2utofVec[n]);
     if (nS1S2dtofVec[n] != 0) {
       grRatioDtof->SetPoint(grRatioDtof->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
-      // Is in the region we want to fit
-      if ((((double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]) > 0.06) &&
-	  (nS1S2dtofVec[n] > 300)) {
-	grRatioDtofFit->SetPoint(grRatioDtofFit->GetN(), nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]);
-      } // if (((double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]) > 0.05)
+      // Is a good spill
+      if (nS1S2utofVec[n] != -1 && nS1S2dtofVec[n] > 100) {
+	grRatioDtofFit->SetPoint(pnt, nS1S2dtofVec[n], (double)nS1S2utofVec[n]/(double)nS1S2dtofVec[n]); 
+	// Errors on the points
+	double dDtof = (double)nS1S2dtofVec[n];
+	double dUtof = (double)nS1S2utofVec[n];
+	double eUtof = TMath::Sqrt(dUtof);
+	double eDtof = TMath::Sqrt(dDtof);
+	double ex = TMath::Sqrt(dDtof);
+	double ey = ((dUtof * eDtof) + (dDtof * eUtof)) / ((dDtof * dDtof) - (eDtof * eDtof));
+	grRatioDtofFit->SetPointError(pnt, ex, ey); 
+	pnt++;
+      } // if (nS1S2utofVec[n] != 0)
     } // if (nS1S2dtofVec[n] != 0) 
   } // for (int n=0; n < nSpills; n++)
 
@@ -343,9 +358,6 @@ void deadtimeTimestamp(const char* utofFile,
   grRatioDtof->Draw("AP*");
   cRatioDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_RatioDtof.png", utofFile, utofFile));
   cRatioDtof->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_RatioDtof.pdf", utofFile, utofFile));
-
-  TF1 *fFit = new TF1("fFit", "[0]+[1]*x", 300., 3000.);
-  grRatioDtofFit->Fit("fFit", "R");
 
   TCanvas *cUtofDtof = new TCanvas("cUtofDtof");
   grUtofDtof->SetTitle(Form("Utof vs. Dtof S1 #cap S2: %s; S1 #cap S2 dtof; S1 #cap S2 utof", utofFile));
@@ -359,21 +371,6 @@ void deadtimeTimestamp(const char* utofFile,
   cUtofInSpill->Print(Form("/scratch0/sjones/plots/deadtime/%s/%s_UtofInSpill.pdf", utofFile, utofFile));
 
   fout->cd();  
-  TVectorD rms(1);
-  rms[0] = grRatioDtofFit->GetRMS(2);
-  rms.Write("rms");
-  TVectorD slope(1);
-  slope[0] = fFit->GetParameter(1);
-  slope.Write("slope");
-  TVectorD intercept(1);
-  intercept[0] = fFit->GetParameter(0);
-  intercept.Write("intercept");
-  TObject writeS1S2dtof;
-  writeS1S2dtof.SetUniqueID(nS1S2dtof);
-  writeS1S2dtof.Write("nS1S2dtof");
-  TObject writeS1S2utof;
-  writeS1S2utof.SetUniqueID(nS1S2utof);  
-  writeS1S2utof.Write("nS1S2utof");
   
   start->Write("start_of_run");
   end->Write("end_of_run");
