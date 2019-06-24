@@ -8,7 +8,7 @@ double momFromTime(const double mass, const double baseline, const double time)
   return mom;
 }
 
-void angularDistS3(const char* saveDir,
+void angularDistS3_newSample(const char* saveDir,
 		   const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
 		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 		   const char* spillDir="/scratch0/sjones/spillDB/") 
@@ -52,10 +52,10 @@ void angularDistS3(const char* saveDir,
   const double block4Const2 = 0.7991;
   const double block4Slope3 = -0.0005316;
   const double block4Const3 = 1.018;
-  std::vector<double> str4BlockSlopeVec = {str4BlockSlope0, str4BlockSlope1, 
-					   str4BlockSlope2, str4BlockSlope3};
-  std::vector<double> str4BlockConstVec = {str4BlockConst0, str4BlockConst1, 
-					   str4BlockConst2, str4BlockConst3};
+  std::vector<double> block4SlopeVec = {block4Slope0, block4Slope1, 
+					block4Slope2, block4Slope3};
+  std::vector<double> block4ConstVec = {block4Const0, block4Const1, 
+					block4Const2, block4Const3};
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
   // 31/08/2018
@@ -83,10 +83,10 @@ void angularDistS3(const char* saveDir,
   // and 35.6ns
   const double tLight = 35.8; // Expected time in ns of light speed particles according to AK
   // This is before the shift is applied
-  const double proLow  = -12.5;
-  const double proHi   = 40.5;
-  const double piLow = -29.06;
-  const double piHi  = -28.06;
+  const double proLow  = 54.5;
+  const double proHi   = 115.;
+  const double piLow = 35.75;
+  const double piHi  = 37.75;
   // S3 amplitude cut for protons
   // Apply to A1ToF and A2ToF
   // AK's standard cut
@@ -174,9 +174,9 @@ void angularDistS3(const char* saveDir,
     TH1D *hThetaS1S2ratio = new TH1D(Form("hThetaS1S2ratio%d", nBlocks), Form("S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), binnum, binsTheta);
     TH1D *hPhiS1S2ratio   = new TH1D(Form("hPhiS1S2ratio%d", nBlocks), Form("S1 #cap S2 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), 22, -3.15, 3.25);
 
-    TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 120);
+    TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     hutof1dS1->Sumw2();
-    TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 120);
+    TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     hutof1dS1S2->Sumw2();
 
     TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 100, 0.3, 0.7);
@@ -193,8 +193,8 @@ void angularDistS3(const char* saveDir,
       int nP  = 0;
       int nPi = 0;
       // Define signal and background functions to be fitted
-      TF1 *sPro = new TF1("sPro", "gaus", (tLight - (piLow+piHi)/2.) + proLow, (tLight - (piLow+piHi)/2.) + proHi);
-      TF1 *sPi  = new TF1("sPi", "gaus", (tLight - (piLow+piHi)/2.) + piLow, (tLight - (piLow+piHi)/2.) + piHi);
+      TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
+      TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
 
       // Find the correct dstof files
       Int_t runMin=-1;
@@ -210,6 +210,8 @@ void angularDistS3(const char* saveDir,
 	nustof = str0Block;
 	startTime = start0Block;
 	endTime   = end0Block;
+	slope = block0Slope;
+	constant = block0Const;
       }
       else if (nBlocks==1) {
 	nustof = str1Block;
@@ -232,13 +234,7 @@ void angularDistS3(const char* saveDir,
 	slope    = block3Slope;
 	constant = block3Const;
       }
-      else if (nBlocks==4) {
-	nustof = str4Block;
-	startTime = start4Block;
-	endTime   = end4Block;
-	slope    = block4Slope;
-	constant = block4Const;
-      }
+
       // Find dtof runs
       for (int irun=950; irun<1400; irun++) {
 	TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
@@ -385,9 +381,7 @@ void angularDistS3(const char* saveDir,
       // Loop over the spills and perform the adjustment for each spill
       for (int s = 0; s < utofTimes.size(); s++) {
 	if (s % 25 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
-	double deadtimeWeight = 0.;
-	if (nBlocks !=0) {deadtimeWeight = dtofS1S2Hits[s] * slope + constant;}
-	else {deadtimeWeight = 1.;}
+	double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
 	for (int t=lastut; t<tree->GetEntries(); t++) {
 	  tree->GetEntry(t);
 	  if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
@@ -399,12 +393,12 @@ void angularDistS3(const char* saveDir,
 	  } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
 
 	  // Only select those events with multiplicity of 1 - advice from AK
-	  if (nhit == 1) {
-	    double tofCalc = tToF[0] - tS1 + (tLight - (piLow + piHi)/2.);
+	  for (int nh=0; nh<nhit; nh++) {
+	    double tofCalc = tToF[nh] - tS1;
 	    // Calculate x, y z positions relative to S1
-	    double positionX = ((xToF[0] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
-	    double positionY = ((xToF[0] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-	    double positionZ = (yToF[0] + s3BarBottom + 2.75) / 100.;
+	    double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
+	    double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+	    double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
 	    double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	    double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 	    // All triggers
@@ -412,30 +406,30 @@ void angularDistS3(const char* saveDir,
 	    hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 	    // Separate protons and MIPs using timing and amplitude cuts
 	    // Is a MIP
-	    if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
+	    if ( tofCalc > piLow && tofCalc < piHi ) {
 	      nPi++;
 	      hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 	      hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-	      hpionXY->Fill(xToF[0], yToF[0]);
+	      hpionXY->Fill(xToF[nh], yToF[nh]);
 	      lastut = t;
 	    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	    // Is a proton
-	    else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
+	    else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 	      nP++;
 	      hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 	      hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-	      hprotonXY->Fill(xToF[0], yToF[0]);
+	      hprotonXY->Fill(xToF[nh], yToF[nh]);
 
-	      hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc), 1./deadtimeWeight);
-	      hMomZS1->Fill(momFromTime(0.938, 10.75, tofCalc), nBar[0]);
-	      hMomYS1->Fill(momFromTime(0.938, 10.75, tofCalc), xToF[0]);
+	      hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+	      // hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+	      // hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
 	      lastut = t;
-	      if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
-	      else if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[0], nBar[0]);
-	      else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[0], nBar[0]);
-	      else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[0], nBar[0]);
-	      else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[0]);
-	      else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[0], nBar[0]);
+	      if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+	      else if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+	      else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+	      else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+	      else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[nh]);
+	      else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
 	    
 	    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	    //	}
@@ -444,19 +438,19 @@ void angularDistS3(const char* saveDir,
 	      hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
 	      // Separate protons and MIPs using timing and amplitude cuts
 	      // Is a MIP
-	      if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
+	      if ( tofCalc > piLow && tofCalc < piHi ) {
 		nPi++;
 		hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
 		hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
 	      } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 	      // Is a proton
-	      else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
+	      else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 		nP++;
 		hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
 		hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
 		hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[0]);
-		hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[0]);
+		// hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		// hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
 	      } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	    } // S1 + S2 trigger
 	  } // if (nhit == 1)
@@ -515,22 +509,6 @@ void angularDistS3(const char* saveDir,
 	legTheta->AddEntry(hThetaS1ratio, "0 blocks", "l");
 	legTof->AddEntry(hutof1dS1, "0 blocks", "l");
 	legPhiRatio->AddEntry(hPhiS1ratio, "0 blocks", "l");
-
-	hPhiS1S2pro->Scale(1. / block0Ratio);
-	hPhiS1S2pi->Scale(1. / block0Ratio);
-	hThetaS1S2pro->Scale(1. / block0Ratio);
-	hThetaS1S2pi->Scale(1. / block0Ratio);
-
-	hPhiS1pro->Scale(1. / block0Ratio);
-	hPhiS1pi->Scale(1. / block0Ratio);
-	hThetaS1pro->Scale(1. / block0Ratio);
-	hThetaS1pi->Scale(1. / block0Ratio);
-
-	hMomS1S2->Scale(1. / block0Ratio);
-	hMomS1->Scale(1. / block0Ratio);
-
-	hutof1dS1S2->Scale(1. / block0Ratio);
-	hutof1dS1->Scale(1. / block0Ratio);
 
 	hMom2D_0blkQ->Scale(1. / (double)nSpills);
 	hMom2D_0blkS->Scale(1. / (double)nSpills);
@@ -672,10 +650,10 @@ void angularDistS3(const char* saveDir,
       hutof1dS1S2->Scale(1. / (double)nSpills);
       hutof1dS1->Scale(1. / (double)nSpills);
 
-      hMomYS1->Scale(1. / (double)nSpills);
-      hMomYS12->Scale(1. / (double)nSpills);
-      hMomZS1->Scale(1. / (double)nSpills);
-      hMomZS12->Scale(1. / (double)nSpills);
+      // hMomYS1->Scale(1. / (double)nSpills);
+      // hMomYS12->Scale(1. / (double)nSpills);
+      // hMomZS1->Scale(1. / (double)nSpills);
+      // hMomZS12->Scale(1. / (double)nSpills);
 
       hprotonXY->Scale(1. / (double)nSpills);
       hpionXY->Scale(1. / (double)nSpills);
@@ -751,12 +729,17 @@ void angularDistS3(const char* saveDir,
     else {
       // Loop through 4 block data
       for (int j=0; j<str4BlockVec.size(); j++) {
+	std::cout<<"Analysing 4 block sample "<<j+1<<" of "<<str4BlockVec.size()<<std::endl;
+	TH1D *tofTmp = new TH1D(Form("tofTmp%s", str4BlockVec.at(j)), Form("S3 ToF %s", str4BlockVec.at(j)), 250, 25, 125);
+	TH1D *hThetaS1piTmp = new TH1D(Form("hThetaS1piTmp%s", str4BlockVec.at(j)), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
+	TH1D *hThetaS1proTmp = new TH1D(Form("hThetaS1proTmp%s", str4BlockVec.at(j)), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
+	TH1D *hThetaS1ratioTmp = new TH1D(Form("hThetaS1ratioTmp%s", str4BlockVec.at(j)), Form("Angular distribution of proton:MIP ratio in S3 (S1 trigger only), %d blocks; #theta / degrees; Ratio", nBlocks), binnum, binsTheta);
 	// Number of protons and number of MIPs
 	int nP  = 0;
 	int nPi = 0;
 	// Define signal and background functions to be fitted
-	TF1 *sPro = new TF1("sPro", "gaus", (tLight - (piLow+piHi)/2.) + proLow, (tLight - (piLow+piHi)/2.) + proHi);
-	TF1 *sPi  = new TF1("sPi", "gaus", (tLight - (piLow+piHi)/2.) + piLow, (tLight - (piLow+piHi)/2.) + piHi);
+	TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
+	TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
 
 	// Find the correct dstof files
 	Int_t runMin=-1;
@@ -770,10 +753,46 @@ void angularDistS3(const char* saveDir,
 	double constant;
 
 	nustof = str4BlockVec.at(j);
-	startTime = start4BlockVec.at(j);
-	endTime   = end4BlockVec.at(j);
 	slope    = block4SlopeVec.at(j);
 	constant = block4ConstVec.at(j);
+
+	TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
+	double tToF[50];
+	float xToF[50];
+	float yToF[50];
+	float A1ToF[50];
+	float A2ToF[50];
+	double tTrig;
+	double tS1;
+	double tSoSd;
+	int nhit;
+	int nBar[50];
+	TTree *tree = (TTree*)futof->Get("tree");
+	tree->SetBranchAddress("xToF", xToF);
+	tree->SetBranchAddress("yToF", yToF);
+	tree->SetBranchAddress("A1ToF", A1ToF);
+	tree->SetBranchAddress("A2ToF", A2ToF);
+	tree->SetBranchAddress("nhit", &nhit);
+	tree->SetBranchAddress("tS1", &tS1);
+	tree->SetBranchAddress("tToF", tToF);
+	tree->SetBranchAddress("tTrig", &tTrig);
+	tree->SetBranchAddress("tSoSd", &tSoSd);
+	tree->SetBranchAddress("nBar", nBar);
+	TNamed *start = 0;
+	TNamed *end   = 0;
+	futof->GetObject("start_of_run", start);
+	futof->GetObject("end_of_run", end);
+	const char* startchar = start->GetTitle();
+	std::string startstr(startchar);
+	std::string unixstart = startstr.substr(25,10);
+	int startTimeUtof = stoi(unixstart);
+	const char* endchar = end->GetTitle();
+	std::string endstr(endchar);
+	std::string unixend = endstr.substr(23,10);
+	int endTimeUtof = stoi(unixend);
+
+	startTime = startTimeUtof;
+	endTime = endTimeUtof;
 
 	// Find dtof runs
 	for (int irun=950; irun<1400; irun++) {
@@ -879,99 +898,59 @@ void angularDistS3(const char* saveDir,
 	  } // for (int irun = runMin; irun < runMax+1; irun++) 
 	} // for (int s=0; s<dtofTimes.size(); s++)
 
-	TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
-
-	double tToF[50];
-	float xToF[50];
-	float yToF[50];
-	float A1ToF[50];
-	float A2ToF[50];
-	double tTrig;
-	double tS1;
-	double tSoSd;
-	int nhit;
-	int nBar[50];
-
-	TTree *tree = (TTree*)futof->Get("tree");
-
-	tree->SetBranchAddress("xToF", xToF);
-	tree->SetBranchAddress("yToF", yToF);
-	tree->SetBranchAddress("A1ToF", A1ToF);
-	tree->SetBranchAddress("A2ToF", A2ToF);
-	tree->SetBranchAddress("nhit", &nhit);
-	tree->SetBranchAddress("tS1", &tS1);
-	tree->SetBranchAddress("tToF", tToF);
-	tree->SetBranchAddress("tTrig", &tTrig);
-	tree->SetBranchAddress("tSoSd", &tSoSd);
-	tree->SetBranchAddress("nBar", nBar);
-
 	double lastSpill = 0.; 
-
-	TNamed *start = 0;
-	TNamed *end   = 0;
-	futof->GetObject("start_of_run", start);
-	futof->GetObject("end_of_run", end);
-    
-	const char* startchar = start->GetTitle();
-	std::string startstr(startchar);
-	std::string unixstart = startstr.substr(25,10);
-	int startTimeUtof = stoi(unixstart);
 
 	int lastut = 0;
 	// Loop over the spills and perform the adjustment for each spill
 	for (int s = 0; s < utofTimes.size(); s++) {
 	  if (s % 25 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
-	  double deadtimeWeight = 0.;
-	  if (nBlocks !=0) {deadtimeWeight = dtofS1S2Hits[s] * slope + constant;}
-	  else {deadtimeWeight = 1.;}
+	  double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
 	  for (int t=lastut; t<tree->GetEntries(); t++) {
 	    tree->GetEntry(t);
 	    if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
 	    if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
 	    // Count number of spills
 	    if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) {
-	      nSpills++;
 	      lastSpill = tSoSd;
 	    } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
 
 	    // Only select those events with multiplicity of 1 - advice from AK
-	    if (nhit == 1) {
-	      double tofCalc = tToF[0] - tS1 + (tLight - (piLow + piHi)/2.);
+	    for (int nh=0; nh < nhit; nh++) {
+	      double tofCalc = tToF[nh] - tS1 + (tLight - (piLow + piHi)/2.);
 	      // Calculate x, y z positions relative to S1
-	      double positionX = ((xToF[0] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
-	      double positionY = ((xToF[0] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-	      double positionZ = (yToF[0] + s3BarBottom + 2.75) / 100.;
+	      double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
+	      double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+	      double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
 	      double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	      double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 	      // All triggers
-	      //	if (tTrig == 0) {
 	      hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 	      // Separate protons and MIPs using timing and amplitude cuts
 	      // Is a MIP
-	      if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
+	      if ( tofCalc > piLow && tofCalc < piHi ) {
 		nPi++;
 		hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 		hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		hpionXY->Fill(xToF[0], yToF[0]);
+		hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		lastut = t;
-	      } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+	      } // if ( tofCalc > piLow && tofCalc < piHi )
 	      // Is a proton
-	      else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
+	      else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 		nP++;
 		hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		hprotonXY->Fill(xToF[0], yToF[0]);
+		hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 
-		hMomS1->Fill(momFromTime(0.938, 10.75, tofCalc), 1./deadtimeWeight);
-		hMomZS1->Fill(momFromTime(0.938, 10.75, tofCalc), nBar[0]);
-		hMomYS1->Fill(momFromTime(0.938, 10.75, tofCalc), xToF[0]);
+		hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		// hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		// hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
 		lastut = t;
-		if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[0], nBar[0]);
-		else if (nBlocks == 0 && momFromTime(0.938, 10.75, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[0], nBar[0]);
-		else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[0], nBar[0]);
-		else if (nBlocks == 1 && momFromTime(0.938, 10.75, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[0], nBar[0]);
-		else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[0]);
-		else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[0], nBar[0]);
+		if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+		else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+		else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+		else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+		else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
+		else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
 	    
 	      } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	      //	}
@@ -980,310 +959,183 @@ void angularDistS3(const char* saveDir,
 		hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
 		// Separate protons and MIPs using timing and amplitude cuts
 		// Is a MIP
-		if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi ) {
+		if ( tofCalc > piLow && tofCalc < piHi ) {
 		  nPi++;
 		  hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
 		} // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		// Is a proton
-		else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi && A1ToF[0] > A1CutVec[nBar[0]] && A2ToF[0] > A2CutVec[nBar[0]]) {
+		else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 		  nP++;
 		  hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
 		  hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		  hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[0]);
-		  hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[0]);
+		  // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		  // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
 		} // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 	      } // S1 + S2 trigger
 	    } // if (nhit == 1)
 	  } // for (int t=0; t<tree->GetEntries(); t++)
 	} 
-
-	nSpills = utofTimes.size();
-	cout<<"Utof spills "<<nSpills<<endl;
+	nSpills += utofTimes.size();
 	fout->cd();
-
-	hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
-	hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
-	hThetaS1ratio->Divide(hThetaS1pro, hThetaS1pi, 1., 1., "B");
-	hPhiS1ratio->Divide(hPhiS1pro, hPhiS1pi, 1., 1., "B");
-	hThetaS1S2ratio->Write();
-	hPhiS1S2ratio->Write();
-	hThetaS1ratio->Write();
-	hPhiS1ratio->Write();
-
-	hThetaS1S2pro->SetLineWidth(2);
-	hThetaS1S2pi->SetLineWidth(2);
-	hPhiS1S2pro->SetLineWidth(2);
-	hPhiS1S2pi->SetLineWidth(2);
-	hPhiS1S2ratio->SetLineWidth(2);
-	hThetaS1S2ratio->SetLineWidth(2);
-	hThetaS1pro->SetLineWidth(2);
-	hThetaS1pi->SetLineWidth(2);
-	hPhiS1pro->SetLineWidth(2);
-	hPhiS1pi->SetLineWidth(2);
-	hPhiS1ratio->SetLineWidth(2);
-	hThetaS1ratio->SetLineWidth(2);
-	hMomS1S2->SetLineWidth(2);
-	hMomS1->SetLineWidth(2);
-	hutof1dS1S2->SetLineWidth(2);
-	hutof1dS1->SetLineWidth(2);
-    
-	if (nBlocks==0) {
-	  hThetaS1S2pro->SetLineColor(kBlack);
-	  hThetaS1S2pi->SetLineColor(kBlack);
-	  hPhiS1S2pro->SetLineColor(kBlack);
-	  hPhiS1S2pi->SetLineColor(kBlack);
-	  hPhiS1S2ratio->SetLineColor(kBlack);
-	  hThetaS1S2ratio->SetLineColor(kBlack);
-	  hThetaS1pro->SetLineColor(kBlack);
-	  hThetaS1pi->SetLineColor(kBlack);
-	  hPhiS1pro->SetLineColor(kBlack);
-	  hPhiS1pi->SetLineColor(kBlack);
-	  hPhiS1ratio->SetLineColor(kBlack);
-	  hThetaS1ratio->SetLineColor(kBlack);
-	  hMomS1S2->SetLineColor(kBlack);
-	  hMomS1->SetLineColor(kBlack);
-	  hutof1dS1S2->SetLineColor(kBlack);
-	  hutof1dS1->SetLineColor(kBlack);
-      
-	  leg->AddEntry(hThetaS1S2pro, "0 blocks", "l");
-	  legTheta->AddEntry(hThetaS1ratio, "0 blocks", "l");
-	  legTof->AddEntry(hutof1dS1, "0 blocks", "l");
-	  legPhiRatio->AddEntry(hPhiS1ratio, "0 blocks", "l");
-
-	  hPhiS1S2pro->Scale(1. / block0Ratio);
-	  hPhiS1S2pi->Scale(1. / block0Ratio);
-	  hThetaS1S2pro->Scale(1. / block0Ratio);
-	  hThetaS1S2pi->Scale(1. / block0Ratio);
-
-	  hPhiS1pro->Scale(1. / block0Ratio);
-	  hPhiS1pi->Scale(1. / block0Ratio);
-	  hThetaS1pro->Scale(1. / block0Ratio);
-	  hThetaS1pi->Scale(1. / block0Ratio);
-
-	  hMomS1S2->Scale(1. / block0Ratio);
-	  hMomS1->Scale(1. / block0Ratio);
-
-	  hutof1dS1S2->Scale(1. / block0Ratio);
-	  hutof1dS1->Scale(1. / block0Ratio);
-
-	  hMom2D_0blkQ->Scale(1. / (double)nSpills);
-	  hMom2D_0blkS->Scale(1. / (double)nSpills);
-	  hMom2D_0blkQ->Write();
-	  hMom2D_0blkS->Write();
-	}
-	if (nBlocks==1) {
-	  hThetaS1S2pro->SetLineColor(kRed);
-	  hThetaS1S2pi->SetLineColor(kRed);
-	  hPhiS1S2pro->SetLineColor(kRed);
-	  hPhiS1S2pi->SetLineColor(kRed);
-	  hPhiS1S2ratio->SetLineColor(kRed);
-	  hThetaS1S2ratio->SetLineColor(kRed);
-	  hThetaS1pro->SetLineColor(kRed);
-	  hThetaS1pi->SetLineColor(kRed);
-	  hPhiS1pro->SetLineColor(kRed);
-	  hPhiS1pi->SetLineColor(kRed);
-	  hPhiS1ratio->SetLineColor(kRed);
-	  hThetaS1ratio->SetLineColor(kRed);
-	  hMomS1S2->SetLineColor(kRed);
-	  hMomS1->SetLineColor(kRed);
-	  hutof1dS1S2->SetLineColor(kRed);
-	  hutof1dS1->SetLineColor(kRed);
-      
-	  leg->AddEntry(hThetaS1S2pro, "1 block", "l");
-	  legTheta->AddEntry(hThetaS1ratio, "1 block", "l");
-	  legTof->AddEntry(hutof1dS1, "1 block", "l");
-	  legPhiRatio->AddEntry(hPhiS1ratio, "1 block", "l");
-
-	  hMom2D_1blkQ->Scale(1. / (double)nSpills);
-	  hMom2D_1blkS->Scale(1. / (double)nSpills);
-	  hMom2D_1blkQ->Write();
-	  hMom2D_1blkS->Write();
-	}
-	if (nBlocks==2) {
-	  hThetaS1S2pro->SetLineColor(kBlue);
-	  hThetaS1S2pi->SetLineColor(kBlue);
-	  hPhiS1S2pro->SetLineColor(kBlue);
-	  hPhiS1S2pi->SetLineColor(kBlue);
-	  hPhiS1S2ratio->SetLineColor(kBlue);
-	  hThetaS1S2ratio->SetLineColor(kBlue);
-
-	  hThetaS1pro->SetLineColor(kBlue);
-	  hThetaS1pi->SetLineColor(kBlue);
-	  hPhiS1pro->SetLineColor(kBlue);
-	  hPhiS1pi->SetLineColor(kBlue);
-	  hPhiS1ratio->SetLineColor(kBlue);
-	  hThetaS1ratio->SetLineColor(kBlue);
-
-	  hMomS1S2->SetLineColor(kBlue);
-	  hMomS1->SetLineColor(kBlue);
-
-	  hutof1dS1S2->SetLineColor(kBlue);
-	  hutof1dS1->SetLineColor(kBlue);
-
-	  leg->AddEntry(hThetaS1S2pro, "2 blocks", "l");
-	  legTheta->AddEntry(hThetaS1ratio, "2 blocks", "l");
-	  legTof->AddEntry(hutof1dS1, "2 blocks", "l");
-	  legPhiRatio->AddEntry(hPhiS1ratio, "2 blocks", "l");
-
-	  hMom2D_2blkQ->Scale(1. / (double)nSpills);
-	  hMom2D_2blkS->Scale(1. / (double)nSpills);
-	  hMom2D_2blkQ->Write();
-	  hMom2D_2blkS->Write();
-	}
-	if (nBlocks==3) {
-	  hThetaS1S2pro->SetLineColor(kCyan+1);
-	  hThetaS1S2pi->SetLineColor(kCyan+1);
-	  hPhiS1S2pro->SetLineColor(kCyan+1);
-	  hPhiS1S2pi->SetLineColor(kCyan+1);
-	  hPhiS1S2ratio->SetLineColor(kCyan+1);
-	  hThetaS1S2ratio->SetLineColor(kCyan+1);
-
-	  hThetaS1pro->SetLineColor(kCyan+1);
-	  hThetaS1pi->SetLineColor(kCyan+1);
-	  hPhiS1pro->SetLineColor(kCyan+1);
-	  hPhiS1pi->SetLineColor(kCyan+1);
-	  hPhiS1ratio->SetLineColor(kCyan+1);
-	  hThetaS1ratio->SetLineColor(kCyan+1);
-
-	  hMomS1S2->SetLineColor(kCyan+1);
-	  hMomS1->SetLineColor(kCyan+1);
-
-	  hutof1dS1S2->SetLineColor(kCyan+1);
-	  hutof1dS1->SetLineColor(kCyan+1);
-
-	  leg->AddEntry(hThetaS1S2pro, "3 blocks", "l");
-	  legTheta->AddEntry(hThetaS1ratio, "3 blocks", "l");
-	  legTof->AddEntry(hutof1dS1, "3 blocks", "l");
-	  legPhiRatio->AddEntry(hPhiS1ratio, "3 blocks", "l");
-	}
-	if (nBlocks==4) {
-	  hThetaS1S2pro->SetLineColor(kOrange+1);
-	  hThetaS1S2pi->SetLineColor(kOrange+1);
-	  hPhiS1S2pro->SetLineColor(kOrange+1);
-	  hPhiS1S2pi->SetLineColor(kOrange+1);
-	  hPhiS1S2ratio->SetLineColor(kOrange+1);
-	  hThetaS1S2ratio->SetLineColor(kOrange+1);
-
-	  hThetaS1pro->SetLineColor(kOrange+1);
-	  hThetaS1pi->SetLineColor(kOrange+1);
-	  hPhiS1pro->SetLineColor(kOrange+1);
-	  hPhiS1pi->SetLineColor(kOrange+1);
-	  hPhiS1ratio->SetLineColor(kOrange+1);
-	  hThetaS1ratio->SetLineColor(kOrange+1);
-
-	  hMomS1S2->SetLineColor(kOrange+1);
-	  hMomS1->SetLineColor(kOrange+1);
-
-	  hutof1dS1S2->SetLineColor(kOrange+1);
-	  hutof1dS1->SetLineColor(kOrange+1);
-
-	  leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
-	  legTheta->AddEntry(hThetaS1ratio, "4 blocks", "l");
-	  legTof->AddEntry(hutof1dS1, "4 blocks", "l");
-	  legPhiRatio->AddEntry(hPhiS1ratio, "4 blocks", "l");
-	}
-
-	hPhiS1S2pro->Scale(1. / (double)nSpills);
-	hPhiS1S2pi->Scale(1. / (double)nSpills);
-	hThetaS1S2pro->Scale(1. / (double)nSpills);
-	hThetaS1S2pi->Scale(1. / (double)nSpills);
-
-	hPhiS1pro->Scale(1. / (double)nSpills);
-	hPhiS1pi->Scale(1. / (double)nSpills);
-	hPhiS1pro->Scale(22./6.4);
-	hPhiS1pi->Scale(22./6.4);
-	hThetaS1pro->Scale(1. / (double)nSpills);
-	hThetaS1pi->Scale(1. / (double)nSpills);
-	for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
-	  double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
-	  hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
-	  hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
-	}
-
-	hMomS1S2->Scale(1. / (double)nSpills);
-	hMomS1->Scale(1. / (double)nSpills);
-
-	hutof1dS1S2->Scale(1. / (double)nSpills);
-	hutof1dS1->Scale(1. / (double)nSpills);
-
-	hMomYS1->Scale(1. / (double)nSpills);
-	hMomYS12->Scale(1. / (double)nSpills);
-	hMomZS1->Scale(1. / (double)nSpills);
-	hMomZS12->Scale(1. / (double)nSpills);
-
-	hprotonXY->Scale(1. / (double)nSpills);
-	hpionXY->Scale(1. / (double)nSpills);
-	hprotonXY->Write();
-	hpionXY->Write();
-
-	gStyle->SetPalette(55);
-	gStyle->SetOptStat(0);
-	TCanvas *cpionXY   = new TCanvas(Form("cpionXY%d", nBlocks));
-	hpionXY->Draw("colz");
-	cpionXY->SetRightMargin(0.15);
-	cpionXY->SetLeftMargin(0.13);
-	cpionXY->SetBottomMargin(0.13);
-	hpionXY->GetXaxis()->SetLabelSize(0.05);
-	hpionXY->GetYaxis()->SetLabelSize(0.05);
-	hpionXY->GetXaxis()->SetTitleSize(0.05);
-	hpionXY->GetYaxis()->SetTitleSize(0.05);
-	hpionXY->GetZaxis()->SetTitleSize(0.05);
-	hpionXY->GetZaxis()->SetLabelSize(0.05);
-	cpionXY->Print(Form("%s/%d_pionXY.png", saveDir, nBlocks));
-	cpionXY->Print(Form("%s/%d_pionXY.pdf", saveDir, nBlocks));
-	cpionXY->Print(Form("%s/%d_pionXY.tex", saveDir, nBlocks));
-	TCanvas *cprotonXY = new TCanvas(Form("cprotonXY%d", nBlocks));
-	hprotonXY->Draw("colz");
-	cprotonXY->SetRightMargin(0.15);
-	cprotonXY->SetLeftMargin(0.13);
-	cprotonXY->SetBottomMargin(0.13);
-	hprotonXY->GetXaxis()->SetLabelSize(0.05);
-	hprotonXY->GetYaxis()->SetLabelSize(0.05);
-	hprotonXY->GetXaxis()->SetTitleSize(0.05);
-	hprotonXY->GetYaxis()->SetTitleSize(0.05);
-	hprotonXY->GetZaxis()->SetTitleSize(0.05);
-	hprotonXY->GetZaxis()->SetLabelSize(0.05);
-	cprotonXY->Print(Form("%s/%d_protonXY.png", saveDir, nBlocks));
-	cprotonXY->Print(Form("%s/%d_protonXY.pdf", saveDir, nBlocks));
-	cprotonXY->Print(Form("%s/%d_protonXY.tex", saveDir, nBlocks));
-
-	hThetaS1S2pro->Write();
-	hThetaS1S2pi->Write();
-	hPhiS1S2pro->Write();
-	hPhiS1S2pi->Write();
-	hThetaS1pro->Write();
-	hThetaS1pi->Write();
-	hPhiS1pro->Write();
-	hPhiS1pi->Write();
-
-	hMomS1S2->Write();
-	hMomS1->Write();
-
-	hutof1dS1S2->Write();
-	hutof1dS1->Write();
-
-	hsThetaS1S2pro->Add(hThetaS1S2pro);
-	hsThetaS1S2pi->Add(hThetaS1S2pi);
-	hsPhiS1S2pro->Add(hPhiS1S2pro);
-	hsPhiS1S2pi->Add(hPhiS1S2pi);
-	hsThetaS1S2ratio->Add(hThetaS1S2ratio);
-	hsPhiS1S2ratio->Add(hPhiS1S2ratio);
-
-	hsThetaS1pro->Add(hThetaS1pro);
-	hsThetaS1pi->Add(hThetaS1pi);
-	hsPhiS1pro->Add(hPhiS1pro);
-	hsPhiS1pi->Add(hPhiS1pi);
-	hsThetaS1ratio->Add(hThetaS1ratio);
-	hsPhiS1ratio->Add(hPhiS1ratio);
-
-	hsutof1dS1S2->Add(hutof1dS1S2);
-	hsutof1dS1->Add(hutof1dS1);
-
-	hsMomS1S2->Add(hMomS1S2);
-	hsMomS1->Add(hMomS1);
+	tofTmp->Write();
+	hThetaS1proTmp->Write();
+	hThetaS1piTmp->Write();
+	hThetaS1ratioTmp->Write();
       } // for (int j=0; j<str4BlockVec.size(); j++)
+      cout<<"Utof spills "<<nSpills<<endl;
+      fout->cd();
+      hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
+      hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
+      hThetaS1ratio->Divide(hThetaS1pro, hThetaS1pi, 1., 1., "B");
+      hPhiS1ratio->Divide(hPhiS1pro, hPhiS1pi, 1., 1., "B");
+      hThetaS1S2ratio->Write();
+      hPhiS1S2ratio->Write();
+      hThetaS1ratio->Write();
+      hPhiS1ratio->Write();
+
+      hThetaS1S2pro->SetLineWidth(2);
+      hThetaS1S2pi->SetLineWidth(2);
+      hPhiS1S2pro->SetLineWidth(2);
+      hPhiS1S2pi->SetLineWidth(2);
+      hPhiS1S2ratio->SetLineWidth(2);
+      hThetaS1S2ratio->SetLineWidth(2);
+      hThetaS1pro->SetLineWidth(2);
+      hThetaS1pi->SetLineWidth(2);
+      hPhiS1pro->SetLineWidth(2);
+      hPhiS1pi->SetLineWidth(2);
+      hPhiS1ratio->SetLineWidth(2);
+      hThetaS1ratio->SetLineWidth(2);
+      hMomS1S2->SetLineWidth(2);
+      hMomS1->SetLineWidth(2);
+      hutof1dS1S2->SetLineWidth(2);
+      hutof1dS1->SetLineWidth(2);
+    
+      hThetaS1S2pro->SetLineColor(kOrange+1);
+      hThetaS1S2pi->SetLineColor(kOrange+1);
+      hPhiS1S2pro->SetLineColor(kOrange+1);
+      hPhiS1S2pi->SetLineColor(kOrange+1);
+      hPhiS1S2ratio->SetLineColor(kOrange+1);
+      hThetaS1S2ratio->SetLineColor(kOrange+1);
+
+      hThetaS1pro->SetLineColor(kOrange+1);
+      hThetaS1pi->SetLineColor(kOrange+1);
+      hPhiS1pro->SetLineColor(kOrange+1);
+      hPhiS1pi->SetLineColor(kOrange+1);
+      hPhiS1ratio->SetLineColor(kOrange+1);
+      hThetaS1ratio->SetLineColor(kOrange+1);
+
+      hMomS1S2->SetLineColor(kOrange+1);
+      hMomS1->SetLineColor(kOrange+1);
+
+      hutof1dS1S2->SetLineColor(kOrange+1);
+      hutof1dS1->SetLineColor(kOrange+1);
+
+      leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
+      legTheta->AddEntry(hThetaS1ratio, "4 blocks", "l");
+      legTof->AddEntry(hutof1dS1, "4 blocks", "l");
+      legPhiRatio->AddEntry(hPhiS1ratio, "4 blocks", "l");
+
+      hPhiS1S2pro->Scale(1. / (double)nSpills);
+      hPhiS1S2pi->Scale(1. / (double)nSpills);
+      hThetaS1S2pro->Scale(1. / (double)nSpills);
+      hThetaS1S2pi->Scale(1. / (double)nSpills);
+
+      hPhiS1pro->Scale(1. / (double)nSpills);
+      hPhiS1pi->Scale(1. / (double)nSpills);
+      hPhiS1pro->Scale(22./6.4);
+      hPhiS1pi->Scale(22./6.4);
+      hThetaS1pro->Scale(1. / (double)nSpills);
+      hThetaS1pi->Scale(1. / (double)nSpills);
+      for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
+	double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
+	hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
+	hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
+      }
+
+      hMomS1S2->Scale(1. / (double)nSpills);
+      hMomS1->Scale(1. / (double)nSpills);
+
+      hutof1dS1S2->Scale(1. / (double)nSpills);
+      hutof1dS1->Scale(1. / (double)nSpills);
+
+      // hMomYS1->Scale(1. / (double)nSpills);
+      // hMomYS12->Scale(1. / (double)nSpills);
+      // hMomZS1->Scale(1. / (double)nSpills);
+      // hMomZS12->Scale(1. / (double)nSpills);
+
+      hprotonXY->Scale(1. / (double)nSpills);
+      hpionXY->Scale(1. / (double)nSpills);
+      hprotonXY->Write();
+      hpionXY->Write();
+
+      gStyle->SetPalette(55);
+      gStyle->SetOptStat(0);
+      TCanvas *cpionXY   = new TCanvas(Form("cpionXY%d", nBlocks));
+      hpionXY->Draw("colz");
+      cpionXY->SetRightMargin(0.15);
+      cpionXY->SetLeftMargin(0.13);
+      cpionXY->SetBottomMargin(0.13);
+      hpionXY->GetXaxis()->SetLabelSize(0.05);
+      hpionXY->GetYaxis()->SetLabelSize(0.05);
+      hpionXY->GetXaxis()->SetTitleSize(0.05);
+      hpionXY->GetYaxis()->SetTitleSize(0.05);
+      hpionXY->GetZaxis()->SetTitleSize(0.05);
+      hpionXY->GetZaxis()->SetLabelSize(0.05);
+      cpionXY->Print(Form("%s/%d_pionXY.png", saveDir, nBlocks));
+      cpionXY->Print(Form("%s/%d_pionXY.pdf", saveDir, nBlocks));
+      cpionXY->Print(Form("%s/%d_pionXY.tex", saveDir, nBlocks));
+      TCanvas *cprotonXY = new TCanvas(Form("cprotonXY%d", nBlocks));
+      hprotonXY->Draw("colz");
+      cprotonXY->SetRightMargin(0.15);
+      cprotonXY->SetLeftMargin(0.13);
+      cprotonXY->SetBottomMargin(0.13);
+      hprotonXY->GetXaxis()->SetLabelSize(0.05);
+      hprotonXY->GetYaxis()->SetLabelSize(0.05);
+      hprotonXY->GetXaxis()->SetTitleSize(0.05);
+      hprotonXY->GetYaxis()->SetTitleSize(0.05);
+      hprotonXY->GetZaxis()->SetTitleSize(0.05);
+      hprotonXY->GetZaxis()->SetLabelSize(0.05);
+      cprotonXY->Print(Form("%s/%d_protonXY.png", saveDir, nBlocks));
+      cprotonXY->Print(Form("%s/%d_protonXY.pdf", saveDir, nBlocks));
+      cprotonXY->Print(Form("%s/%d_protonXY.tex", saveDir, nBlocks));
+
+      hThetaS1S2pro->Write();
+      hThetaS1S2pi->Write();
+      hPhiS1S2pro->Write();
+      hPhiS1S2pi->Write();
+      hThetaS1pro->Write();
+      hThetaS1pi->Write();
+      hPhiS1pro->Write();
+      hPhiS1pi->Write();
+
+      hMomS1S2->Write();
+      hMomS1->Write();
+
+      hutof1dS1S2->Write();
+      hutof1dS1->Write();
+
+      hsThetaS1S2pro->Add(hThetaS1S2pro);
+      hsThetaS1S2pi->Add(hThetaS1S2pi);
+      hsPhiS1S2pro->Add(hPhiS1S2pro);
+      hsPhiS1S2pi->Add(hPhiS1S2pi);
+      hsThetaS1S2ratio->Add(hThetaS1S2ratio);
+      hsPhiS1S2ratio->Add(hPhiS1S2ratio);
+
+      hsThetaS1pro->Add(hThetaS1pro);
+      hsThetaS1pi->Add(hThetaS1pi);
+      hsPhiS1pro->Add(hPhiS1pro);
+      hsPhiS1pi->Add(hPhiS1pi);
+      hsThetaS1ratio->Add(hThetaS1ratio);
+      hsPhiS1ratio->Add(hPhiS1ratio);
+
+      hsutof1dS1S2->Add(hutof1dS1S2);
+      hsutof1dS1->Add(hutof1dS1);
+
+      hsMomS1S2->Add(hMomS1S2);
+      hsMomS1->Add(hMomS1);
+      cout<<"Completed this dataset"<<endl;
     } // 4 block data
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
 
@@ -1309,6 +1161,7 @@ void angularDistS3(const char* saveDir,
   hsMomS1S2->Write();
   hsMomS1->Write();
 
+  cout<<"Begin printing out the THStacks"<<endl;
   TCanvas *c1_Log1 = new TCanvas("c1_Log1");
   c1_Log1->SetLogy();
   hsThetaS1S2pro->Draw("hist e nostack");
@@ -1320,6 +1173,7 @@ void angularDistS3(const char* saveDir,
   c1_Log1->Print(Form("%s/thetaS12proLog.png", saveDir));
   c1_Log1->Print(Form("%s/thetaS12proLog.pdf", saveDir));
   c1_Log1->Print(Form("%s/thetaS12proLog.tex", saveDir));
+  cout<<"Successfully printed out a THStack"<<endl;
   TCanvas *c1_Log2 = new TCanvas("c1_Log2");
   c1_Log2->SetLogy();
   hsThetaS1S2pi->Draw("hist e nostack");
@@ -1639,6 +1493,7 @@ void angularDistS3(const char* saveDir,
   cutofS1Log->Print(Form("%s/utof1dS1Log.png", saveDir));
   cutofS1Log->Print(Form("%s/utof1dS1Log.pdf", saveDir));
   cutofS1Log->Print(Form("%s/utof1dS1Log.tex", saveDir));
-
+ 
   fout->Close();
+  delete fout;
 } // angularDistS3
