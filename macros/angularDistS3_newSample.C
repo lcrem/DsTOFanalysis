@@ -92,13 +92,15 @@ void angularDistS3_newSample(const char* saveDir,
   const double ACut = 0.25;
   // SJ's bar by bar amplitude cut (by eye)
   // For A1 
-  const std::vector<double> A1CutVec = {0.25, 0.25, 0.275, 0.2, 0.25, 0.25, 0.25, 0.275, 0.325, 
-					0.3, 0.3, 0.2, 0.2, 0.25, 0.225, 0.25, 0.25, 0.3, 0.3, 
-					0.25, 0.3, 0.3};
+  const std::vector<double> A1CutVec = {0.25, 0.25, 0.275, 0.2, 0.25, 0.25, 0.225, 0.25, 0.3, 
+					0.3, 0.3,
+					0.2, 0.2, 0.25, 0.25, 0.25, 0.25, 0.3, 0.25, 
+					0.225, 0.3, 0.3};
   // For A2
-  const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.3, 0.3, 0.15, 0.225, 0.25, 0.25,
-				       0.225, 0.225, 0.2, 0.225, 0.225, 0.225, 0.2, 0.275, 0.25, 
-				       0.225, 0.3, 0.3};
+  const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.25, 
+					0.25, 0.15, 0.225, 0.25, 0.25, 0.225,
+					0.25, 0.25, 0.2, 0.2, 0.225, 
+					0.225, 0.25, 0.25, 0.225, 0.3, 0.25};
   // Time cut for hits interacting in neighbouring S3 bars
   const double twoBarCut = 0.5; // ns
 
@@ -147,7 +149,7 @@ void angularDistS3_newSample(const char* saveDir,
 			3.0, 3.2, 3.4, 3.6, 3.8,  
 			4.0, 4.25, 4.5, 4.75, 
 			5.0, 5.25, 5.8,
-		        6.2};
+		        6.2}; 
   int binnum = sizeof(binsTheta)/sizeof(double) - 1;
 
   for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
