@@ -1,5 +1,4 @@
 // angularDistS3.C
-
 // Outputs momentum in GeV/c
 double momFromTime(const double mass, const double baseline, const double time)
 {
@@ -100,6 +99,8 @@ void angularDistS3_newSample(const char* saveDir,
   const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.3, 0.3, 0.15, 0.225, 0.25, 0.25,
 				       0.225, 0.225, 0.2, 0.225, 0.225, 0.225, 0.2, 0.275, 0.25, 
 				       0.225, 0.3, 0.3};
+  // Time cut for hits interacting in neighbouring S3 bars
+  const double twoBarCut = 0.5; // ns
 
   THStack *hsThetaS1pro   = new THStack("hsThetaS1pro", "S1 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill / degree");
   THStack *hsThetaS1S2pro = new THStack("hsThetaS1S2pro", "S1 #cap S2 #cap S3 angular distribution of proton hits; #theta / degrees; Events / spill / degree");
@@ -407,68 +408,83 @@ void angularDistS3_newSample(const char* saveDir,
 	    // lastSpill = tSoSd;
 	    // } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
 
-	    // Only select those events with multiplicity of 1 - advice from AK
 	    for (int nh=0; nh<nhit; nh++) {
-	      double tofCalc = tToF[nh] - tS1;
-	      // Calculate x, y z positions relative to S1
-	      double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
-	      double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-	      double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
-	      double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
-	      double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-	      // All triggers
-	      //	if (tTrig == 0) {
-	      hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-	      // Separate protons and MIPs using timing and amplitude cuts
-	      // Is a MIP
-	      if ( tofCalc > piLow && tofCalc < piHi ) {
-		nPi++;
-		hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
-		hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		hpionXY->Fill(xToF[nh], yToF[nh]);
-		lastut = t;
-	      } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
-	      // Is a proton
-	      else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		nP++;
-		hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
-		hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		hprotonXY->Fill(xToF[nh], yToF[nh]);
-
-		hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		// hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		// hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
-		lastut = t;
-		if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
-		else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
-		else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
-		else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
-		else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[nh]);
-		else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
-	    
-	      } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-	      //	}
-	      // S1 & S2 trigger only
-	      if (tTrig !=0) {
-		hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+	      // Checks if the next S3 hit is in a neighbouring bar
+	      // Only want to count one of them if it is
+	      // Check from this hit onwards to see if there are any double hit candidates
+	      bool isDouble = false;
+	      if (nh < nhit-1) {
+		for (int nh2=nh+1; nh2<nhit; nh2++) {
+		  // Timing cut and checks if in the neighbouring bar
+		  if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
+		      (nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
+		    isDouble = true;
+		    break;
+		  }
+		} // for (int nh2=nh; nh2<nhit; nh2++)
+	      } // if (nh < nh-1)
+	      // If it's not a double hit then go ahead
+	      if (!isDouble) {
+		double tofCalc = tToF[nh] - tS1;
+		// Calculate x, y z positions relative to S1
+		double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
+		double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+		double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
+		double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
+		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
+		// All triggers
+		//	if (tTrig == 0) {
+		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 		// Separate protons and MIPs using timing and amplitude cuts
 		// Is a MIP
 		if ( tofCalc > piLow && tofCalc < piHi ) {
 		  nPi++;
-		  hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
+		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
+		  hpionXY->Fill(xToF[nh], yToF[nh]);
+		  lastut = t;
 		} // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		// Is a proton
 		else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 		  nP++;
-		  hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
-		  hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		  // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		  // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
+		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
+		  hprotonXY->Fill(xToF[nh], yToF[nh]);
+		  hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		  // hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		  // hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		  lastut = t;
+		  if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+		  else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+		  else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[nh]);
+		  else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
+	    
 		} // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-	      } // S1 + S2 trigger
-	    } // if (nhit == 1)
+		//	}
+		// S1 & S2 trigger only
+		if (tTrig !=0) {
+		  hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		  // Separate protons and MIPs using timing and amplitude cuts
+		  // Is a MIP
+		  if ( tofCalc > piLow && tofCalc < piHi ) {
+		    nPi++;
+		    hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+		  // Is a proton
+		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		    nP++;
+		    hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
+		    hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		    // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		    // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
+		} // S1 + S2 trigger
+	      }
+	    } // Loop over nhits
 	  } // for (int t=0; t<tree->GetEntries(); t++)
 	} // if (isGood)
       } 
@@ -946,67 +962,84 @@ void angularDistS3_newSample(const char* saveDir,
 	      // lastSpill = tSoSd;
 	      // } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
 	      for (int nh=0; nh < nhit; nh++) {
-		double tofCalc = tToF[nh] - tS1;
-		// Calculate x, y z positions relative to S1
-		double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
-		double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-		double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
-		double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
-		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
-		// All triggers
-		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		tofTmp->Fill(tofCalc, 1./deadtimeWeight);
-		// Separate protons and MIPs using timing and amplitude cuts
-		// Is a MIP
-		if ( tofCalc > piLow && tofCalc < piHi ) {
-		  nPi++;
-		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		  hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		  lastut = t;
-		} // if ( tofCalc > piLow && tofCalc < piHi )
-		// Is a proton
-		else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		  nP++;
-		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
-		  hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
-		  hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		  hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		  hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		  // hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		  // hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
-		  lastut = t;
-		  if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
-	    
-		} // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		//	}
-		// S1 & S2 trigger only
-		if (tTrig !=0) {
-		  hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		// Checks if the next S3 hit is in a neighbouring bar
+		// Only want to count one of them if it is
+		// Check from this hit onwards to see if there are any double hit candidates
+		bool isDouble = false;
+		if (nh < nhit-1) {
+		  for (int nh2=nh+1; nh2<nhit; nh2++) {
+		    // Timing cut and checks if in the neighbouring bar
+		    if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
+			(nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
+		      isDouble = true;
+		      break;
+		    }
+		  } // for (int nh2=nh; nh2<nhit; nh2++)
+		} // if (nh < nh-1)
+		// If it's not a double hit then go ahead
+		if (!isDouble) {
+		  double tofCalc = tToF[nh] - tS1;
+		  // Calculate x, y z positions relative to S1
+		  double positionX = ((xToF[nh] - 4.) / 152.)*(s3EndX - s3StartX) + s3StartX;;
+		  double positionY = ((xToF[nh] - 4.) / 152.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+		  double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
+		  double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
+		  double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
+		  // All triggers
+		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
+		  tofTmp->Fill(tofCalc, 1./deadtimeWeight);
 		  // Separate protons and MIPs using timing and amplitude cuts
 		  // Is a MIP
 		  if ( tofCalc > piLow && tofCalc < piHi ) {
 		    nPi++;
-		    hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
-		  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+		    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
+		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    lastut = t;
+		  } // if ( tofCalc > piLow && tofCalc < piHi )
 		  // Is a proton
 		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
 		    nP++;
-		    hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
-		    hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		    // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		    // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
+		    hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
+		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
+		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		    // hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		    // hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		    lastut = t;
+		    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
+	    
 		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		} // S1 + S2 trigger
-	      } // if (nhit == 1)
+		  //	}
+		  // S1 & S2 trigger only
+		  if (tTrig !=0) {
+		    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		    // Separate protons and MIPs using timing and amplitude cuts
+		    // Is a MIP
+		    if ( tofCalc > piLow && tofCalc < piHi ) {
+		      nPi++;
+		      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
+		      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+		    // Is a proton
+		    else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		      nP++;
+		      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
+		      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
+		      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		      // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		      // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
+		  } // S1 + S2 trigger
+		} // if (!isDouble)
+	      } // Loop over nhits
 	    } // for (int t=lastut; t<tree->GetEntries(); t++)
 	  } // if (isGood)
 	}
