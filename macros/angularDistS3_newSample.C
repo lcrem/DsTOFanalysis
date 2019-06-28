@@ -28,7 +28,8 @@ void angularDistS3_newSample(const char* saveDir,
   const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
   // New datasets to combine for the 4 block data
   const char* str4Block0 = "Data_2018_8_28_b5.root";
-  const char* str4Block1 = "Data_2018_9_3_b2_800MeV_4block_bend4cm.root";
+  const char* str4Block1 = "Data_2018_8_30_b1.root";
+    //"Data_2018_9_3_b2_800MeV_4block_bend4cm.root";
   const char* str4Block2 = "Data_2018_8_29_b4.root";
   const char* str4Block3 = "Data_2018_8_29_b1.root";
   std::vector<const char*> str4BlockVec = {str4Block0, str4Block1, str4Block2, str4Block3};
@@ -45,8 +46,8 @@ void angularDistS3_newSample(const char* saveDir,
   // 4 block data
   const double block4Slope0 = -0.0005476;
   const double block4Const0 = 0.983;
-  const double block4Slope1 = -0.0001622;
-  const double block4Const1 = 0.5246;
+  const double block4Slope1 = -0.0003175;
+  const double block4Const1 = 0.6416;
   const double block4Slope2 = -0.0003664;
   const double block4Const2 = 0.7991;
   const double block4Slope3 = -0.0005316;
@@ -995,6 +996,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  if ( tofCalc > piLow && tofCalc < piHi ) {
 		    nPi++;
 		    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
+		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
 		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    lastut = t;
@@ -1004,7 +1006,6 @@ void angularDistS3_newSample(const char* saveDir,
 		    nP++;
 		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		    hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
-		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
 		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);

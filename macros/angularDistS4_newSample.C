@@ -2,8 +2,9 @@
 // Angular distribution of protons and pions for different moderator blocks
 // Use efficiency calculation and background subtraction
 void angularDistS4_newSample(const char* saveDir, 
-		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
-		   const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/") 
+			     const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
+			     const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
+			     const char* spillDBDir="/scratch0/sjones/spillDB/") 
 {
  
   gROOT->SetBatch(kTRUE);
@@ -33,10 +34,10 @@ void angularDistS4_newSample(const char* saveDir,
   //  const double start4Block = 1536537600; 
   //  const double end4Block   = 1536669600;
   // Timing cuts
-  const double piLow  = 40.;
-  const double piHi   = 55.;
-  const double proLow = 66.;
-  const double proHi  = 105.;
+  const double piLow  = 36.;
+  const double piHi   = 51.;
+  const double proLow = 62.;
+  const double proHi  = 101.;
   // S1 -> S4 positions
   const double baselineS1S4End   = 13.9426;
   const double baselineS1S4Start = 14.0069;
@@ -55,7 +56,7 @@ void angularDistS4_newSample(const char* saveDir,
   const char* str4Block = "Data_2018_9_1_b8_800MeV_4block_bend4cm.root";
   // New datasets to combine for the 4 block data
   const char* str4Block0 = "Data_2018_8_28_b5.root";
-  const char* str4Block1 = "Data_2018_9_3_b2_800MeV_4block_bend4cm.root";
+  const char* str4Block1 = "Data_2018_8_30_b1.root";
   const char* str4Block2 = "Data_2018_8_29_b4.root";
   const char* str4Block3 = "Data_2018_8_29_b1.root";
   std::vector<const char*> str4BlockVec = {str4Block0, str4Block1, str4Block2, str4Block3};
@@ -63,14 +64,16 @@ void angularDistS4_newSample(const char* saveDir,
   const double s4BarTop    = 0.43; 
   const double s4BarBottom = -0.35;
   // Shift in ns required to to pion peak at speed of light
-  const double dstofShift = 40.;
+  const double dstofShift = 44.;
   // Ustof-dstof cable delay
   const double ustofDelay = 184.7;
+  // Minimum number of hits in a spill required for it to count
+  const int minHits = 200;
 
   TFile *fout = new TFile(Form("%s/angularDistS4Plots.root", saveDir), "recreate");
 
-  THStack *hsBkgSub = new THStack("hsBkgSub", "Background subtracted and efficiency corrected S4 ToF spectrum; S4 - S1 / ns; Events / spill");
-  THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; S4 - S1 / ns; Events / spill");
+  THStack *hsBkgSub = new THStack("hsBkgSub", "Background subtracted and efficiency corrected S4 ToF spectrum; S4 - S2 / ns; Events / spill");
+  THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; S4 - S2 / ns; Events / spill");
 
   THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #cap S2 #cap S4 angular distribution of proton hits; #phi / degrees; Events / spill");
   THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S1 #cap S2 #cap S4 angular distribution of MIP hits; #phi / degrees; Events / spill");
@@ -110,8 +113,8 @@ void angularDistS4_newSample(const char* saveDir,
       double nPi = 0.;
       // Define signal and background functions to be fitted
       // Signals are gaussians
-      TF1 *sPro = new TF1("sPro", "gaus", 66, 100);
-      TF1 *sPi  = new TF1("sPi", "gaus", 35, 55);
+      TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
+      TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
       // Exponential background
       TF1 *fBkgExp = new TF1("fBkgExp","expo", 30, 160);
       sPro->SetLineColor(kGreen+2);
@@ -302,34 +305,41 @@ void angularDistS4_newSample(const char* saveDir,
 
       // Now loop over the coincidence files again and calculate the angular distributions
       for (int itdc=0; itdc<2; itdc++) {
+	// First of all tchain the relevant files together
 	TChain *tofCoinChain = new TChain("tofCoinTree");
 	for (int irun=runMin; irun<runMax+1; irun++){
 	  tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
 	} // for (int irun=runMin; irun<runMax+1; irun++)
 	RawDsTofCoincidence *tofCoin = NULL;
 	tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+	int lasth = 0;
+	// Use the spills recorded in the spill DB
 	for (int h=0; h<tofCoinChain->GetEntries(); h++) {
 	  tofCoinChain->GetEntry(h);
 	  if (tofCoin->unixTime[0]<startTime) continue;
 	  if (tofCoin->unixTime[0]>endTime) break;
-
 	  if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
 	    lastSpill = tofCoin->lastDelayedBeamSignal;
 	    nSpills++;
+	    int nTrueHits = 0;
 	    for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) {
 	      tofCoinChain->GetEntry(sp);
 	      if (tofCoin->unixTime[0]<startTime) continue;
 	      if (tofCoin->unixTime[0]>endTime) break;
+	      if (tofCoin->fakeTimeNs[0] > lastSpill + 3e9) break;
 
 	      if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. &&
 		  (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
 		  (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
-		  (tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
-		nSpillsTrue++;
-		break;
+		  (tofCoin->fakeTimeNs[0] - lastSpill) > 0.) {
+		nTrueHits++;
+		if (nTrueHits > 25) {
+		  nSpillsTrue++;
+		  break;
+		}
 	      }
 	    } // for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) 
-	  } // if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0)
+	  } // if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) 
 	  // Need to calculate total signal hits here
 	  // Weight these by the efficiency of calculated above
 	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
@@ -363,10 +373,10 @@ void angularDistS4_newSample(const char* saveDir,
 	      hProS4Vert->Fill(anglePhi,   1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 	    } // else if (tofCalc < proHi & tofCalc > proLow) 
 	  } // if (tofCalc < 160. && tofCalc > 30.) 
-	} // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
+	} // for (int h=0; h<tofCoinChain->GetEntries(); h++)
 	delete tofCoin;
 	delete tofCoinChain;
-      } // for (int itdc=0; itdc<2; itdc++)
+      }
       fout->cd();
       TCanvas *c2d_exp = new TCanvas(Form("%d_c2d_exp",nBlocks));
       c2d_exp->SetLogy();
@@ -567,6 +577,10 @@ void angularDistS4_newSample(const char* saveDir,
       hdtof1d->Scale(1. / nSpillsTrue);
       hsDtof->Add(hdtof1d);
       hsBkgSub->Add(hdtof1d_sub);
+      hProS4Horz->Scale(20./6.);
+      hPiS4Horz->Scale(20./6.);
+      hProS4Vert->Scale(10./3.3);
+      hPiS4Vert->Scale(10./3.3);
       hsProS4Vert->Add(hProS4Vert);
       hsProS4Horz->Add(hProS4Horz);
       hsPiS4Vert->Add(hPiS4Vert);
@@ -667,10 +681,18 @@ void angularDistS4_newSample(const char* saveDir,
       // TH1D *hCosmicsHorz = new TH1D(Form("hCosmicsHorz%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Hz",nBlocks), 20, 0, 140);
       // hCosmicsHorz->Sumw2();
       for (int b4=0; b4<str4BlockVec.size(); b4++) {
+	cout<<"Analysing sample "<<b4<<" of "<<str4BlockVec.size()<<endl;
+	int nSpillsTrueTmp = 0;
+	TH1D *hDtofTmp   = new TH1D(Form("hsDtof_%s",str4BlockVec[b4]), "S4 ToF spectrum; S4 - S2 / ns; Events / spill", 130, 30., 160.);
+	TH1D *hProS4VertTmp = new TH1D(Form("hProS4Vert_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of proton hits; #phi / degrees; Events / spill", 10, -1.5, 1.8);
+	TH1D *hPiS4VertTmp  = new TH1D(Form("hPiS4Vert_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of MIP hits; #phi / degrees; Events / spill", 10, -1.5, 1.8);
+	TH1D *hProS4HorzTmp = new TH1D(Form("hProS4Horz_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of proton hits; #theta / degrees; Events / spill", 20, 0., 6.);
+	TH1D *hPiS4HorzTmp  = new TH1D(Form("hPiS4Horz_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of MIP hits; #theta / degrees; Events / spill", 20, 0., 6.);
+	TH1D *hRatioS4VertTmp = new TH1D(Form("hRatioS4Vert_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of proton/MIP ratio; #phi / degrees; Protons/MIPs", 10, -1.5, 1.8);
+	TH1D *hRatioS4HorzTmp = new TH1D(Form("hRatioS4Horz_%s",str4BlockVec[b4]), "S1 #cap S2 #cap S4 angular distribution of proton/MIP ratio; #theta / degrees; Protons/MIPs", 20, 0., 6.);
 	// Find the correct dstof files
 	Int_t runMin=-1;
 	Int_t runMax=-1;
-
 	double startTime = 0;
 	double endTime   = 0;
 	// Get start and end times from the relevant utof files
@@ -719,12 +741,12 @@ void angularDistS4_newSample(const char* saveDir,
 	cout << "Min and max runs are " << runMin << " " << runMax << endl;
 
 	// Need these to calculate bar efficiencies
-	TH1D *hCoins = new TH1D(Form("hCoins_%d",nBlocks), Form("Bar coincidences + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
-	TH1D *hHits  = new TH1D(Form("hHits_%d",nBlocks), Form("PMT hits + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
-	TH1D *hEff   = new TH1D(Form("hEff_%d",nBlocks), Form("S4 bar efficiencies %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
+	TH1D *hCoins = new TH1D(Form("hCoins_%d_%s",nBlocks, str4BlockVec[b4]), Form("Bar coincidences + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
+	TH1D *hHits  = new TH1D(Form("hHits_%d_%s",nBlocks, str4BlockVec[b4]), Form("PMT hits + S_{1,2} coincidences, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
+	TH1D *hEff   = new TH1D(Form("hEff_%d_%s",nBlocks, str4BlockVec[b4]), Form("S4 bar efficiencies %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
 	hHits->Sumw2();
 	hCoins->Sumw2();
-
+	cout<<"Calculating efficiencies"<<endl;
 	// In this loop calculate the bar-by-bar efficiencies
 	for (int itdc=0; itdc<2; itdc++) {
 	  // Need both the coincidence and the raw trees for this
@@ -828,7 +850,7 @@ void angularDistS4_newSample(const char* saveDir,
 	cEff->Print(Form("%s/%d_barEff.png",saveDir,nBlocks));
 	cEff->Print(Form("%s/%d_barEff.pdf",saveDir,nBlocks));
 	cEff->Print(Form("%s/%d_barEff.tex",saveDir,nBlocks));
-
+	cout<<"Getting the signal hits"<<endl;
 	// Now loop over the coincidence files again and calculate the angular distributions
 	for (int itdc=0; itdc<2; itdc++) {
 	  TChain *tofCoinChain = new TChain("tofCoinTree");
@@ -842,22 +864,29 @@ void angularDistS4_newSample(const char* saveDir,
 	    if (tofCoin->unixTime[0]<startTime) continue;
 	    if (tofCoin->unixTime[0]>endTime) break;
 
+	    if (h % 10000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain->GetEntries()<<endl;
+
 	    if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
 	      lastSpill = tofCoin->lastDelayedBeamSignal;
 	      nSpills++;
+	      int nTrueHits = 0;
 	      for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) {
 		tofCoinChain->GetEntry(sp);
 		if (tofCoin->unixTime[0]<startTime) continue;
 		if (tofCoin->unixTime[0]>endTime) break;
+		if (tofCoin->fakeTimeNs[0] > lastSpill + 3e9) break;
 
 		if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. &&
 		    (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
 		    (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
 		    (tofCoin->fakeTimeNs[0] - lastSpill) > 0) {
-		  nSpillsTrue++;
-		  break;
+		  nTrueHits++;
+		  if (nTrueHits > 25) {
+		    nSpillsTrue++;
+		    nSpillsTrueTmp++;
+		    break;
+		  }
 		}
-
 	      } // for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) 
 	    } // if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0)
 	    // Need to calculate total signal hits here
@@ -879,6 +908,8 @@ void angularDistS4_newSample(const char* saveDir,
 		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		hPiS4Horz->Fill(angleTheta, 1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/ hEff->GetBinContent(tofCoin->bar));
 		hPiS4Vert->Fill(anglePhi,   1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
+		hPiS4HorzTmp->Fill(angleTheta, 1. / hEff->GetBinContent(tofCoin->bar));
+		hPiS4VertTmp->Fill(anglePhi,   1. / hEff->GetBinContent(tofCoin->bar));
 	      } // if (tofCalc < piHi & tofCalc > piLow)
 	      else if (tofCalc < proHi & tofCalc > proLow) {
 		nP += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -891,13 +922,30 @@ void angularDistS4_newSample(const char* saveDir,
 		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		hProS4Horz->Fill(angleTheta, 1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
 		hProS4Vert->Fill(anglePhi,   1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
+		hProS4HorzTmp->Fill(angleTheta, 1. / hEff->GetBinContent(tofCoin->bar));
+		hProS4VertTmp->Fill(anglePhi,   1. / hEff->GetBinContent(tofCoin->bar));
 	      } // else if (tofCalc < proHi & tofCalc > proLow) 
 	    } // if (tofCalc < 160. && tofCalc > 30.) 
 	  } // for (int h=0; h<tofCoinChain->GetEntries(); h++) 
 	  delete tofCoin;
 	  delete tofCoinChain;
 	} // for (int itdc=0; itdc<2; itdc++)
-      }      
+	fout->cd();
+	hProS4HorzTmp->Scale(1./nSpillsTrueTmp);
+	hPiS4HorzTmp->Scale(1./nSpillsTrueTmp);
+	hProS4VertTmp->Scale(1./nSpillsTrueTmp);
+	hPiS4VertTmp->Scale(1./nSpillsTrueTmp);
+	hRatioS4HorzTmp->SetLineWidth(2);
+	hRatioS4HorzTmp->Divide(hProS4HorzTmp, hPiS4HorzTmp, 1., 1., "B");
+	hRatioS4VertTmp->Divide(hProS4VertTmp, hPiS4VertTmp, 1., 1., "B");
+	hProS4HorzTmp->Write();
+	hPiS4HorzTmp->Write();
+	hProS4VertTmp->Write();
+	hPiS4VertTmp->Write();
+	hRatioS4HorzTmp->Write();
+	hRatioS4VertTmp->Write();
+	cout<<"Spills "<<nSpillsTrueTmp<<" in this sample"<<endl;
+      } // Loop over the four blocks     
       fout->cd();
       TCanvas *c2d_exp = new TCanvas(Form("%d_c2d_exp",nBlocks));
       c2d_exp->SetLogy();
@@ -1046,6 +1094,10 @@ void angularDistS4_newSample(const char* saveDir,
       hdtof1d->Scale(1. / nSpillsTrue);
       hsDtof->Add(hdtof1d);
       hsBkgSub->Add(hdtof1d_sub);
+      hProS4Horz->Scale(20./6.);
+      hPiS4Horz->Scale(20./6.);
+      hProS4Vert->Scale(10./3.3);
+      hPiS4Vert->Scale(10./3.3);
       hsProS4Vert->Add(hProS4Vert);
       hsProS4Horz->Add(hProS4Horz);
       hsPiS4Vert->Add(hPiS4Vert);
