@@ -202,6 +202,7 @@ void angularDistS3_newSample(const char* saveDir,
     // XY distributions in S3
     TH2D *hprotonXY = new TH2D(Form("hprotonXY%d", nBlocks), Form("S3 spatial distribution of proton hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, -10., 170., 22, 0., 120.);
     TH2D *hpionXY   = new TH2D(Form("hpionXY%d", nBlocks), Form("S3 spatial distribution of MIP hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, -10., 170., 22, 0., 120.);
+    TH2D *hAllXY    = new TH2D(Form("hAllXY%d", nBlocks), Form("S3 spatial distribution of all hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 100, -3.8, 6.2, 22, -3.15, 3.25);
 
     if (nBlocks != 4) {
       // Number of protons and number of MIPs
@@ -447,7 +448,7 @@ void angularDistS3_newSample(const char* saveDir,
 		double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		// All triggers
-		
+		hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 		if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
 		// Separate protons and MIPs using timing and amplitude cuts
@@ -456,7 +457,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  nPi++;
 		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		  hpionXY->Fill(xToF[nh], yToF[nh]);
+		  hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		  lastut = t;
 		} // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
@@ -467,6 +468,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
 		  if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		  hprotonXY->Fill(xToF[nh], yToF[nh]);
+		  hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  // Remove deuteron peak in 0 block data
 		  if (nBlocks != 0) {
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
@@ -700,7 +702,7 @@ void angularDistS3_newSample(const char* saveDir,
       hPhiS1S2pi->Scale(1. / (double)nSpills);
       hThetaS1S2pro->Scale(1. / (double)nSpills);
       hThetaS1S2pi->Scale(1. / (double)nSpills);
-
+      hAllXY->Scale(1. / (double)nSpills);
       hPhiS1pro->Scale(1. / (double)nSpills);
       hPhiS1pi->Scale(1. / (double)nSpills);
       hPhiS1pro->Scale(22./6.4);
@@ -737,7 +739,7 @@ void angularDistS3_newSample(const char* saveDir,
       hpionXY->Scale(1. / (double)nSpills);
       hprotonXY->Write();
       hpionXY->Write();
-
+      hAllXY->Write();
       gStyle->SetPalette(55);
       gStyle->SetOptStat(0);
       TCanvas *cpionXY   = new TCanvas(Form("cpionXY%d", nBlocks));
@@ -1036,6 +1038,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 		  double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		  // All triggers
+		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
 		  if (tTrig==0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
 		  tofTmp->Fill(tofCalc, 1./deadtimeWeight);
@@ -1207,15 +1210,12 @@ void angularDistS3_newSample(const char* saveDir,
       hutof1dS1->Scale(1. / (double)nSpills);
       hutof1dS1NoS2->Scale(1. / (double)nSpills);
 
-      // hMomYS1->Scale(1. / (double)nSpills);
-      // hMomYS12->Scale(1. / (double)nSpills);
-      // hMomZS1->Scale(1. / (double)nSpills);
-      // hMomZS12->Scale(1. / (double)nSpills);
-
       hprotonXY->Scale(1. / (double)nSpills);
       hpionXY->Scale(1. / (double)nSpills);
+      hAllXY->Scale(1. / (double)nSpills);
       hprotonXY->Write();
       hpionXY->Write();
+      hAllXY->Write();
 
       gStyle->SetPalette(55);
       gStyle->SetOptStat(0);
