@@ -1,6 +1,14 @@
 // angularDistS4.C
 // Angular distribution of protons and pions for different moderator blocks
 // Use efficiency calculation and background subtraction
+
+// Mass squared from the time
+// momentum and mass in GeV
+double massFromTime(const double time, const double mom, const double base) {
+  double mass = pow(mom,2) * (pow(time/base, 2)*pow(3e8, 2) - 1);
+  return mass;
+}
+
 void angularDistS4_newSample(const char* saveDir, 
 			     const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 			     const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
@@ -69,6 +77,8 @@ void angularDistS4_newSample(const char* saveDir,
   const double ustofDelay = 184.7;
   // Minimum number of hits in a spill required for it to count
   const int minHits = 200;
+  // S2 to S4 distance - used for m^2 plot
+  const double s2s4Dist = 12.5;
 
   TFile *fout = new TFile(Form("%s/angularDistS4Plots.root", saveDir), "recreate");
 
@@ -106,6 +116,8 @@ void angularDistS4_newSample(const char* saveDir,
     hPiS4Vert->Sumw2();
     TH1D *hProPiRatioS4Vert  = new TH1D(Form("hProPiRatioS4Vert%d",nBlocks), Form("Vertical angular distribution of proton/MIP ratio in S4, %d blocks; #phi / degrees; Protons/MIPs",nBlocks), 10, -1.5, 1.8);
     TH1D *hAllS4Horz = new TH1D(Form("hAllS4Horz%d",nBlocks), Form("Horizontal angular distribution of hit in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 20, 0., 6.);
+    TH1D *hMSq = new TH1D(Form("hMSq%d", nBlocks), Form("Particle mass distribution, %d blocks; S4 - S2 / ns; Events", nBlocks), 260, -0.5, 4.5);
+    hMSq->Sumw2();
 
     if (nBlocks != 4) {
       // Number of signal particles using just cut and count
@@ -347,6 +359,7 @@ void angularDistS4_newSample(const char* saveDir,
 	  double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
 	  if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	    hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
+	    hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
 	    double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	    if (tofCalc < piHi & tofCalc > piLow) { 
 	      nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -593,6 +606,7 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->Write();
       hProPiRatioS4Vert->Write();
       hProPiRatioS4Horz->Write();
+      hMSq->Write();
 
       legRatioVert->Write("legRatioVert");
 
@@ -896,6 +910,7 @@ void angularDistS4_newSample(const char* saveDir,
 	    double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
 	    if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	      hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
+	      hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
 	      double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	      if (tofCalc < piHi & tofCalc > piLow) { 
 		nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -1110,7 +1125,7 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->Write();
       hProPiRatioS4Vert->Write();
       hProPiRatioS4Horz->Write();
-
+      hMSq->Write();
       legRatioVert->Write("legRatioVert");
 
       const char* nustof;
