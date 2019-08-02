@@ -5,7 +5,7 @@
 // Mass squared from the time
 // momentum and mass in GeV
 double massFromTime(const double time, const double mom, const double base) {
-  double mass = pow(mom,2) * (pow(time/base, 2)*pow(3e8, 2) - 1);
+  double mass = pow(mom,2) * (pow((time*1e-9)/base, 2)*pow(3e8, 2) - 1);
   return mass;
 }
 
@@ -116,7 +116,7 @@ void angularDistS4_newSample(const char* saveDir,
     hPiS4Vert->Sumw2();
     TH1D *hProPiRatioS4Vert  = new TH1D(Form("hProPiRatioS4Vert%d",nBlocks), Form("Vertical angular distribution of proton/MIP ratio in S4, %d blocks; #phi / degrees; Protons/MIPs",nBlocks), 10, -1.5, 1.8);
     TH1D *hAllS4Horz = new TH1D(Form("hAllS4Horz%d",nBlocks), Form("Horizontal angular distribution of hit in S4, %d blocks; #theta / degrees; Events / spill", nBlocks), 20, 0., 6.);
-    TH1D *hMSq = new TH1D(Form("hMSq%d", nBlocks), Form("Particle mass distribution, %d blocks; S4 - S2 / ns; Events", nBlocks), 260, -0.5, 4.5);
+    TH1D *hMSq = new TH1D(Form("hMSq%d", nBlocks), Form("Particle mass distribution, %d blocks; M^{2} [GeV^{2} / c^{2}]; Events", nBlocks), 260, -0.5, 4.5);
     hMSq->Sumw2();
 
     if (nBlocks != 4) {
@@ -360,6 +360,7 @@ void angularDistS4_newSample(const char* saveDir,
 	  if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	    hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	    hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
+	    std::cout<<massFromTime(tofCalc, 0.8, s2s4Dist)<<std::endl;
 	    double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	    if (tofCalc < piHi & tofCalc > piLow) { 
 	      nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -878,7 +879,7 @@ void angularDistS4_newSample(const char* saveDir,
 	    if (tofCoin->unixTime[0]<startTime) continue;
 	    if (tofCoin->unixTime[0]>endTime) break;
 
-	    if (h % 10000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain->GetEntries()<<endl;
+	    if (h % 100000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain->GetEntries()<<endl;
 
 	    if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
 	      lastSpill = tofCoin->lastDelayedBeamSignal;
@@ -911,6 +912,7 @@ void angularDistS4_newSample(const char* saveDir,
 	    if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	      hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	      hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
+	      std::cout<<massFromTime(tofCalc, 0.8, s2s4Dist)<<std::endl;
 	      double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	      if (tofCalc < piHi & tofCalc > piLow) { 
 		nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
