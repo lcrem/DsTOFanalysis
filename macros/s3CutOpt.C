@@ -13,7 +13,7 @@ void s3CutOpt(const char* saveDir,
   else if (block==1) nustof = Form("%sData_2018_9_1_b4_800MeV_1block_bend4cm.root", ustofDir);
   else if (block==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
   else if (block==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
-  else if (block==4) nustof = Form("%sData_2018_9_1_b8_800MeV_4block_bend4cm.root", ustofDir);
+  else if (block==4) nustof = Form("%sData_2018_8_29_b4.root", ustofDir);
 
   // Open file
   TFile *futof = new TFile(nustof, "read");
