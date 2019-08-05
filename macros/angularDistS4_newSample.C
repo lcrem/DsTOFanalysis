@@ -360,7 +360,6 @@ void angularDistS4_newSample(const char* saveDir,
 	  if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	    hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	    hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
-	    std::cout<<massFromTime(tofCalc, 0.8, s2s4Dist)<<std::endl;
 	    double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	    if (tofCalc < piHi & tofCalc > piLow) { 
 	      nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -695,6 +694,7 @@ void angularDistS4_newSample(const char* saveDir,
       // hCosmicsVert->Sumw2();
       // TH1D *hCosmicsHorz = new TH1D(Form("hCosmicsHorz%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Hz",nBlocks), 20, 0, 140);
       // hCosmicsHorz->Sumw2();
+      TH1D *hEffTotal = new TH1D("hEffTotal", "Eff 4", 10, 0.5, 10.5);
       for (int b4=0; b4<str4BlockVec.size(); b4++) {
 	cout<<"Analysing sample "<<b4<<" of "<<str4BlockVec.size()<<endl;
 	int nSpillsTrueTmp = 0;
@@ -912,7 +912,6 @@ void angularDistS4_newSample(const char* saveDir,
 	    if (tofCalc < 160. && tofCalc > 30. && tofCoin->bar != 10) {
 	      hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	      hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
-	      std::cout<<massFromTime(tofCalc, 0.8, s2s4Dist)<<std::endl;
 	      double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	      if (tofCalc < piHi & tofCalc > piLow) { 
 		nPi += (1. / /*h2CosEff->GetBinContent( h2CosEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*/hEff->GetBinContent(tofCoin->bar));
@@ -962,6 +961,8 @@ void angularDistS4_newSample(const char* saveDir,
 	hRatioS4HorzTmp->Write();
 	hRatioS4VertTmp->Write();
 	cout<<"Spills "<<nSpillsTrueTmp<<" in this sample"<<endl;
+	hEff->Scale(nSpillsTrueTmp);
+	hEffTotal->Add(hEff);
       } // Loop over the four blocks     
       fout->cd();
       TCanvas *c2d_exp = new TCanvas(Form("%d_c2d_exp",nBlocks));
@@ -1127,6 +1128,9 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->Write();
       hProPiRatioS4Vert->Write();
       hProPiRatioS4Horz->Write();
+      hEffTotal->SetLineColor(kOrange+1);
+      hEffTotal->Scale(1. / nSpillsTrue);
+      hEffTotal->Write();
       hMSq->Write();
       legRatioVert->Write("legRatioVert");
 
