@@ -3,7 +3,19 @@
 void overlapCalc(const char* saveDir)
 {
   gSystem->Load("libPhysics.so");
-  
+
+  // Wire chamber points
+  TVector3 WC_ULB(-2.0563, 0.1632, -0.0801);
+  TVector3 WC_ULT(-2.0554, 0.1634,  0.0636);
+  TVector3 WC_UTL(-2.0547, 0.1287,  0.1013);
+  TVector3 WC_UBL(-2.0557, 0.1159, -0.1230);
+  TVector3 WC_UTR(-2.0523, -0.0111, 0.1020);
+  TVector3 WC_URT(-2.0519, -0.0583, 0.0655);
+  TVector3 WC_URB(-2.0526, -0.0599, -0.0829);
+  TVector3 WC_UBR(-2.0535, -0.0242, -0.1232);
+  // Calculated centre for wire chamber
+  TVector3 WC_C = (WC_ULB + WC_ULT + WC_UTL + WC_UBL + WC_UTR + WC_URT + WC_URB + WC_UBR) * 0.125;
+  // S1 points
   TVector3 vs1Centre(-1.765, 0.036, -0.002);
   TVector3 vs1_ULB(-1.7672, 0.0617, -0.0086);
   TVector3 vs1_ULT(-1.7681, 0.0615, 0.0043);
@@ -13,17 +25,22 @@ void overlapCalc(const char* saveDir)
   TVector3 vs1_URT(-1.7655, -0.0102, 0.0041);
   TVector3 vs1_URB(-1.7658, -0.0103, -0.0087);
   TVector3 vs1_UBR(-1.7646, 0.0037, -0.0382);
+  // Outline box of S1
+  TVector3 vs1TopLeft(-1.7672, 0.0615, 0.0337);
+  TVector3 vs1TopRight(-1.7669, -0.0103, 0.0337);
+  TVector3 vs1BottomLeft(-1.7672, 0.0617, -0.0383);
+  TVector3 vs1BottomRight(-1.7672, -0.0103, -0.0383);
   
   TVector3 vs2TopLeft(-0.3472, 0.0344, 0.0706);
   TVector3 vs2_activeBL(-0.3472, 0.0344, -0.0496);
   TVector3 vs2TopRight(-0.3498, -0.0725, 0.0679);
   TVector3 vs2_activeBR(-0.3498, -0.0725, -0.0521);
-   TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
+  TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
 
-  TVector3 vs3TopLeft(9.0650, 0.5215, 0.6244);
-  TVector3 vs3TopRight(8.9245, -0.9928, 0.6220);
-  TVector3 vs3BottomLeft(9.0488, 0.5120, -0.5993);
-  TVector3 vs3BottomRight(8.9047, -1.0012, -0.6012);
+  TVector3 vs3TopLeft(9.0750, 0.6015, 0.6244);
+  TVector3 vs3TopRight(8.9145, -1.0728, 0.6220);
+  TVector3 vs3BottomLeft(9.0488, 0.5920, -0.5993);
+  TVector3 vs3BottomRight(8.9147, -1.0812, -0.6012);
 
   TVector3 vs4_UTL(12.2480, -0.1227, 0.7751);
   TVector3 vs4_UBL(12.2258, -0.1194, -0.8390);
@@ -39,7 +56,7 @@ void overlapCalc(const char* saveDir)
   TVector3 vs4_D1R(12.3385, -1.1282, 0.3510);
   TVector3 vs4_D5L(12.4000, -0.3797, -0.2530);
   TVector3 vs4_D5R(12.3576, -1.1521, -0.2506);
-  // Vectprs for active area of S4
+  // Vectors for active area of S4
   TVector3 vs4_activeTL(12.28, -0.0727, 0.432);
   TVector3 vs4_activeTR(12.28, -1.4715, 0.432);
   TVector3 vs4_activeBL(12.28, -0.0727, -0.352);
