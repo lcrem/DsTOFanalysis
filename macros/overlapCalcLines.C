@@ -1,5 +1,11 @@
 // overlapCalcLines.C
 
+double atanErr(const double opp, const double adj, const double inerr) {
+  double err = TMath::Sqrt(pow(adj/(pow(adj, 2)+pow(opp, 2)), 2) * pow(inerr, 2) +
+			   pow(opp/(pow(adj, 2)+pow(opp, 2)), 2) * pow(inerr, 2));
+  return err;
+}
+
 void overlapCalcLines(const char* outDir) {
 
   gSystem->Load("libPhysics.so");
@@ -18,7 +24,7 @@ void overlapCalcLines(const char* outDir) {
   // Calculated centre for wire chamber
   TVector3 WC_C = (WC_ULB + WC_ULT + WC_UTL + WC_UBL + WC_UTR + WC_URT + WC_URB + WC_UBR) * 0.125;
   // S1 points
-  TVector3 vs1Centre(-1.765, 0.036, -0.002);
+  // TVector3 vs1Centre(-1.765, 0.036, -0.002);
   TVector3 vs1_ULB(-1.7672, 0.0617, -0.0086);
   TVector3 vs1_ULT(-1.7681, 0.0615, 0.0043);
   TVector3 vs1_UTL(-1.7689, 0.0491, 0.0337);
@@ -32,6 +38,8 @@ void overlapCalcLines(const char* outDir) {
   TVector3 vs1TopRight(-1.7669, -0.0103, 0.0337);
   TVector3 vs1BottomLeft(-1.7672, 0.0617, -0.0383);
   TVector3 vs1BottomRight(-1.7672, -0.0103, -0.0383);
+  // Calculated centre of S1
+  TVector3 vs1_C = (vs1_ULB+vs1_ULT+vs1_UTL+vs1_UBL+vs1_UTR+vs1_URT+vs1_URB+vs1_UBR) * 0.125;
   
   TVector3 vs2TopLeft(-0.3472, 0.0344, 0.0706);
   TVector3 vs2_activeBL(-0.3472, 0.0344, -0.0496);
@@ -158,11 +166,13 @@ void overlapCalcLines(const char* outDir) {
     grs1_Ang->SetPoint(grs1_Ang->GetN(),
 		       TMath::ATan2((s1Vec.at(i).Y()-WC_C.Y())*-1, s1Vec.at(i).X()-WC_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s1Vec.at(i).Z()-WC_C.Z(), s1Vec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"S1 theta, phi "<<TMath::ATan2((s1Vec.at(i).Y()-WC_C.Y())*-1, s1Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s1Vec.at(i).Y()-WC_C.Y())*-1, s1Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s1Vec.at(i).Z()-WC_C.Z(), s1Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s1Vec.at(i).Z()-WC_C.Z())*-1, s1Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
   grs1_Ang->SetPoint(grs1_Ang->GetN(),
 		     TMath::ATan2((s1Vec.at(0).Y()-WC_C.Y())*-1, s1Vec.at(0).X()-WC_C.X())*180./TMath::Pi(),
 		     TMath::ATan2(s1Vec.at(0).Z()-WC_C.Z(), s1Vec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grs1_Ang);
+  std::cout<<"\n";
   
   TGraph *grs2_Ang = new TGraph();
   grs2_Ang->SetTitle("S2");
@@ -172,11 +182,13 @@ void overlapCalcLines(const char* outDir) {
     grs2_Ang->SetPoint(grs2_Ang->GetN(),
 		       TMath::ATan2((s2Vec.at(i).Y()-WC_C.Y())*-1, s2Vec.at(i).X()-WC_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s2Vec.at(i).Z()-WC_C.Z(), s2Vec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"S2 theta, phi "<<TMath::ATan2((s2Vec.at(i).Y()-WC_C.Y())*-1, s2Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Y()-WC_C.Y())*-1, s2Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s2Vec.at(i).Z()-WC_C.Z(), s2Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Z()-WC_C.Z())*-1, s2Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
   grs2_Ang->SetPoint(grs2_Ang->GetN(),
 		     TMath::ATan2((s2Vec.at(0).Y()-WC_C.Y())*-1, s2Vec.at(0).X()-WC_C.X())*180./TMath::Pi(),
 		     TMath::ATan2(s2Vec.at(0).Z()-WC_C.Z(), s2Vec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grs2_Ang);
+  std::cout<<"\n";
 
   TGraph *grs3_Ang = new TGraph();
   grs3_Ang->SetTitle("S3");
@@ -186,12 +198,14 @@ void overlapCalcLines(const char* outDir) {
     grs3_Ang->SetPoint(grs3_Ang->GetN(),
 		       TMath::ATan2((s3Vec.at(i).Y()-WC_C.Y())*-1, s3Vec.at(i).X()-WC_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s3Vec.at(i).Z()-WC_C.Z(), s3Vec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"S3 theta, phi "<<TMath::ATan2((s3Vec.at(i).Y()-WC_C.Y())*-1, s3Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Y()-WC_C.Y())*-1, s3Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s3Vec.at(i).Z()-WC_C.Z(), s3Vec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Z()-WC_C.Z())*-1, s3Vec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
   grs3_Ang->SetPoint(grs3_Ang->GetN(),
 		     TMath::ATan2((s3Vec.at(0).Y()-WC_C.Y())*-1, s3Vec.at(0).X()-WC_C.X())*180./TMath::Pi(),
 		     TMath::ATan2(s3Vec.at(0).Z()-WC_C.Z(), s3Vec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grs3_Ang);
-
+  std::cout<<"\n";
+  
   TGraph *grs4_Ang = new TGraph();
   grs4_Ang->SetTitle("S4");
   grs4_Ang->SetLineColor(kRed+2);
@@ -200,11 +214,11 @@ void overlapCalcLines(const char* outDir) {
     grs4_Ang->SetPoint(grs4_Ang->GetN(),
 		       TMath::ATan2((s4ActiveVec.at(i).Y()-WC_C.Y())*-1, s4ActiveVec.at(i).X()-WC_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s4ActiveVec.at(i).Z()-WC_C.Z(), s4ActiveVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"S4 theta, phi "<<TMath::ATan2((s4ActiveVec.at(i).Y()-WC_C.Y())*-1, s4ActiveVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Y()-WC_C.Y())*-1, s4ActiveVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s4ActiveVec.at(i).Z()-WC_C.Z(), s4ActiveVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Z()-WC_C.Z())*-1, s4ActiveVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grs4_Ang->SetPoint(grs4_Ang->GetN(),
-		     TMath::ATan2((s4ActiveVec.at(0).Y()-WC_C.Y())*-1, s4ActiveVec.at(0).X()-WC_C.X())*180./TMath::Pi(),
-		     TMath::ATan2(s4ActiveVec.at(0).Z()-WC_C.Z(), s4ActiveVec.at(0).X()-WC_C.X())*180./TMath::Pi());
+  grs4_Ang->SetPoint(grs4_Ang->GetN(), TMath::ATan2((s4ActiveVec.at(0).Y()-WC_C.Y())*-1, s4ActiveVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(s4ActiveVec.at(0).Z()-WC_C.Z(), s4ActiveVec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grs4_Ang);
+  std::cout<<"\n";
 
   TGraph *grtpcUs_Ang = new TGraph();
   grtpcUs_Ang->SetTitle("TPC US");
@@ -212,28 +226,97 @@ void overlapCalcLines(const char* outDir) {
   grtpcUs_Ang->SetLineStyle(7);
   grtpcUs_Ang->SetLineWidth(2);
   for (int i=0; i<tpcUsVec.size(); i++) {
-    grtpcUs_Ang->SetPoint(grtpcUs_Ang->GetN(),
-			  TMath::ATan2((tpcUsVec.at(i).Y()-WC_C.Y())*-1, tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi(),
-			  TMath::ATan2(tpcUsVec.at(i).Z()-WC_C.Z(), tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    grtpcUs_Ang->SetPoint(grtpcUs_Ang->GetN(), TMath::ATan2((tpcUsVec.at(i).Y()-WC_C.Y())*-1, tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(i).Z()-WC_C.Z(), tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"TPC US theta, phi "<<TMath::ATan2((tpcUsVec.at(i).Y()-WC_C.Y())*-1, tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Y()-WC_C.Y())*-1, tpcUsVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcUsVec.at(i).Z()-WC_C.Z(), tpcUsVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Z()-WC_C.Z())*-1, tpcUsVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grtpcUs_Ang->SetPoint(grtpcUs_Ang->GetN(),
-			TMath::ATan2((tpcUsVec.at(0).Y()-WC_C.Y())*-1, tpcUsVec.at(0).X()-WC_C.X())*180./TMath::Pi(),
-			TMath::ATan2(tpcUsVec.at(0).Z()-WC_C.Z(), tpcUsVec.at(0).X()-WC_C.X())*180./TMath::Pi());
+  grtpcUs_Ang->SetPoint(grtpcUs_Ang->GetN(), TMath::ATan2((tpcUsVec.at(0).Y()-WC_C.Y())*-1, tpcUsVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(0).Z()-WC_C.Z(), tpcUsVec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grtpcUs_Ang);
-
+  std::cout<<"\n";
+  
   TGraph *grtpcDs_Ang = new TGraph();
   grtpcDs_Ang->SetTitle("TPC DS");
   grtpcDs_Ang->SetLineColor(kMagenta+1);
   grtpcDs_Ang->SetLineWidth(2);
   for (int i=0; i<tpcDsVec.size(); i++) {
-    grtpcDs_Ang->SetPoint(grtpcDs_Ang->GetN(),
-			  TMath::ATan2((tpcDsVec.at(i).Y()-WC_C.Y())*-1, tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi(),
-			  TMath::ATan2(tpcDsVec.at(i).Z()-WC_C.Z(), tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    grtpcDs_Ang->SetPoint(grtpcDs_Ang->GetN(), TMath::ATan2((tpcDsVec.at(i).Y()-WC_C.Y())*-1, tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(i).Z()-WC_C.Z(), tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+    std::cout<<"TPC DS theta, phi "<<TMath::ATan2((tpcDsVec.at(i).Y()-WC_C.Y())*-1, tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Y()-WC_C.Y())*-1, tpcDsVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcDsVec.at(i).Z()-WC_C.Z(), tpcDsVec.at(i).X()-WC_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Z()-WC_C.Z())*-1, tpcDsVec.at(i).X()-WC_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grtpcDs_Ang->SetPoint(grtpcDs_Ang->GetN(),
-			TMath::ATan2((tpcDsVec.at(0).Y()-WC_C.Y())*-1, tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi(),
-			TMath::ATan2(tpcDsVec.at(0).Z()-WC_C.Z(), tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi());
+  grtpcDs_Ang->SetPoint(grtpcDs_Ang->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-WC_C.Y())*-1, tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-WC_C.Z(), tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grtpcDs_Ang);  
+
+  // Now do the same thing but using S1 as the origin
+  std::cout<<"Now with S1 as the origin"<<std::endl;
+  
+  TMultiGraph *mg_AngS1 = new TMultiGraph("mg_AngS1", "Positions of objects in beamline (S1 origin); #theta / degrees; #phi / degrees");
+  TGraph *grs2_AngS1 = new TGraph();
+  grs2_AngS1->SetTitle("S2");
+  grs2_AngS1->SetLineColor(kOrange);
+  grs2_AngS1->SetLineWidth(2);
+  for (int i=0; i<s2Vec.size(); i++) {
+    grs2_AngS1->SetPoint(grs2_AngS1->GetN(),
+			 TMath::ATan2((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2(s2Vec.at(i).Z()-vs1_C.Z(), s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    std::cout<<"S2 theta, phi "<<TMath::ATan2((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s2Vec.at(i).Z()-vs1_C.Z(), s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Z()-vs1_C.Z())*-1, s2Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
+  }
+  grs2_AngS1->SetPoint(grs2_AngS1->GetN(),
+		       TMath::ATan2((s2Vec.at(0).Y()-vs1_C.Y())*-1, s2Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
+		       TMath::ATan2(s2Vec.at(0).Z()-vs1_C.Z(), s2Vec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grs2_AngS1);
+  std::cout<<"\n";
+
+  TGraph *grs3_AngS1 = new TGraph();
+  grs3_AngS1->SetTitle("S3");
+  grs3_AngS1->SetLineColor(kCyan+2);
+  grs3_AngS1->SetLineWidth(2);
+  for (int i=0; i<s3Vec.size(); i++) {
+    grs3_AngS1->SetPoint(grs3_AngS1->GetN(),
+			 TMath::ATan2((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2(s3Vec.at(i).Z()-vs1_C.Z(), s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    std::cout<<"S3 theta, phi "<<TMath::ATan2((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s3Vec.at(i).Z()-vs1_C.Z(), s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Z()-vs1_C.Z())*-1, s3Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
+  }
+  grs3_AngS1->SetPoint(grs3_AngS1->GetN(),
+		       TMath::ATan2((s3Vec.at(0).Y()-vs1_C.Y())*-1, s3Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
+		       TMath::ATan2(s3Vec.at(0).Z()-vs1_C.Z(), s3Vec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grs3_AngS1);
+  std::cout<<"\n";
+  
+  TGraph *grs4_AngS1 = new TGraph();
+  grs4_AngS1->SetTitle("S4");
+  grs4_AngS1->SetLineColor(kRed+2);
+  grs4_AngS1->SetLineWidth(2);
+  for (int i=0; i<s4ActiveVec.size(); i++) {
+    grs4_AngS1->SetPoint(grs4_AngS1->GetN(),
+			 TMath::ATan2((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2(s4ActiveVec.at(i).Z()-vs1_C.Z(), s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    std::cout<<"S4 theta, phi "<<TMath::ATan2((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s4ActiveVec.at(i).Z()-vs1_C.Z(), s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Z()-vs1_C.Z())*-1, s4ActiveVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
+  }
+  grs4_AngS1->SetPoint(grs4_AngS1->GetN(), TMath::ATan2((s4ActiveVec.at(0).Y()-vs1_C.Y())*-1, s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(s4ActiveVec.at(0).Z()-vs1_C.Z(), s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grs4_AngS1);
+  std::cout<<"\n";
+
+  TGraph *grtpcUs_AngS1 = new TGraph();
+  grtpcUs_AngS1->SetTitle("TPC US");
+  grtpcUs_AngS1->SetLineColor(kMagenta+1);
+  grtpcUs_AngS1->SetLineStyle(7);
+  grtpcUs_AngS1->SetLineWidth(2);
+  for (int i=0; i<tpcUsVec.size(); i++) {
+    grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(i).Z()-vs1_C.Z(), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    std::cout<<"TPC US theta, phi "<<TMath::ATan2((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcUsVec.at(i).Z()-vs1_C.Z(), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Z()-vs1_C.Z())*-1, tpcUsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
+  }
+  grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(0).Y()-vs1_C.Y())*-1, tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(0).Z()-vs1_C.Z(), tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grtpcUs_AngS1);
+  std::cout<<"\n";
+  
+  TGraph *grtpcDs_AngS1 = new TGraph();
+  grtpcDs_AngS1->SetTitle("TPC DS");
+  grtpcDs_AngS1->SetLineColor(kMagenta+1);
+  grtpcDs_AngS1->SetLineWidth(2);
+  for (int i=0; i<tpcDsVec.size(); i++) {
+    grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(i).Z()-vs1_C.Z(), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    std::cout<<"TPC DS theta, phi "<<TMath::ATan2((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcDsVec.at(i).Z()-vs1_C.Z(), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Z()-vs1_C.Z())*-1, tpcDsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
+  }
+  grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-vs1_C.Y())*-1, tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-vs1_C.Z(), tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grtpcDs_AngS1);  
   
   TCanvas *c1 = new TCanvas("c1", "c1");
   c1->SetGridx();
@@ -249,10 +332,21 @@ void overlapCalcLines(const char* outDir) {
   c2->SetLeftMargin(0.12);
   c2->SetBottomMargin(0.12);
   c2->Update();
+
+  TCanvas *c3 = new TCanvas("c3", "c3");
+  mg_AngS1->Draw("al");
+  mg_AngS1->GetXaxis()->SetTitleSize(0.05);
+  mg_AngS1->GetXaxis()->SetLabelSize(0.05);
+  mg_AngS1->GetYaxis()->SetTitleSize(0.05);
+  mg_AngS1->GetYaxis()->SetLabelSize(0.05);
+  c3->SetLeftMargin(0.12);
+  c3->SetBottomMargin(0.12);
+  c3->Update();
   
   fout->cd();
   mg_noProj->Write();
   mg_Ang->Write();
+  mg_AngS1->Write();
   
   fout->Close();
   delete fout;
