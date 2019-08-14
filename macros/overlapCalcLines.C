@@ -46,11 +46,28 @@ void overlapCalcLines(const char* outDir) {
   TVector3 vs2TopRight(-0.3498, -0.0725, 0.0679);
   TVector3 vs2_activeBR(-0.3498, -0.0725, -0.0521);
   TVector3 vs2Bottom(-0.3503, -0.0133, -0.2928);
+  TVector3 vs2ActiveCentre = (vs2TopLeft+vs2TopRight+vs2_activeBL+vs2_activeBR)*0.25;
+  cout<<vs2ActiveCentre.X()<<", "<<vs2ActiveCentre.Y()<<", "<<vs2ActiveCentre.Z()<<endl;
+  TVector3 D3_UTR(8.9245, -0.9928, 0.6220);
+  TVector3 D3_UBR(8.9047, -1.0012, -0.6012);
+  TVector3 D3_UBL(9.0488, 0.5120, -0.5993);
+  TVector3 D3_UTL(9.0650, 0.5215, 0.6244);
+  double l1 = TMath::Sqrt(pow(D3_UTR.X()-D3_UTL.X(), 2) + pow(D3_UTR.Y()-D3_UTL.Y(), 2));
+  double l2 = TMath::Sqrt(pow(D3_UBR.X()-D3_UBL.X(), 2) + pow(D3_UBR.Y()-D3_UBL.Y(), 2));
+  double grad = (D3_UTR.Y()-D3_UTL.Y())/(D3_UTR.X()-D3_UTL.X());
+  double xExt = 0.08/TMath::Sqrt(1+pow(grad,2));
+  double yExt = xExt * grad;
+  cout<<"x, y extensions "<<xExt<<", "<<yExt<<endl;
+  TVector3 s3Ext(xExt, yExt, 0.);
+  TVector3 vs3TopLeft = D3_UTL + s3Ext;
+  TVector3 vs3TopRight = D3_UTR - s3Ext;
+  TVector3 vs3BottomLeft = D3_UBL + s3Ext;
+  TVector3 vs3BottomRight = D3_UBR - s3Ext;
 
-  TVector3 vs3TopLeft(9.0750, 0.6015, 0.6244);
-  TVector3 vs3TopRight(8.9145, -1.0728, 0.6220);
-  TVector3 vs3BottomLeft(9.0488, 0.5920, -0.5993);
-  TVector3 vs3BottomRight(8.9147, -1.0812, -0.6012);
+  cout<<"S3 TL X, Y, Z "<<vs3TopLeft.X()<<", "<<vs3TopLeft.Y()<<", "<<vs3TopLeft.Z()<<endl;
+  cout<<"S3 TR X, Y, Z "<<vs3TopRight.X()<<", "<<vs3TopRight.Y()<<", "<<vs3TopRight.Z()<<endl;
+  cout<<"S3 BL X, Y, Z "<<vs3BottomLeft.X()<<", "<<vs3BottomLeft.Y()<<", "<<vs3BottomLeft.Z()<<endl;
+  cout<<"S3 BR X, Y, Z "<<vs3BottomRight.X()<<", "<<vs3BottomRight.Y()<<", "<<vs3BottomRight.Z()<<endl;
 
   TVector3 vs4_UTL(12.2480, -0.1227, 0.7751);
   TVector3 vs4_UBL(12.2258, -0.1194, -0.8390);
@@ -80,6 +97,16 @@ void overlapCalcLines(const char* outDir) {
   TVector3 TPCActiveBottomDR(11.3530, -0.8408, -0.5614);
   TVector3 TPCActiveTopUR(10.2587, -0.7290, 0.5386);
   TVector3 TPCActiveTopDR(11.3530, -0.8408, 0.5386);
+  TVector3 TPCActiveC(10.82885, -0.5593, -0.0114);
+  // Vectors for vessel used in simulation
+  TVector3 vesselC(10.83543, -0.49096, -0.0114);
+  TVector3 vesselTopLeft(10.89599, 0.13863, 0.6886);
+  TVector3 vesselTopRight(10.77487, -1.12055, 0.6886);
+  TVector3 vesselBottomLeft(10.89599, 0.13863, -0.7114);
+  TVector3 vesselBottomRight(10.77487, -1.12055, -0.7114);
+
+  std::vector<TVector3> vesselVec = {vesselTopLeft, vesselTopRight, 
+				     vesselBottomRight, vesselBottomLeft};
 
   std::vector<TVector3> tpcUsVec = {TPCActiveTopUL, TPCActiveTopUR,
 				    TPCActiveBottomUR, TPCActiveBottomUL};
@@ -101,6 +128,8 @@ void overlapCalcLines(const char* outDir) {
 
   std::vector<TVector3> s4ActiveVec = {vs4_activeTL, vs4_activeTR, vs4_activeBR, vs4_activeBL,};
 
+  std::cout<<"\n";
+  std::cout<<"WC as the origin ("<<WC_C.X()<<", "<<WC_C.Y()<<", "<<WC_C.Z()<<")"<<std::endl;
   TMultiGraph *mg_noProj = new TMultiGraph("mg_noProj", "Positions of objects in beamline; -x / m; y / m");
   TGraph *grs1_noProj = new TGraph();
   grs1_noProj->SetLineColor(kBlack);
@@ -244,9 +273,19 @@ void overlapCalcLines(const char* outDir) {
   grtpcDs_Ang->SetPoint(grtpcDs_Ang->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-WC_C.Y())*-1, tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-WC_C.Z(), tpcDsVec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grtpcDs_Ang);  
 
+  TGraph *grvessel_Ang = new TGraph();
+  grvessel_Ang->SetTitle("Vessel");
+  grvessel_Ang->SetLineColor(kGreen+2);
+  grvessel_Ang->SetLineWidth(2);
+  for (int i=0; i<vesselVec.size(); i++) {
+    grvessel_Ang->SetPoint(grvessel_Ang->GetN(), TMath::ATan2((vesselVec.at(i).Y()-WC_C.Y())*-1, vesselVec.at(i).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(i).Z()-WC_C.Z(), vesselVec.at(i).X()-WC_C.X())*180./TMath::Pi());
+  }
+  grvessel_Ang->SetPoint(grvessel_Ang->GetN(), TMath::ATan2((vesselVec.at(0).Y()-WC_C.Y())*-1, vesselVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-WC_C.Z(), vesselVec.at(0).X()-WC_C.X())*180./TMath::Pi());
+  mg_Ang->Add(grvessel_Ang); 
+
+  std::cout<<"\n";
   // Now do the same thing but using S1 as the origin
-  std::cout<<"Now with S1 as the origin"<<std::endl;
-  
+  std::cout<<"Now with S1 as the origin ("<<vs1_C.X()<<", "<<vs1_C.Y()<<", "<<vs1_C.Z()<<")"<<std::endl;
   TMultiGraph *mg_AngS1 = new TMultiGraph("mg_AngS1", "Positions of objects in beamline (S1 origin); #theta / degrees; #phi / degrees");
   TGraph *grs2_AngS1 = new TGraph();
   grs2_AngS1->SetTitle("S2");
@@ -317,6 +356,16 @@ void overlapCalcLines(const char* outDir) {
   }
   grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-vs1_C.Y())*-1, tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-vs1_C.Z(), tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
   mg_AngS1->Add(grtpcDs_AngS1);  
+
+  TGraph *grvessel_AngS1 = new TGraph();
+  grvessel_AngS1->SetTitle("Vessel");
+  grvessel_AngS1->SetLineColor(kGreen+2);
+  grvessel_AngS1->SetLineWidth(2);
+  for (int i=0; i<vesselVec.size(); i++) {
+    grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(i).Y()-vs1_C.Y())*-1, vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(i).Z()-vs1_C.Z(), vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+  }
+  grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(0).Y()-vs1_C.Y())*-1, vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-vs1_C.Z(), vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grvessel_AngS1); 
   
   TCanvas *c1 = new TCanvas("c1", "c1");
   c1->SetGridx();
