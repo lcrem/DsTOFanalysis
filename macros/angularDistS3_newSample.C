@@ -195,7 +195,7 @@ void angularDistS3_newSample(const char* saveDir,
     TH1D *hutof1dS1 = new TH1D(Form("hutof1dS1_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     hutof1dS1->Sumw2();
     TH1D *hutof1dS1NoS2 = new TH1D(Form("hutof1dS1NoS2_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
-    hutof1dS1->Sumw2();
+    hutof1dS1NoS2->Sumw2();
     TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     hutof1dS1S2->Sumw2();
 
@@ -211,13 +211,65 @@ void angularDistS3_newSample(const char* saveDir,
 
     // 2D angular distributions
     // S1 origin
-    TH2D *h2dAngProS1 = new TH2D(Form("h2dAngProS1_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.22, 3.35);
-    TH2D *h2dAngPiS1 = new TH2D(Form("h2dAngPiS1_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.22, 3.35);
-    TH2D *h2dAngRatioS1 = new TH2D(Form("h2dAngRatioS1_%d", nBlocks), Form("S3 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Protons/MIPs", nBlocks), 105, -3.05, 5.95, 22, -3.22, 3.35);
+    TH2D *h2dAngProS1 = new TH2D(Form("h2dAngProS1_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
+    TH2D *h2dAngPiS1 = new TH2D(Form("h2dAngPiS1_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
+    TH2D *h2dAngRatioS1 = new TH2D(Form("h2dAngRatioS1_%d", nBlocks), Form("S3 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Protons/MIPs", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
     // Beam position monitor as the origin
-    TH2D *h2dAngProWC = new TH2D(Form("h2dAngProWC_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -2.75, 5.95, 22, -3.1, 3.3);
-    TH2D *h2dAngPiWC = new TH2D(Form("h2dAngPiWC_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -2.75, 5.95, 22, -3.1, 3.3);
-    TH2D *h2dAngRatioWC = new TH2D(Form("h2dAngRatioWC_%d", nBlocks), Form("S3 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Protons/MIPs", nBlocks), 105, -2.75, 5.95, 22, -3.1, 3.3);
+    TH2D *h2dAngProWC = new TH2D(Form("h2dAngProWC_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -2.75, 5.95, 22, -3.07, 3.29);
+    TH2D *h2dAngPiWC = new TH2D(Form("h2dAngPiWC_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -2.75, 5.95, 22, -3.07, 3.29);
+    TH2D *h2dAngRatioWC = new TH2D(Form("h2dAngRatioWC_%d", nBlocks), Form("S3 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Protons/MIPs", nBlocks), 105, -2.75, 5.95, 22, -3.07, 3.29);
+    // 2D time of flight vs. angle
+    TH2D *h2dTofPhiS1 = new TH2D(Form("h2dTofPhiS1_%d", nBlocks), Form("S3 time of flight vs. off-axis angle, %d blocks; t_{S3} - t_{S1} / ns; #phi / degrees; Events / spill", nBlocks), 250, 25, 125, 22, -3.15, 3.34);
+    TH2D *h2dTofThetaS1 = new TH2D(Form("h2dTofThetaS1_%d", nBlocks), Form("S3 time of flight vs. off-axis angle, %d blocks; t_{S3} - t_{S1} / ns; #theta / degrees; Events / spill", nBlocks), 250, 25, 125, 105, -3.05, 5.95);
+    TH2D *h2dTofPhiWC = new TH2D(Form("h2dTofPhiWC_%d", nBlocks), Form("S3 time of flight vs. off-axis angle, %d blocks; t_{S3} - t_{S1} / ns; #phi / degrees; Events / spill", nBlocks), 250, 25, 125, 22, -3.15, 3.34);
+    TH2D *h2dTofThetaWC = new TH2D(Form("h2dTofThetaWC_%d", nBlocks), Form("S3 time of flight vs. off-axis angle, %d blocks; t_{S3} - t_{S1} / ns; #theta / degrees; Events / spill", nBlocks), 250, 25, 125, 105, -3.05, 5.95);
+    h2dTofPhiWC->GetXaxis()->SetTitleSize(.05);
+    h2dTofPhiWC->GetYaxis()->SetTitleSize(.05);
+    h2dTofPhiWC->GetXaxis()->SetLabelSize(.05);
+    h2dTofPhiWC->GetYaxis()->SetLabelSize(.05);
+    h2dTofThetaWC->GetXaxis()->SetTitleSize(.05);
+    h2dTofThetaWC->GetYaxis()->SetTitleSize(.05);
+    h2dTofThetaWC->GetXaxis()->SetLabelSize(.05);
+    h2dTofThetaWC->GetYaxis()->SetLabelSize(.05);
+    h2dTofPhiS1->GetXaxis()->SetTitleSize(.05);
+    h2dTofPhiS1->GetYaxis()->SetTitleSize(.05);
+    h2dTofPhiS1->GetXaxis()->SetLabelSize(.05);
+    h2dTofPhiS1->GetYaxis()->SetLabelSize(.05);
+    h2dTofThetaS1->GetXaxis()->SetTitleSize(.05);
+    h2dTofThetaS1->GetYaxis()->SetTitleSize(.05);
+    h2dTofThetaS1->GetXaxis()->SetLabelSize(.05);
+    h2dTofThetaS1->GetYaxis()->SetLabelSize(.05);
+
+    h2dAngProS1->GetXaxis()->SetTitleSize(.05);
+    h2dAngProS1->GetYaxis()->SetTitleSize(.05);
+    h2dAngProS1->GetXaxis()->SetLabelSize(.05);
+    h2dAngProS1->GetYaxis()->SetLabelSize(.05);
+    h2dAngPiS1->GetXaxis()->SetTitleSize(.05);
+    h2dAngPiS1->GetYaxis()->SetTitleSize(.05);
+    h2dAngPiS1->GetXaxis()->SetLabelSize(.05);
+    h2dAngPiS1->GetYaxis()->SetLabelSize(.05);
+    h2dAngRatioS1->GetXaxis()->SetTitleSize(.05);
+    h2dAngRatioS1->GetYaxis()->SetTitleSize(.05);
+    h2dAngRatioS1->GetXaxis()->SetLabelSize(.05);
+    h2dAngRatioS1->GetYaxis()->SetLabelSize(.05);
+    h2dAngProS1->Sumw2();
+    h2dAngPiS1->Sumw2(); 
+    h2dAngRatioS1->Sumw2();
+    h2dAngProWC->GetXaxis()->SetTitleSize(.05);
+    h2dAngProWC->GetYaxis()->SetTitleSize(.05);
+    h2dAngProWC->GetXaxis()->SetLabelSize(.05);
+    h2dAngProWC->GetYaxis()->SetLabelSize(.05);
+    h2dAngPiWC->GetXaxis()->SetTitleSize(.05);
+    h2dAngPiWC->GetYaxis()->SetTitleSize(.05);
+    h2dAngPiWC->GetXaxis()->SetLabelSize(.05);
+    h2dAngPiWC->GetYaxis()->SetLabelSize(.05);
+    h2dAngRatioWC->GetXaxis()->SetTitleSize(.05);
+    h2dAngRatioWC->GetYaxis()->SetTitleSize(.05);
+    h2dAngRatioWC->GetXaxis()->SetLabelSize(.05);
+    h2dAngRatioWC->GetYaxis()->SetLabelSize(.05);
+    h2dAngProWC->Sumw2();
+    h2dAngPiWC->Sumw2(); 
+    h2dAngRatioWC->Sumw2();
     if (nBlocks != 4) {
       // Number of protons and number of MIPs
       int nP  = 0;
@@ -464,13 +516,17 @@ void angularDistS3_newSample(const char* saveDir,
 		double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
-		double angleWcPhi   = TMath::ATan(positionWcZ / positionWcY) * (180./TMath::Pi());
+		double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
 		// All triggers
 		hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
+		h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
+		h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
+		h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
+		h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
 		if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
 		// Separate protons and MIPs using timing and amplitude cuts
-		// Is a MIP
+		// Is a MIP 
 		if ( tofCalc > piLow && tofCalc < piHi ) {
 		  nPi++;
 		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
@@ -833,6 +889,28 @@ void angularDistS3_newSample(const char* saveDir,
 
       hsMomS1S2->Add(hMomS1S2);
       hsMomS1->Add(hMomS1);
+
+      h2dAngPiS1->Scale(1. / (double)nSpills);
+      h2dAngProS1->Scale(1. / (double)nSpills);
+      h2dAngPiWC->Scale(1. / (double)nSpills);
+      h2dAngProWC->Scale(1. / (double)nSpills);
+      h2dAngRatioWC->Divide(h2dAngProWC, h2dAngPiWC, 1., 1.);
+      h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
+      h2dAngPiS1->Write();
+      h2dAngProS1->Write();
+      h2dAngPiWC->Write();
+      h2dAngProWC->Write();
+      h2dAngRatioWC->Write();
+      h2dAngRatioS1->Write();
+
+      h2dTofThetaS1->Scale(1. / (double)nSpills); 
+      h2dTofThetaWC->Scale(1. / (double)nSpills);
+      h2dTofPhiS1->Scale(1. / (double)nSpills); 
+      h2dTofPhiWC->Scale(1. / (double)nSpills);
+      h2dTofThetaS1->Write();
+      h2dTofThetaWC->Write();
+      h2dTofPhiS1->Write();
+      h2dTofPhiWC->Write();
     } // if (nBlocks != 4)
     else {
       // Loop through 4 block data
@@ -1061,10 +1139,14 @@ void angularDistS3_newSample(const char* saveDir,
 		  double positionWcX = (xToF[nh]/168)*(s3EndWcX - s3StartWcX) + s3StartWcX;
 		  double positionWcY = (xToF[nh]/168.)*(s3EndWcY - s3StartWcY) + s3StartWcY;
 		  double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
-		  double angleWcPhi   = TMath::ATan(positionWcZ / positionWcY) * (180./TMath::Pi());
+		  double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
 		  // All triggers
 		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
+		  h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
+		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
+		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
+		  h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
 		  if (tTrig==0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
 		  tofTmp->Fill(tofCalc, 1./deadtimeWeight);
 		  // Separate protons and MIPs using timing and amplitude cuts
@@ -1157,11 +1239,6 @@ void angularDistS3_newSample(const char* saveDir,
       hThetaS1ratioNoS2->Write();
       hPhiS1ratio->Write();
 
-      h2dAngRatioWC->Divide(h2dAngProWC, h2dAngPiWC, 1., 1.);
-      h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
-      h2dAngRatioWC->Write();
-      h2dAngRatioS1->Write();
-
       hThetaS1S2pro->SetLineWidth(2);
       hThetaS1S2pi->SetLineWidth(2);
       hPhiS1S2pro->SetLineWidth(2);
@@ -1223,14 +1300,10 @@ void angularDistS3_newSample(const char* saveDir,
       hThetaS1proNoS2->Scale(1. / (double)nSpills);
       hThetaS1piNoS2->Scale(1. / (double)nSpills);
 
-      h2dAngPiS1->Scale(1. / (double)nSpills);
-      h2dAngProS1->Scale(1. / (double)nSpills);
-      h2dAngPiWC->Scale(1. / (double)nSpills);
-      h2dAngProWC->Scale(1. / (double)nSpills);
-      h2dAngPiS1->Write();
-      h2dAngProS1->Write();
-      h2dAngPiWC->Write();
-      h2dAngProWC->Write();
+      h2dTofThetaS1->Scale(1. / (double)nSpills);
+      h2dTofThetaWC->Scale(1. / (double)nSpills);
+      h2dTofPhiS1->Scale(1. / (double)nSpills);
+      h2dTofPhiWC->Scale(1. / (double)nSpills);
 
       hPhiS1pro->Scale(22./6.4);
       hPhiS1pi->Scale(22./6.4);
@@ -1331,8 +1404,28 @@ void angularDistS3_newSample(const char* saveDir,
 
       hsMomS1S2->Add(hMomS1S2);
       hsMomS1->Add(hMomS1);
+
+      h2dAngPiS1->Scale(1. / (double)nSpills);
+      h2dAngProS1->Scale(1. / (double)nSpills);
+      h2dAngPiWC->Scale(1. / (double)nSpills);
+      h2dAngProWC->Scale(1. / (double)nSpills);
+      h2dAngRatioWC->Divide(h2dAngProWC, h2dAngPiWC, 1., 1.);
+      h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
+      h2dAngPiS1->Write();
+      h2dAngProS1->Write();
+      h2dAngPiWC->Write();
+      h2dAngProWC->Write();
+      h2dAngRatioWC->Write();
+      h2dAngRatioS1->Write();
+
+      h2dTofThetaS1->Write();
+      h2dTofThetaWC->Write();
+      h2dTofPhiS1->Write();
+      h2dTofPhiWC->Write();
+
       cout<<"Completed this dataset"<<endl;
     } // 4 block data
+
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
 
   fout->cd();
