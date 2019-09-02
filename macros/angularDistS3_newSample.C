@@ -88,8 +88,9 @@ void angularDistS3_newSample(const char* saveDir,
   // and 35.6ns
   const double tLight = 35.8; // Expected time in ns of light speed particles according to AK
   // This is before the shift is applied
-  const double proLow  = 54.5;
-  const double proHi   = 115.;
+  const double proLow  = 53;
+  const double proHiOther = 115.;
+  const double proHi0     = 80.;
   const double piLow = 35.75;
   const double piHi  = 37.75;
   // S3 amplitude cut for protons
@@ -161,9 +162,13 @@ void angularDistS3_newSample(const char* saveDir,
 			5.0, 5.25, 5.8,
 		        6.}; 
   int binnum = sizeof(binsTheta)/sizeof(double) - 1;
-
+  double proHi = 0.;
   for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
     int nSpills = 0;
+
+    if (nBlocks == 0) proHi = proHi0;
+    else proHi = proHiOther;
+
     TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     hThetaS1pro->Sumw2();
     TH1D *hThetaS1proNoS2 = new TH1D(Form("hThetaS1proNoS2_%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
