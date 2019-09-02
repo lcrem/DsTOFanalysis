@@ -104,7 +104,12 @@ void overlapCalcLines(const char* outDir) {
   TVector3 vesselTopRight(10.77487, -1.12055, 0.6886);
   TVector3 vesselBottomLeft(10.89599, 0.13863, -0.7114);
   TVector3 vesselBottomRight(10.77487, -1.12055, -0.7114);
-
+  // Vectors for camera plane
+  // 0.67 m to right of cathode
+  TVector3 cameraTop(10.8059, -1.4549, 0.5386);
+  TVector3 cameraBottom(10.8059, -1.4549, -0.5614);
+  std::vector<TVector3> cameraVec = {cameraTop, cameraBottom};
+  
   std::vector<TVector3> vesselVec = {vesselTopLeft, vesselTopRight, 
 				     vesselBottomRight, vesselBottomLeft};
 
@@ -132,6 +137,7 @@ void overlapCalcLines(const char* outDir) {
   std::cout<<"WC as the origin ("<<WC_C.X()<<", "<<WC_C.Y()<<", "<<WC_C.Z()<<")"<<std::endl;
   TMultiGraph *mg_noProj = new TMultiGraph("mg_noProj", "Positions of objects in beamline; -x / m; y / m");
   TGraph *grs1_noProj = new TGraph();
+  grs1_noProj->SetTitle("S1");
   grs1_noProj->SetLineColor(kBlack);
   grs1_noProj->SetLineWidth(2);
   for (int i=0; i<s1Vec.size(); i++) {
@@ -141,6 +147,7 @@ void overlapCalcLines(const char* outDir) {
   mg_noProj->Add(grs1_noProj);
   
   TGraph *grs2_noProj = new TGraph();
+  grs2_noProj->SetTitle("S2");
   grs2_noProj->SetLineColor(kOrange);
   grs2_noProj->SetLineWidth(2);
   for (int i=0; i<s2Vec.size(); i++) {
@@ -150,7 +157,8 @@ void overlapCalcLines(const char* outDir) {
   mg_noProj->Add(grs2_noProj);
 
   TGraph *grs3_noProj = new TGraph();
-  grs3_noProj->SetLineColor(kGreen+2);
+  grs3_noProj->SetTitle("S3");
+  grs3_noProj->SetLineColor(kCyan+1);
   grs3_noProj->SetLineWidth(2);
   for (int i=0; i<s3Vec.size(); i++) {
     grs3_noProj->SetPoint(grs3_noProj->GetN(), s3Vec.at(i).Y()*-1, s3Vec.at(i).Z());
@@ -159,6 +167,7 @@ void overlapCalcLines(const char* outDir) {
   mg_noProj->Add(grs3_noProj);
 
   TGraph *grs4_noProj = new TGraph();
+  grs4_noProj->SetTitle("S4");
   grs4_noProj->SetLineColor(kRed+2);
   grs4_noProj->SetLineWidth(2);
   for (int i=0; i<s4ActiveVec.size(); i++) {
@@ -168,7 +177,8 @@ void overlapCalcLines(const char* outDir) {
   mg_noProj->Add(grs4_noProj);
 
   TGraph *grTpcUs_noProj = new TGraph();
-  grTpcUs_noProj->SetLineColor(kBlue);
+  grTpcUs_noProj->SetLineColor(kMagenta+1);
+  grTpcUs_noProj->SetLineStyle(7);
   grTpcUs_noProj->SetLineWidth(2);
   for (int i=0; i<tpcUsVec.size(); i++) {
     grTpcUs_noProj->SetPoint(grTpcUs_noProj->GetN(), tpcUsVec.at(i).Y()*-1, tpcUsVec.at(i).Z());
@@ -177,7 +187,7 @@ void overlapCalcLines(const char* outDir) {
   mg_noProj->Add(grTpcUs_noProj);
 
   TGraph *grTpcDs_noProj = new TGraph();
-  grTpcDs_noProj->SetLineColor(kBlue+2);
+  grTpcDs_noProj->SetLineColor(kMagenta+1);
   grTpcDs_noProj->SetLineWidth(2);
   for (int i=0; i<tpcDsVec.size(); i++) {
     grTpcDs_noProj->SetPoint(grTpcDs_noProj->GetN(), tpcDsVec.at(i).Y()*-1, tpcDsVec.at(i).Z());
@@ -185,6 +195,16 @@ void overlapCalcLines(const char* outDir) {
   grTpcDs_noProj->SetPoint(grTpcDs_noProj->GetN(), tpcDsVec.at(0).Y()*-1, tpcDsVec.at(0).Z());
   mg_noProj->Add(grTpcDs_noProj);
 
+  TGraph *grcamera_noProj = new TGraph();
+  grcamera_noProj->SetTitle("Cameras");
+  grcamera_noProj->SetLineColor(kRed);
+  grcamera_noProj->SetLineWidth(2);
+  for (int i=0; i<cameraVec.size(); i++) {
+    grcamera_noProj->SetPoint(grcamera_noProj->GetN(), cameraVec.at(i).Y()*-1, cameraVec.at(i).Z());
+  }
+  grcamera_noProj->SetPoint(grcamera_noProj->GetN(), cameraVec.at(0).Y()*-1, cameraVec.at(0).Z());
+  mg_noProj->Add(grcamera_noProj);
+  
   // Angular positions with origin at the wire chamber
   TMultiGraph *mg_Ang = new TMultiGraph("mg_Ang", "Positions of objects in beamline (wire chamber origin); #theta / degrees; #phi / degrees");
   TGraph *grs1_Ang = new TGraph();
@@ -282,7 +302,7 @@ void overlapCalcLines(const char* outDir) {
   }
   grvessel_Ang->SetPoint(grvessel_Ang->GetN(), TMath::ATan2((vesselVec.at(0).Y()-WC_C.Y())*-1, vesselVec.at(0).X()-WC_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-WC_C.Z(), vesselVec.at(0).X()-WC_C.X())*180./TMath::Pi());
   mg_Ang->Add(grvessel_Ang); 
-
+  
   std::cout<<"\n";
   // Now do the same thing but using S1 as the origin
   std::cout<<"Now with S1 as the origin ("<<vs1_C.X()<<", "<<vs1_C.Y()<<", "<<vs1_C.Z()<<")"<<std::endl;
@@ -366,10 +386,20 @@ void overlapCalcLines(const char* outDir) {
   }
   grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(0).Y()-vs1_C.Y())*-1, vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-vs1_C.Z(), vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
   mg_AngS1->Add(grvessel_AngS1); 
+
+  TGraph *grcamera_AngS1 = new TGraph();
+  grcamera_AngS1->SetTitle("Cameras");
+  grcamera_AngS1->SetLineColor(kRed);
+  grcamera_AngS1->SetLineWidth(2);
+  for (int i=0; i<cameraVec.size(); i++) {
+    grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(i).Y()-vs1_C.Y())*-1, cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(i).Z()-vs1_C.Z(), cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+  }
+  grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(0).Y()-vs1_C.Y())*-1, cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(0).Z()-vs1_C.Z(), cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  mg_AngS1->Add(grcamera_AngS1); 
   
   TCanvas *c1 = new TCanvas("c1", "c1");
-  c1->SetGridx();
-  c1->SetGridy();
+  //  c1->SetGridx();
+  //  c1->SetGridy();
   mg_noProj->Draw("al");
 
   TCanvas *c2 = new TCanvas("c2", "c2");
