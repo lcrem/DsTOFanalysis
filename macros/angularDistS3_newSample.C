@@ -1,10 +1,18 @@
 // angularDistS3.C
+
 // Outputs momentum in GeV/c
 double momFromTime(const double mass, const double baseline, const double time)
 {
   double mom = 0.;
-  mom = (mass / 3e8) * baseline * ( 1. / TMath::Sqrt( pow(time*1e-9, 2) - (pow((baseline / 9e16), 2)) ) );
+  mom = mass * (baseline/(time*1e-9))*(1/TMath::Sqrt((pow(3e8*1e-9*time,2) - pow(baseline,2))/pow(time*1e-9,2)));
   return mom;
+}
+
+double keFromTime(const double mass, const double baseline, const double time)
+{
+  double mom = momFromTime(mass, baseline, time);
+  double ke = TMath::Sqrt( pow(mom, 2) + pow(mass, 2) ) - mass;
+  return ke;
 }
 
 void angularDistS3_newSample(const char* saveDir,
@@ -131,7 +139,14 @@ void angularDistS3_newSample(const char* saveDir,
 
   THStack *hsMomS1S2 = new THStack("hsMomS1S2", "Proton momentum measured in S3 (S1 & S2 trigger); Proton momentum [GeV/c]; Events / spill");
   THStack *hsMomS1 = new THStack("hsMomS1", "Proton momentum measured in S3; Proton momentum [GeV/c]; Events / spill");
-
+  THStack *hsMomTpc = new THStack("hsMomTpc", "Proton momentum measured in S3 for particles passing through TPC; Proton momentum [GeV/c]; Events / spill");
+  THStack *hsKE = new THStack("hsKE", "Proton kinetic energy measured for protons crossing the TPC; Proton kinetic energy / MeV; Events / spill");
+  /*
+  hsMomTpc->GetXaxis()->SetTitleSize(.05);
+  hsMomTpc->GetYaxis()->SetTitleSize(.05);
+  hsMomTpc->GetXaxis()->SetLabelSize(.05);
+  hsMomTpc->GetYaxis()->SetLabelSize(.05);
+  */
   THStack *hsutof1dS1S2 = new THStack("hsutof1dS1S2", "Time of flight as measured in S3 (S1 & S2 trigger); Time of flight / ns; Events / spill");
   THStack *hsutof1dS1   = new THStack("hsutof1dS1", "Time of flight as measured in S3; Time of flight / ns; Events / spill");
   THStack *hsutof1dS1NoS2   = new THStack("hsutof1dS1NoS2", "Time of flight as measured in S3 (no S2 trigger); Time of flight / ns; Events / spill");
@@ -169,6 +184,13 @@ void angularDistS3_newSample(const char* saveDir,
     if (nBlocks == 0) proHi = proHi0;
     else proHi = proHiOther;
 
+    TH1D *hKE = new TH1D(Form("hKE_%d", nBlocks), Form("Proton kinetic energy measured for protons crossing the TPC, %d blocks; Proton kinetic energy / MeV; Events", nBlocks), 100, 40., 350.);
+    hKE->Sumw2();
+    hKE->SetLineWidth(2);
+    hKE->GetXaxis()->SetLabelSize(.05);
+    hKE->GetYaxis()->SetLabelSize(.05);
+    hKE->GetXaxis()->SetTitleSize(.05);
+    hKE->GetYaxis()->SetTitleSize(.05);
     TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     hThetaS1pro->Sumw2();
     TH1D *hThetaS1proNoS2 = new TH1D(Form("hThetaS1proNoS2_%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
@@ -204,10 +226,12 @@ void angularDistS3_newSample(const char* saveDir,
     TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     hutof1dS1S2->Sumw2();
 
-    TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 100, 0.3, 0.7);
+    TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 120, 0.3, 0.9);
     hMomS1S2->Sumw2();
-    TH1D *hMomS1 = new TH1D(Form("hMomS1_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 100, 0.3, 0.7);
+    TH1D *hMomS1 = new TH1D(Form("hMomS1_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 120, 0.3, 0.9);
     hMomS1->Sumw2();
+    TH1D *hMomTpc = new TH1D(Form("hMomTpc_%d",nBlocks), Form("Proton momentum measured in S3 passing through TPC, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 120, 0.3, 0.9);
+    hMomTpc->Sumw2();
 
     // XY distributions in S3
     TH2D *hprotonXY = new TH2D(Form("hprotonXY%d", nBlocks), Form("S3 spatial distribution of proton hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 105, 0., 168., 22, 0., 120.);
@@ -217,7 +241,7 @@ void angularDistS3_newSample(const char* saveDir,
     // 2D angular distributions
     // S1 origin
     TH2D *h2dAngProS1 = new TH2D(Form("h2dAngProS1_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
-    TH2D *h2dAngPiS1 = new TH2D(Form("h2dAngPiS1_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
+    TH2D *h2dAngPiS1 = new TH2D(Form("h2dAngPiS1_%d", nBlocks), Form("S3 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34); 
     TH2D *h2dAngRatioS1 = new TH2D(Form("h2dAngRatioS1_%d", nBlocks), Form("S3 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Protons/MIPs", nBlocks), 105, -3.05, 5.95, 22, -3.15, 3.34);
     // Beam position monitor as the origin
     TH2D *h2dAngProWC = new TH2D(Form("h2dAngProWC_%d", nBlocks), Form("S3 angular distribution of protons hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 105, -2.75, 5.95, 22, -3.07, 3.29);
@@ -553,12 +577,24 @@ void angularDistS3_newSample(const char* saveDir,
 		  h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 		  // Remove deuteron peak in 0 block data
 		  if (nBlocks != 0) {
-		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		    hMomS1->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
+		    // Only protons passing through TPC active area
+		    if (angleTheta > 1.439 && angleTheta < 3.778 &&
+			anglePhi > -2.662 && anglePhi < 2.575) {
+		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
+		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
+		    }
 		  }
 		  else {
-		    double mom = momFromTime(0.938, 10.9, tofCalc);
+		    double mom = momFromTime(0.938, 10.8, tofCalc);
 		    if (mom > 0.4) {
 		      hMomS1->Fill(mom, 1./deadtimeWeight);
+		      // Only protons passing through TPC active area
+		      if (angleTheta > 1.439 && angleTheta < 3.778 &&
+			  anglePhi > -2.662 && anglePhi < 2.575) {
+			hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
+			hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
+		      }
 		    }
 		  }
 		  lastut = t;
@@ -628,6 +664,7 @@ void angularDistS3_newSample(const char* saveDir,
       hThetaS1ratioNoS2->SetLineWidth(2);
       hMomS1S2->SetLineWidth(2);
       hMomS1->SetLineWidth(2);
+      hMomTpc->SetLineWidth(2);
       hutof1dS1S2->SetLineWidth(2);
       hutof1dS1->SetLineWidth(2);
       hutof1dS1NoS2->SetLineWidth(2);
@@ -650,6 +687,8 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1ratioNoS2->SetLineColor(kBlack);
 	hMomS1S2->SetLineColor(kBlack);
 	hMomS1->SetLineColor(kBlack);
+	hMomTpc->SetLineColor(kBlack);
+	hKE->SetLineColor(kBlack);
 	hutof1dS1S2->SetLineColor(kBlack);
 	hutof1dS1->SetLineColor(kBlack);
 	hutof1dS1NoS2->SetLineColor(kBlack);
@@ -682,6 +721,8 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1ratioNoS2->SetLineColor(kRed);
 	hMomS1S2->SetLineColor(kRed);
 	hMomS1->SetLineColor(kRed);
+	hKE->SetLineColor(kRed);
+	hMomTpc->SetLineColor(kRed);
 	hutof1dS1S2->SetLineColor(kRed);
 	hutof1dS1->SetLineColor(kRed);
 	hutof1dS1NoS2->SetLineColor(kRed);
@@ -714,6 +755,8 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1ratioNoS2->SetLineColor(kBlue);
 	hMomS1S2->SetLineColor(kBlue);
 	hMomS1->SetLineColor(kBlue);
+	hMomTpc->SetLineColor(kBlue);
+	hKE->SetLineColor(kBlue);
 	hutof1dS1S2->SetLineColor(kBlue);
 	hutof1dS1->SetLineColor(kBlue);
 	hutof1dS1NoS2->SetLineColor(kBlue);
@@ -746,6 +789,8 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1ratioNoS2->SetLineColor(kCyan+1);
 	hMomS1S2->SetLineColor(kCyan+1);
 	hMomS1->SetLineColor(kCyan+1);
+	hKE->SetLineColor(kCyan+1);
+	hMomTpc->SetLineColor(kCyan+1);
 	hutof1dS1S2->SetLineColor(kCyan+1);
 	hutof1dS1->SetLineColor(kCyan+1);
 	hutof1dS1NoS2->SetLineColor(kCyan+1);
@@ -772,6 +817,8 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1ratioNoS2->SetLineColor(kOrange+1);
 	hMomS1S2->SetLineColor(kOrange+1);
 	hMomS1->SetLineColor(kOrange+1);
+	hMomTpc->SetLineColor(kOrange+1);
+	hKE->SetLineColor(kOrange+1);
 	hutof1dS1S2->SetLineColor(kOrange+1);
 	hutof1dS1->SetLineColor(kOrange+1);
 	leg->AddEntry(hThetaS1S2pro, "4 blocks", "l");
@@ -807,15 +854,11 @@ void angularDistS3_newSample(const char* saveDir,
 
       hMomS1S2->Scale(1. / (double)nSpills);
       hMomS1->Scale(1. / (double)nSpills);
-
+      hMomTpc->Scale(1. / (double)nSpills);
+      hKE->Scale(1. / (double)nSpills);
       hutof1dS1S2->Scale(1. / (double)nSpills);
       hutof1dS1->Scale(1. / (double)nSpills);
       hutof1dS1NoS2->Scale(1. / (double)nSpills);
-
-      // hMomYS1->Scale(1. / (double)nSpills);
-      // hMomYS12->Scale(1. / (double)nSpills);
-      // hMomZS1->Scale(1. / (double)nSpills);
-      // hMomZS12->Scale(1. / (double)nSpills);
 
       hprotonXY->Scale(1. / (double)nSpills);
       hpionXY->Scale(1. / (double)nSpills);
@@ -866,6 +909,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hMomS1S2->Write();
       hMomS1->Write();
+      hMomTpc->Write();
+      hKE->Write();
 
       hutof1dS1S2->Write();
       hutof1dS1->Write();
@@ -894,6 +939,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hsMomS1S2->Add(hMomS1S2);
       hsMomS1->Add(hMomS1);
+      hsMomTpc->Add(hMomTpc);
+      hsKE->Add(hKE);
 
       h2dAngPiS1->Scale(1. / (double)nSpills);
       h2dAngProS1->Scale(1. / (double)nSpills);
@@ -1178,8 +1225,12 @@ void angularDistS3_newSample(const char* saveDir,
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
 		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		    // hMomZS1->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		    // hMomYS1->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		    // Only protons passing through TPC active area
+		    if (angleTheta > 1.439 && angleTheta < 3.778 &&
+			anglePhi > -2.662 && anglePhi < 2.575) {
+		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
+		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
+		    }
 		    lastut = t;
 		    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
 		    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
@@ -1261,6 +1312,7 @@ void angularDistS3_newSample(const char* saveDir,
       hThetaS1ratioNoS2->SetLineWidth(2);
       hMomS1S2->SetLineWidth(2);
       hMomS1->SetLineWidth(2);
+      hMomTpc->SetLineWidth(2);
       hutof1dS1S2->SetLineWidth(2);
       hutof1dS1->SetLineWidth(2);
     
@@ -1283,6 +1335,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hMomS1S2->SetLineColor(kOrange+1);
       hMomS1->SetLineColor(kOrange+1);
+      hMomTpc->SetLineColor(kOrange+1);
+      hKE->SetLineColor(kOrange+1);
 
       hutof1dS1S2->SetLineColor(kOrange+1);
       hutof1dS1->SetLineColor(kOrange+1);
@@ -1326,6 +1380,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hMomS1S2->Scale(1. / (double)nSpills);
       hMomS1->Scale(1. / (double)nSpills);
+      hMomTpc->Scale(1. / (double)nSpills);
+      hKE->Scale(1. / (double)nSpills);
 
       hutof1dS1S2->Scale(1. / (double)nSpills);
       hutof1dS1->Scale(1. / (double)nSpills);
@@ -1382,6 +1438,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hMomS1S2->Write();
       hMomS1->Write();
+      hMomTpc->Write();
+      hKE->Write();
 
       hutof1dS1S2->Write();
       hutof1dS1->Write();
@@ -1409,6 +1467,8 @@ void angularDistS3_newSample(const char* saveDir,
 
       hsMomS1S2->Add(hMomS1S2);
       hsMomS1->Add(hMomS1);
+      hsMomTpc->Add(hMomTpc);
+      hsKE->Add(hKE);
 
       h2dAngPiS1->Scale(1. / (double)nSpills);
       h2dAngProS1->Scale(1. / (double)nSpills);
@@ -1458,6 +1518,8 @@ void angularDistS3_newSample(const char* saveDir,
 
   hsMomS1S2->Write();
   hsMomS1->Write();
+  hsMomTpc->Write();
+  hsKE->Write();
 
   TCanvas *c1_Log1 = new TCanvas("c1_Log1");
   c1_Log1->SetLogy();
