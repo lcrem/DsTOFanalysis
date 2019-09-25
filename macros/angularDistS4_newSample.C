@@ -139,20 +139,20 @@ void angularDistS4_newSample(const char* saveDir,
     TH2D *h2dAngProWC = new TH2D(Form("h2dAngProWC%d", nBlocks), Form("S4 angular distribution of proton hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 20, 0., 6., 10, -1.5, 1.8);
     TH2D *h2dAngPiWC = new TH2D(Form("h2dAngPiWC%d", nBlocks), Form("S4 angular distribution of MIP hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 20, 0., 6., 10, -1.5, 1.8);
     TH2D *h2dAngRatioWC = new TH2D(Form("h2dAngRatioWC%d", nBlocks), Form("S4 angular distribution of proton/MIP ratio, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 20, 0., 6., 10, -1.5, 1.8);
-
+ 
     if (nBlocks != 4) {
       // Number of signal particles using just cut and count
       double nP  = 0.;
       double nPi = 0.;
       // Define signal and background functions to be fitted
       // Signals are gaussians
-      TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
-      TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
+      TF1 *sPro = new TF1(Form("sPro_%d", nBlocks), "gaus", proLow, proHi);
+      TF1 *sPi  = new TF1(Form("sPi_%d", nBlocks), "gaus", piLow, piHi);
       // Exponential background
-      TF1 *fBkgExp = new TF1("fBkgExp","expo", 30, 160);
+      TF1 *fBkgExp = new TF1(Form("fBkgExp_%d", nBlocks),"expo", 30, 160);
       sPro->SetLineColor(kGreen+2);
       sPi->SetLineColor(kRed);
-      TF1 *fSplusBExp = new TF1("signal+bkg exp", "gaus(0)+gaus(3)+expo(6)", 30, 160);
+      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, 160);
       fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
 			      "const 2", "mean 2", "sigma 2",
 			      "bkgconst", "bkgdecay");
@@ -162,7 +162,12 @@ void angularDistS4_newSample(const char* saveDir,
       int nSpillsTrue = 0;
       double lastSpill = 0.;
       // 1D ToF for background subtraction
-      TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, %d blocks; S4 - S1 / ns; Events", nBlocks), 300, 30, 250);
+      TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill", nBlocks), 300, 30, 250);
+      hdtof1d->GetXaxis()->SetTitleSize(.05);
+      hdtof1d->GetXaxis()->SetLabelSize(.05);
+      hdtof1d->GetYaxis()->SetTitleSize(.05);
+      hdtof1d->GetYaxis()->SetLabelSize(.05);
+      hdtof1d->SetLineWidth(2);
       // Cosmics hists
       TH2D *h2Cosmics = new TH2D(Form("h2Cosmics%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Bar; Hz",nBlocks), 20, 0, 140, 10, 0.5, 10.5);
       TH1D *hCosmicsVert = new TH1D(Form("hCosmicsVert%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Hz",nBlocks), 10, 0.5, 10.5);
@@ -412,6 +417,8 @@ void angularDistS4_newSample(const char* saveDir,
 	delete tofCoin;
 	delete tofCoinChain;
       }
+      hdtof1d->Scale(1. / nSpillsTrue);
+
       fout->cd();
       TCanvas *c2d_exp = new TCanvas(Form("%d_c2d_exp",nBlocks));
       c2d_exp->SetLogy();
@@ -427,6 +434,10 @@ void angularDistS4_newSample(const char* saveDir,
       hdtof1d->Draw("hist");
       fSplusBExp->Draw("same");
       hdtof1d->Write();
+      sPro->Write();
+      sPi->Write();
+      fBkgExp->Write();
+      fSplusBExp->Write();
       c2d_exp->Print(Form("%s/%d_dtof1d.png",saveDir,nBlocks));
       c2d_exp->Print(Form("%s/%d_dtof1d.pdf",saveDir,nBlocks));
       c2d_exp->Print(Form("%s/%d_dtof1d.tex",saveDir,nBlocks));
@@ -440,7 +451,7 @@ void angularDistS4_newSample(const char* saveDir,
       // Background subtracted tof spectrum
       TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
       hdtof1d_sub->Add(fSub, -1.);
-      hdtof1d_sub->Scale(1. / nSpillsTrue);
+
       // If the bin content drops below 0, set to 0
       for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
 	if (hdtof1d_sub->GetBinContent(b) < 0.) {
@@ -451,8 +462,8 @@ void angularDistS4_newSample(const char* saveDir,
       TCanvas *cdtof_sub = new TCanvas(Form("%d_cdtof_sub",nBlocks));
 
       // Integrate background function between proton and pion windows and then subtract
-      double piBkg  = fSub->Integral(piLow,  piHi) / (0.5*nSpillsTrue);
-      double proBkg = fSub->Integral(proLow, proHi) / (0.5*nSpillsTrue);
+      double piBkg  = fSub->Integral(piLow,  piHi);// / (0.5*nSpillsTrue);
+      double proBkg = fSub->Integral(proLow, proHi);// / (0.5*nSpillsTrue);
       cout<<"Pion backgrounds "<<piBkg<<", proton backgrounds "<<proBkg<<endl;
 
       cdtof_sub->SetLogy();
@@ -617,7 +628,6 @@ void angularDistS4_newSample(const char* saveDir,
       h2dAngProS1->Scale(1. / nSpillsTrue);
       h2dAngPiS1->Scale(1. / nSpillsTrue);
 
-      hdtof1d->Scale(1. / nSpillsTrue);
       hsDtof->Add(hdtof1d);
       hsBkgSub->Add(hdtof1d_sub);
       hProS4Horz->Scale(20./6.);
@@ -708,13 +718,13 @@ void angularDistS4_newSample(const char* saveDir,
       double nPi = 0.;
       // Define signal and background functions to be fitted
       // Signals are gaussians
-      TF1 *sPro = new TF1("sPro", "gaus", 66, 100);
-      TF1 *sPi  = new TF1("sPi", "gaus", 35, 55);
+      TF1 *sPro = new TF1(Form("sPro_%d", nBlocks), "gaus", 66, 100);
+      TF1 *sPi  = new TF1(Form("sPi_%d", nBlocks), "gaus", 35, 55);
       // Exponential background
-      TF1 *fBkgExp = new TF1("fBkgExp","expo", 30, 160);
+      TF1 *fBkgExp = new TF1(Form("fBkgExp_%d", nBlocks),"expo", 30, 160);
       sPro->SetLineColor(kGreen+2);
       sPi->SetLineColor(kRed);
-      TF1 *fSplusBExp = new TF1("signal+bkg exp", "gaus(0)+gaus(3)+expo(6)", 30, 160);
+      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, 160);
       fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
 			      "const 2", "mean 2", "sigma 2",
 			      "bkgconst", "bkgdecay");
@@ -1006,6 +1016,7 @@ void angularDistS4_newSample(const char* saveDir,
       fout->cd();
       TCanvas *c2d_exp = new TCanvas(Form("%d_c2d_exp",nBlocks));
       c2d_exp->SetLogy();
+      hdtof1d->Scale(1. / nSpillsTrue);
       hdtof1d->Fit(sPi, "R");
       hdtof1d->Fit(sPro, "R");
       hdtof1d->Fit(fBkgExp, "R");
@@ -1031,18 +1042,19 @@ void angularDistS4_newSample(const char* saveDir,
       // Background subtracted tof spectrum
       TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
       hdtof1d_sub->Add(fSub, -1.);
-      hdtof1d_sub->Scale(1. / nSpillsTrue);
+
       // If the bin content drops below 0, set to 0
       for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
 	if (hdtof1d_sub->GetBinContent(b) < 0.) {
 	  hdtof1d_sub->SetBinContent(b, 0);
+	  hdtof1d_sub->SetBinError(b, 0);
 	} // if (hdtof1d_sub->GetBinContent(b) < 0.)
       } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
       TCanvas *cdtof_sub = new TCanvas(Form("%d_cdtof_sub",nBlocks));
 
       // Integrate background function between proton and pion windows and then subtract
-      double piBkg  = fSub->Integral(piLow,  piHi) / (0.5*nSpillsTrue);
-      double proBkg = fSub->Integral(proLow, proHi) / (0.5*nSpillsTrue);
+      double piBkg  = fSub->Integral(piLow,  piHi);// / (0.5*nSpillsTrue);
+      double proBkg = fSub->Integral(proLow, proHi);// / (0.5*nSpillsTrue);
       cout<<"Pion backgrounds "<<piBkg<<", proton backgrounds "<<proBkg<<endl;
 
       cdtof_sub->SetLogy();
@@ -1151,7 +1163,6 @@ void angularDistS4_newSample(const char* saveDir,
       h2dAngPiS1->Scale(1. / nSpillsTrue);    
       h2dAngProS1->Scale(1. / nSpillsTrue);
       h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
-      hdtof1d->Scale(1. / nSpillsTrue);
       hsDtof->Add(hdtof1d);
       hsBkgSub->Add(hdtof1d_sub);
       hProS4Horz->Scale(20./6.);
