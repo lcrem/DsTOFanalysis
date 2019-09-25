@@ -299,13 +299,22 @@ void angularDistS3_newSample(const char* saveDir,
     h2dAngProWC->Sumw2();
     h2dAngPiWC->Sumw2(); 
     h2dAngRatioWC->Sumw2();
+
+    // Define signal and background functions to be fitted
+    TF1 *sPro = new TF1(Form("sPro_%d", nBlocks), "gaus", proLow, proHi);
+    TF1 *sPi  = new TF1(Form("sPi_%d", nBlocks), "gaus", piLow, piHi);
+    TF1 *fBkgExp = new TF1(Form("fBkgExp_%d", nBlocks), "expo", piLow, proHi);
+    sPro->SetLineColor(kGreen+2);
+    sPi->SetLineColor(kRed);
+    TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", piLow, proHi);
+    fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
+			    "const 2", "mean 2", "sigma 2",
+			    "bkgconst", "bkgdecay");
+    fSplusBExp->SetLineColor(kBlack);
     if (nBlocks != 4) {
       // Number of protons and number of MIPs
       int nP  = 0;
       int nPi = 0;
-      // Define signal and background functions to be fitted
-      TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
-      TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
 
       // Find the correct dstof files
       Int_t runMin=-1;
@@ -668,7 +677,7 @@ void angularDistS3_newSample(const char* saveDir,
       hutof1dS1S2->SetLineWidth(2);
       hutof1dS1->SetLineWidth(2);
       hutof1dS1NoS2->SetLineWidth(2);
-    
+
       if (nBlocks==0) {
 	hThetaS1S2pro->SetLineColor(kBlack);
 	hThetaS1S2pi->SetLineColor(kBlack);
@@ -860,6 +869,19 @@ void angularDistS3_newSample(const char* saveDir,
       hutof1dS1->Scale(1. / (double)nSpills);
       hutof1dS1NoS2->Scale(1. / (double)nSpills);
 
+      hutof1dS1->Fit(sPi, "R");
+      hutof1dS1->Fit(sPro, "R");
+      hutof1dS1->Fit(fBkgExp, "R");
+      Double_t parExp[8];
+      sPro->GetParameters(&parExp[0]);
+      sPi->GetParameters(&parExp[3]);
+      fBkgExp->GetParameters(&parExp[6]);
+      fSplusBExp->SetParameters(parExp);
+      hutof1dS1->Fit(fSplusBExp, "R");
+      hutof1dS1->Draw("hist");
+      fSplusBExp->Draw("same");
+      fSplusBExp->Write();    
+
       hprotonXY->Scale(1. / (double)nSpills);
       hpionXY->Scale(1. / (double)nSpills);
       hprotonXY->Write();
@@ -976,9 +998,6 @@ void angularDistS3_newSample(const char* saveDir,
 	// Number of protons and number of MIPs
 	int nP  = 0;
 	int nPi = 0;
-	// Define signal and background functions to be fitted
-	TF1 *sPro = new TF1("sPro", "gaus", proLow, proHi);
-	TF1 *sPi  = new TF1("sPi", "gaus", piLow, piHi);
 
 	// Find the correct dstof files
 	Int_t runMin=-1;
@@ -1386,6 +1405,19 @@ void angularDistS3_newSample(const char* saveDir,
       hutof1dS1S2->Scale(1. / (double)nSpills);
       hutof1dS1->Scale(1. / (double)nSpills);
       hutof1dS1NoS2->Scale(1. / (double)nSpills);
+
+      hutof1dS1->Fit(sPi, "R");
+      hutof1dS1->Fit(sPro, "R");
+      hutof1dS1->Fit(fBkgExp, "R");
+      Double_t parExp[8];
+      sPro->GetParameters(&parExp[0]);
+      sPi->GetParameters(&parExp[3]);
+      fBkgExp->GetParameters(&parExp[6]);
+      fSplusBExp->SetParameters(parExp);
+      hutof1dS1->Fit(fSplusBExp, "R");
+      hutof1dS1->Draw("hist");
+      fSplusBExp->Draw("same");
+      fSplusBExp->Write();    
 
       hprotonXY->Scale(1. / (double)nSpills);
       hpionXY->Scale(1. / (double)nSpills);
