@@ -55,10 +55,10 @@ void angularDistS3_newSample(const char* saveDir,
   std::vector<const char*> str4BlockVec = {str4Block0, str4Block1, str4Block2, str4Block3};
   // Deadtime corrections
   // Just use a constant ratio for the 0 block case
-  const double block0Slope    = -0.0003738;
-  const double block0SlopeErr = 0.00006863;
-  const double block0Const    = 0.2332;
-  const double block0ConstErr = 0.02436;
+  const double block0Slope    = 0.;//-0.0003738;
+  const double block0SlopeErr = 0.;//0.00006863;
+  const double block0Const    = 0.10737;//0.2332;
+  const double block0ConstErr = 0.02222;//0.02436;
   const double block1Slope    = -0.0002569;
   const double block1SlopeErr = 0.00001487;
   const double block1Const    =  0.3965;
@@ -796,15 +796,22 @@ void angularDistS3_newSample(const char* saveDir,
       hAllXY->Scale(1. / (double)nSpills);
       hPhiS1pro->Scale(1. / (double)nSpills);
       hPhiS1pi->Scale(1. / (double)nSpills);
-      hPhiS1pro->Scale(22./6.4);
-      hPhiS1pi->Scale(22./6.4);
-      hPhiS1S2pro->Scale(22./6.4);
-      hPhiS1S2pi->Scale(22./6.4);
+      hPhiS1pro->Scale(1., "width");
+      hPhiS1pi->Scale(1., "width");
+      hPhiS1S2pro->Scale(1., "width");
+      hPhiS1S2pi->Scale(1., "width");
       hThetaS1pro->Scale(1. / (double)nSpills);
       hThetaS1pi->Scale(1. / (double)nSpills);
       hThetaS1proNoS2->Scale(1. / (double)nSpills);
       hThetaS1piNoS2->Scale(1. / (double)nSpills);
 
+      hThetaS1pi->Scale(1, "width");
+      hThetaS1pro->Scale(1, "width");
+      hThetaS1piNoS2->Scale(1, "width");
+      hThetaS1proNoS2->Scale(1, "width");
+      hThetaS1S2pi->Scale(1, "width");
+      hThetaS1S2pro->Scale(1, "width");
+      /*
       for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
 	double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
 	hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
@@ -814,6 +821,7 @@ void angularDistS3_newSample(const char* saveDir,
 	hThetaS1S2pi->SetBinContent(i, hThetaS1S2pi->GetBinContent(i) / binWidth);
 	hThetaS1S2pro->SetBinContent(i, hThetaS1S2pro->GetBinContent(i) / binWidth);
       }
+      */
 
       hMomS1S2->Scale(1. / (double)nSpills);
       hMomS1->Scale(1. / (double)nSpills);
