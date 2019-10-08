@@ -15,11 +15,12 @@ double keFromTime(const double mass, const double baseline, const double time)
   return ke;
 }
 
-double dtErr(const double slope, const double slopeErr, const double hits, const double constErr)
+double dtVar(const double slope, const double slopeErr, const double hits, 
+	     const double constant, const double constantErr)
 {
-  double err = 0.;
-  err = TMath::Sqrt(pow(slope * TMath::Sqrt(hits), 2)+pow(hits * slopeErr, 2)+pow(constErr, 2));
-  return err;
+  double weight = 1. / (slope * hits + constant);
+  double var = pow(weight, 2) + pow(weight, 4) * (pow(slope,2)*hits + pow(hits*slopeErr,2) + pow(constantErr,2));
+  return var;
 }
 
 void angularDistS3_newSample(const char* saveDir,
@@ -55,10 +56,10 @@ void angularDistS3_newSample(const char* saveDir,
   std::vector<const char*> str4BlockVec = {str4Block0, str4Block1, str4Block2, str4Block3};
   // Deadtime corrections
   // Just use a constant ratio for the 0 block case
-  const double block0Slope    = 0.;//-0.0003738;
-  const double block0SlopeErr = 0.;//0.00006863;
-  const double block0Const    = 0.10737;//0.2332;
-  const double block0ConstErr = 0.02222;//0.02436;
+  const double block0Slope    = -0.0003738;
+  const double block0SlopeErr = 0.00006863;
+  const double block0Const    = 0.2332; //0.10737;
+  const double block0ConstErr = 0.02436; //0.02222;
   const double block1Slope    = -0.0002569;
   const double block1SlopeErr = 0.00001487;
   const double block1Const    =  0.3965;
@@ -175,12 +176,6 @@ void angularDistS3_newSample(const char* saveDir,
   THStack *hsMomS1 = new THStack("hsMomS1", "Proton momentum measured in S3; Proton momentum [GeV/c]; Events / spill");
   THStack *hsMomTpc = new THStack("hsMomTpc", "Proton momentum measured in S3 for particles passing through TPC; Proton momentum [GeV/c]; Events / spill");
   THStack *hsKE = new THStack("hsKE", "Proton kinetic energy measured for protons crossing the TPC; Proton kinetic energy / MeV; Events / spill");
-  /*
-  hsMomTpc->GetXaxis()->SetTitleSize(.05);
-  hsMomTpc->GetYaxis()->SetTitleSize(.05);
-  hsMomTpc->GetXaxis()->SetLabelSize(.05);
-  hsMomTpc->GetYaxis()->SetLabelSize(.05);
-  */
   THStack *hsutof1dS1S2 = new THStack("hsutof1dS1S2", "Time of flight as measured in S3 (S1 & S2 trigger); Time of flight / ns; Events / spill");
   THStack *hsutof1dS1   = new THStack("hsutof1dS1", "Time of flight as measured in S3; Time of flight / ns; Events / spill");
   THStack *hsutof1dS1NoS2   = new THStack("hsutof1dS1NoS2", "Time of flight as measured in S3 (no S2 trigger); Time of flight / ns; Events / spill");
@@ -583,8 +578,7 @@ void angularDistS3_newSample(const char* saveDir,
       for (int s = 0; s < utofTimes.size(); s++) {
 	if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
 	double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	double deadtimeErr = dtErr(slope, slopeErr, dtofS1S2Hits[s], constantErr);
-	double weightErr = deadtimeErr / pow(deadtimeWeight, 2);
+	double deadtimeErr = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
 	// Initial data quality loop
 	bool isGood = false;
 	for (int t=lastut; t<tree->GetEntries(); t++) {
@@ -638,10 +632,11 @@ void angularDistS3_newSample(const char* saveDir,
 		double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 		double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
 		double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
+		double travelledDist = TMath::Sqrt(pow(positionX,2)+pow(positionY,2)+pow(positionZ,2));
 		// All triggers
 		hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += pow(weightErr, 2);
+		utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeErr;
 		h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
 		h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
 		h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
@@ -653,8 +648,8 @@ void angularDistS3_newSample(const char* saveDir,
 		  nPi++;
 		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += pow(weightErr, 2);
-		  thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += pow(weightErr, 2);
+		  phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
+		  thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
 		  hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
@@ -666,37 +661,37 @@ void angularDistS3_newSample(const char* saveDir,
 		  nP++;
 		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += pow(weightErr, 2);
-		  thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += pow(weightErr, 2);
+		  phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
+		  thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
 		  if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		  hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 		  // Remove deuteron peak in 0 block data
 		  if (nBlocks != 0) {
-		    hMomS1->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
+		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
 		    // Only protons passing through TPC active area
 		    if (angleTheta > 1.439 && angleTheta < 3.778 &&
 			anglePhi > -2.662 && anglePhi < 2.575) {
 		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += pow(weightErr, 2);
+		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
+		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
 		    }
 		  }
 		  else {
-		    double mom = momFromTime(0.938, 10.8, tofCalc);
-		    if (mom > 0.4) {
+		    double mom = momFromTime(0.938, 10.9, tofCalc);
+		    if (mom > 0.45) {
 		      hMomS1->Fill(mom, 1./deadtimeWeight);
-		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
+		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
 		      // Only protons passing through TPC active area
 		      if (angleTheta > 1.439 && angleTheta < 3.778 &&
 			  anglePhi > -2.662 && anglePhi < 2.575) {
 			hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 			hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
-			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += pow(weightErr, 2);
+			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
+			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
 		      }
 		    }
 		  }
@@ -741,25 +736,34 @@ void angularDistS3_newSample(const char* saveDir,
 
       // Sort the errors
       for (int bin = 0; bin < hThetaS1pi->GetNbinsX()+1; bin++) {
-	hThetaS1pi->SetBinError(bin, thetaS1piErr.at(bin));
-	hThetaS1pro->SetBinError(bin, thetaS1proErr.at(bin));
+	hThetaS1pi->SetBinError(bin, TMath::Sqrt(thetaS1piErr.at(bin)));
+	hThetaS1pro->SetBinError(bin, TMath::Sqrt(thetaS1proErr.at(bin)));
       }
       for (int bin = 0; bin < hPhiS1pi->GetNbinsX()+1; bin++) {
-	hPhiS1pi->SetBinError(bin, phiS1piErr.at(bin));
-	hPhiS1pro->SetBinError(bin, phiS1proErr.at(bin));
+	hPhiS1pi->SetBinError(bin, TMath::Sqrt(phiS1piErr.at(bin)));
+	hPhiS1pro->SetBinError(bin, TMath::Sqrt(phiS1proErr.at(bin)));
       }
       for (int bin = 0; bin < hutof1dS1->GetNbinsX()+1; bin++) {
-	hutof1dS1->SetBinError(bin, utof1dS1Err.at(bin));
+	hutof1dS1->SetBinError(bin, TMath::Sqrt(utof1dS1Err.at(bin)));
       }
       for (int bin = 0; bin < hMomS1->GetNbinsX()+1; bin++) {
-	hMomS1->SetBinError(bin, momS1Err.at(bin));
+	hMomS1->SetBinError(bin, TMath::Sqrt(momS1Err.at(bin)));
       }
       for (int bin = 0; bin < hMomTpc->GetNbinsX()+1; bin++) {
-	hMomTpc->SetBinError(bin, momTpcErr.at(bin));
+	hMomTpc->SetBinError(bin, TMath::Sqrt(momTpcErr.at(bin)));
       }
       for (int bin = 0; bin < hKE->GetNbinsX()+1; bin++) {
-	hKE->SetBinError(bin, keErr.at(bin));
+	hKE->SetBinError(bin, TMath::Sqrt(keErr.at(bin)));
       }
+
+      hThetaS1pi->Sumw2();
+      hThetaS1pro->Sumw2();
+      hPhiS1pi->Sumw2();
+      hPhiS1pro->Sumw2();
+      hutof1dS1->Sumw2();
+      hMomS1->Sumw2();
+      hMomTpc->Sumw2();
+      hKE->Sumw2();
 
       hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
       hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
@@ -869,7 +873,7 @@ void angularDistS3_newSample(const char* saveDir,
 				Form("0 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("0 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-	legKE->AddEntry(hKE, Form("0 blocks - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+	legKE->AddEntry(hKE, Form("0 blocks - %.3g #pm %.2g per spill", iKE, eKE), "le"); 
 	leg->AddEntry(hThetaS1S2pro, "0 blocks", "le");
 	legTheta->AddEntry(hThetaS1ratio, "0 blocks", "le");
 	legTof->AddEntry(hutof1dS1, "0 blocks", "le");
@@ -908,7 +912,7 @@ void angularDistS3_newSample(const char* saveDir,
 				Form("1 block - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("1 block - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-	legKE->AddEntry(hKE, Form("1 block - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+	legKE->AddEntry(hKE, Form("1 block - %.3g #pm %.2g per spill", iKE, eKE), "le"); 
 	leg->AddEntry(hThetaS1S2pro, "1 block", "le");
 	legTheta->AddEntry(hThetaS1ratio, "1 block", "le");
 	legTof->AddEntry(hutof1dS1, "1 block", "le");
@@ -947,7 +951,7 @@ void angularDistS3_newSample(const char* saveDir,
 				Form("2 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("2 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-	legKE->AddEntry(hKE, Form("2 blocks - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+	legKE->AddEntry(hKE, Form("2 blocks - %.3g #pm %.2g per spill", iKE, eKE), "le"); 
 	leg->AddEntry(hThetaS1S2pro, "2 blocks", "le");
 	legTheta->AddEntry(hThetaS1ratio, "2 blocks", "le");
 	legTof->AddEntry(hutof1dS1, "2 blocks", "le");
@@ -985,7 +989,7 @@ void angularDistS3_newSample(const char* saveDir,
 				Form("3 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("3 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-	legKE->AddEntry(hKE, Form("3 blocks - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+	legKE->AddEntry(hKE, Form("3 blocks - %.3g #pm %.2g per spill", iKE, eKE), "le"); 
 	leg->AddEntry(hThetaS1S2pro, "3 blocks", "le");
 	legTheta->AddEntry(hThetaS1ratio, "3 blocks", "le");
 	legTof->AddEntry(hutof1dS1, "3 blocks", "le");
@@ -1022,7 +1026,7 @@ void angularDistS3_newSample(const char* saveDir,
 				Form("4 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("4 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-	legKE->AddEntry(hKE, Form("4 blocks - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+	legKE->AddEntry(hKE, Form("4 blocks - %.2g #pm %.1g per spill", iKE, eKE), "le"); 
 	leg->AddEntry(hThetaS1S2pro, "4 blocks", "le");
 	legTheta->AddEntry(hThetaS1ratio, "4 blocks", "le");
 	legTof->AddEntry(hutof1dS1, "4 blocks", "le");
@@ -1348,8 +1352,7 @@ void angularDistS3_newSample(const char* saveDir,
 	for (int s = 0; s < utofTimes.size(); s++) {
 	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
 	  double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	  double deadtimeErr = dtErr(slope, slopeErr, dtofS1S2Hits[s], constantErr);
-	  double weightErr = deadtimeErr / pow(deadtimeWeight, 2);
+	  double deadtimeErr = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
 	  // Do initial loop to check data quality
 	  bool isGood = false;
 	  for (int t=lastut; t<tree->GetEntries(); t++) {
@@ -1400,10 +1403,11 @@ void angularDistS3_newSample(const char* saveDir,
 		  double positionWcY = (xToF[nh]/168.)*(s3EndWcY - s3StartWcY) + s3StartWcY;
 		  double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
 		  double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
+		  double travelledDist = TMath::Sqrt(pow(positionX,2)+pow(positionY,2)+pow(positionZ,2));
 		  // All triggers
 		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += pow(weightErr, 2);
+		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeErr;
 		  h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
 		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
 		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
@@ -1418,8 +1422,8 @@ void angularDistS3_newSample(const char* saveDir,
 		    if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += pow(weightErr, 2);
-		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += pow(weightErr, 2);
+		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
+		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
 		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
@@ -1432,11 +1436,11 @@ void angularDistS3_newSample(const char* saveDir,
 		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		    hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += pow(weightErr, 2);
-		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += pow(weightErr, 2);
+		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
+		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
 		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
+		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc))) += deadtimeErr;
 		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 		    // Only protons passing through TPC active area
@@ -1444,16 +1448,16 @@ void angularDistS3_newSample(const char* saveDir,
 			anglePhi > -2.662 && anglePhi < 2.575) {
 		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += pow(weightErr, 2);
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += pow(weightErr, 2);
+		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
+		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
 		    }
 		    lastut = t;
-		    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 2 && momFromTime(0.938, 10.75, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
+		    if (nBlocks == 0 && momFromTime(0.938, 10.8, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 0 && momFromTime(0.938, 10.8, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.8, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.8, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.8, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.8, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
 	    
 		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
 		  //	}
@@ -1504,25 +1508,34 @@ void angularDistS3_newSample(const char* saveDir,
 
       // Sort the errors
       for (int bin = 0; bin < hThetaS1pi->GetNbinsX(); bin++) {
-	hThetaS1pi->SetBinError(bin, thetaS1piErr.at(bin));
-	hThetaS1pro->SetBinError(bin, thetaS1proErr.at(bin));
+	hThetaS1pi->SetBinError(bin, TMath::Sqrt(thetaS1piErr.at(bin)));
+	hThetaS1pro->SetBinError(bin, TMath::Sqrt(thetaS1proErr.at(bin)));
       }
       for (int bin = 0; bin < hPhiS1pi->GetNbinsX(); bin++) {
-	hPhiS1pi->SetBinError(bin, phiS1piErr.at(bin));
-	hPhiS1pro->SetBinError(bin, phiS1proErr.at(bin));
+	hPhiS1pi->SetBinError(bin, TMath::Sqrt(phiS1piErr.at(bin)));
+	hPhiS1pro->SetBinError(bin, TMath::Sqrt(phiS1proErr.at(bin)));
       }
       for (int bin = 0; bin < hutof1dS1->GetNbinsX(); bin++) {
-	hutof1dS1->SetBinError(bin, utof1dS1Err.at(bin));
+	hutof1dS1->SetBinError(bin, TMath::Sqrt(utof1dS1Err.at(bin)));
       }
       for (int bin = 0; bin < hMomS1->GetNbinsX(); bin++) {
-	hMomS1->SetBinError(bin, momS1Err.at(bin));
+	hMomS1->SetBinError(bin, TMath::Sqrt(momS1Err.at(bin)));
       }
       for (int bin = 0; bin < hMomTpc->GetNbinsX(); bin++) {
-	hMomTpc->SetBinError(bin, momTpcErr.at(bin));
+	hMomTpc->SetBinError(bin, TMath::Sqrt(momTpcErr.at(bin)));
       }
       for (int bin = 0; bin < hKE->GetNbinsX(); bin++) {
-	hKE->SetBinError(bin, keErr.at(bin));
+	hKE->SetBinError(bin, TMath::Sqrt(keErr.at(bin)));
       }
+
+      hThetaS1pi->Sumw2();
+      hThetaS1pro->Sumw2();
+      hPhiS1pi->Sumw2();
+      hPhiS1pro->Sumw2();
+      hutof1dS1->Sumw2();
+      hMomS1->Sumw2();
+      hMomTpc->Sumw2();
+      hKE->Sumw2();
 
       hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
       hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
@@ -1599,19 +1612,16 @@ void angularDistS3_newSample(const char* saveDir,
       h2dTofPhiS1->Scale(1. / (double)nSpills);
       h2dTofPhiWC->Scale(1. / (double)nSpills);
       // Scale to bin width
-      hPhiS1pro->Scale(22./6.4);
-      hPhiS1pi->Scale(22./6.4);
-      hPhiS1S2pro->Scale(22./6.4);
-      hPhiS1S2pi->Scale(22./6.4);
-      for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
-	double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
-	hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
-	hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
-	hThetaS1piNoS2->SetBinContent(i, hThetaS1piNoS2->GetBinContent(i) / binWidth);
-	hThetaS1proNoS2->SetBinContent(i, hThetaS1proNoS2->GetBinContent(i) / binWidth);
-	hThetaS1S2pi->SetBinContent(i, hThetaS1S2pi->GetBinContent(i) / binWidth);
-	hThetaS1S2pro->SetBinContent(i, hThetaS1S2pro->GetBinContent(i) / binWidth);
-      }
+      hPhiS1pro->Scale(1., "width");
+      hPhiS1pi->Scale(1., "width");
+      hPhiS1S2pro->Scale(1., "width");
+      hPhiS1S2pi->Scale(1., "width");
+      hThetaS1pi->Scale(1., "width");
+      hThetaS1pro->Scale(1., "width");
+      hThetaS1piNoS2->Scale(1., "width");
+      hThetaS1proNoS2->Scale(1., "width");
+      hThetaS1S2pi->Scale(1., "width");
+      hThetaS1S2pro->Scale(1., "width");
 
       hMomS1S2->Scale(1. / (double)nSpills);
       hMomS1->Scale(1. / (double)nSpills);
@@ -1636,7 +1646,7 @@ void angularDistS3_newSample(const char* saveDir,
 			      Form("4 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
       legThetaS1pi->AddEntry(hThetaS1pi, 
 			     Form("4 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-      legKE->AddEntry(hKE, Form("4 blocks - %d #pm %d per spill", (int)iKE, (int)eKE), "le"); 
+      legKE->AddEntry(hKE, Form("4 blocks - %.4g #pm %.2g per spill", iKE, eKE), "le"); 
       leg->AddEntry(hThetaS1S2pro, "4 blocks", "le");
       legTheta->AddEntry(hThetaS1ratio, "4 blocks", "le");
       legTof->AddEntry(hutof1dS1, "4 blocks", "le");
@@ -1773,6 +1783,7 @@ void angularDistS3_newSample(const char* saveDir,
 
   fout->cd();
   leg->Write("leg");
+
   hsThetaS1S2pro->Write();
   hsThetaS1S2pi->Write();
   hsPhiS1S2pro->Write();
@@ -1806,10 +1817,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Log1 = new TCanvas("c1_Log1");
   c1_Log1->SetLogy();
   hsThetaS1S2pro->Draw("hist e nostack");
-  hsThetaS1S2pro->GetXaxis()->SetLabelSize(0.05);
-  hsThetaS1S2pro->GetYaxis()->SetLabelSize(0.05);
-  hsThetaS1S2pro->GetXaxis()->SetTitleSize(0.05);
-  hsThetaS1S2pro->GetYaxis()->SetTitleSize(0.05);
   leg->Draw();
   c1_Log1->Print(Form("%s/thetaS12proLog.png", saveDir));
   c1_Log1->Print(Form("%s/thetaS12proLog.pdf", saveDir));
@@ -1817,10 +1824,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Log2 = new TCanvas("c1_Log2");
   c1_Log2->SetLogy();
   hsThetaS1S2pi->Draw("hist e nostack");
-  hsThetaS1S2pi->GetXaxis()->SetLabelSize();
-  hsThetaS1S2pi->GetYaxis()->SetLabelSize();
-  hsThetaS1S2pi->GetXaxis()->SetTitleSize();
-  hsThetaS1S2pi->GetYaxis()->SetTitleSize();
   leg->Draw();
   c1_Log2->Print(Form("%s/thetaS12piLog.png", saveDir));
   c1_Log2->Print(Form("%s/thetaS12piLog.pdf", saveDir));
@@ -1906,10 +1909,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs11 = new TCanvas("c1_Logs11");
   c1_Logs11->SetLogy();
   hsThetaS1pro->Draw("hist e nostack");
-  hsThetaS1pro->GetXaxis()->SetLabelSize(0.05);
-  hsThetaS1pro->GetYaxis()->SetLabelSize(0.05);
-  hsThetaS1pro->GetXaxis()->SetTitleSize(0.05);
-  hsThetaS1pro->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
   c1_Logs11->Print(Form("%s/thetaS1proLog.png", saveDir));
   c1_Logs11->Print(Form("%s/thetaS1proLog.pdf", saveDir));
@@ -1917,10 +1916,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs12 = new TCanvas("c1_Logs12");
   c1_Logs12->SetLogy();
   hsThetaS1pi->Draw("hist e nostack");
-  hsThetaS1pi->GetXaxis()->SetLabelSize(0.05);
-  hsThetaS1pi->GetYaxis()->SetLabelSize(0.05);
-  hsThetaS1pi->GetXaxis()->SetTitleSize(0.05);
-  hsThetaS1pi->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
   c1_Logs12->Print(Form("%s/thetaS1piLog.png", saveDir));
   c1_Logs12->Print(Form("%s/thetaS1piLog.pdf", saveDir));
@@ -1928,10 +1923,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs13 = new TCanvas("c1_Logs13");
   c1_Logs13->SetLogy();
   hsPhiS1pro->Draw("hist e nostack");
-  hsPhiS1pro->GetXaxis()->SetLabelSize(0.05); 
-  hsPhiS1pro->GetYaxis()->SetLabelSize(0.05);
-  hsPhiS1pro->GetXaxis()->SetTitleSize(0.05);
-  hsPhiS1pro->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
   c1_Logs13->Print(Form("%s/phiS1proLog.png", saveDir));
   c1_Logs13->Print(Form("%s/phiS1proLog.pdf", saveDir));
@@ -1939,10 +1930,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs14 = new TCanvas("c1_Logs14");
   c1_Logs14->SetLogy();
   hsPhiS1pi->Draw("hist e nostack");
-  hsPhiS1pi->GetXaxis()->SetLabelSize(0.05); 
-  hsPhiS1pi->GetYaxis()->SetLabelSize(0.05);
-  hsPhiS1pi->GetXaxis()->SetTitleSize(0.05);
-  hsPhiS1pi->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
   c1_Logs14->Print(Form("%s/phiS1piLog.png", saveDir));
   c1_Logs14->Print(Form("%s/phiS1piLog.pdf", saveDir));
@@ -1950,10 +1937,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs15 = new TCanvas("c1_Logs15");
   c1_Logs15->SetLogy();
   hsThetaS1ratio->Draw("hist e nostack");
-  hsThetaS1ratio->GetXaxis()->SetLabelSize(0.05);
-  hsThetaS1ratio->GetYaxis()->SetLabelSize(0.05);
-  hsThetaS1ratio->GetXaxis()->SetTitleSize(0.05);
-  hsThetaS1ratio->GetYaxis()->SetTitleSize(0.05);
   leg->Draw();
   c1_Logs15->Print(Form("%s/thetaS1ratioLog.png", saveDir));
   c1_Logs15->Print(Form("%s/thetaS1ratioLog.pdf", saveDir));
@@ -1961,10 +1944,6 @@ void angularDistS3_newSample(const char* saveDir,
   TCanvas *c1_Logs16 = new TCanvas("c1_Logs16");
   c1_Logs16->SetLogy();
   hsPhiS1ratio->Draw("hist e nostack");
-  hsPhiS1ratio->GetXaxis()->SetLabelSize(0.05); 
-  hsPhiS1ratio->GetYaxis()->SetLabelSize(0.05);
-  hsPhiS1ratio->GetXaxis()->SetTitleSize(0.05);
-  hsPhiS1ratio->GetYaxis()->SetTitleSize(0.05);
   legTof->Draw();
   c1_Logs16->Print(Form("%s/phiS1ratioLog.png", saveDir));
   c1_Logs16->Print(Form("%s/phiS1ratioLog.pdf", saveDir));
@@ -1972,10 +1951,6 @@ void angularDistS3_newSample(const char* saveDir,
 
   TCanvas *c1_s11 = new TCanvas("c1_s11");
   hsThetaS1pro->Draw("hist e nostack");
-  hsThetaS1pro->GetXaxis()->SetLabelSize(0.06);
-  hsThetaS1pro->GetYaxis()->SetLabelSize(0.06);
-  hsThetaS1pro->GetXaxis()->SetTitleSize(0.06);
-  hsThetaS1pro->GetYaxis()->SetTitleSize(0.06);
   c1_s11->SetLeftMargin(0.13);
   c1_s11->SetBottomMargin(0.13);
   c1_s11->SetGridx();
@@ -1986,10 +1961,6 @@ void angularDistS3_newSample(const char* saveDir,
   c1_s11->Print(Form("%s/thetaS1pro.tex", saveDir));
   TCanvas *c1_s12 = new TCanvas("c1_s12");
   hsThetaS1pi->Draw("hist e nostack");
-  hsThetaS1pi->GetXaxis()->SetLabelSize(0.06);
-  hsThetaS1pi->GetYaxis()->SetLabelSize(0.06);
-  hsThetaS1pi->GetXaxis()->SetTitleSize(0.06);
-  hsThetaS1pi->GetYaxis()->SetTitleSize(0.06);
   c1_s12->SetLeftMargin(0.13);
   c1_s12->SetBottomMargin(0.13);
   c1_s12->SetGridx();
@@ -2000,10 +1971,6 @@ void angularDistS3_newSample(const char* saveDir,
   c1_s12->Print(Form("%s/thetaS1pi.tex", saveDir));
   TCanvas *c1_s13 = new TCanvas("c1_s13");
   hsPhiS1pro->Draw("hist e nostack");
-  hsPhiS1pro->GetXaxis()->SetLabelSize(0.06); 
-  hsPhiS1pro->GetYaxis()->SetLabelSize(0.06);
-  hsPhiS1pro->GetXaxis()->SetTitleSize(0.06);
-  hsPhiS1pro->GetYaxis()->SetTitleSize(0.06);
   c1_s13->SetGridx();
   c1_s13->SetGridy();
   leg->Draw();
@@ -2012,10 +1979,6 @@ void angularDistS3_newSample(const char* saveDir,
   c1_s13->Print(Form("%s/phiS1pro.tex", saveDir));
   TCanvas *c1_s14 = new TCanvas("c1_s14");
   hsPhiS1pi->Draw("hist e nostack");
-  hsPhiS1pi->GetXaxis()->SetLabelSize(0.06); 
-  hsPhiS1pi->GetYaxis()->SetLabelSize(0.06);
-  hsPhiS1pi->GetXaxis()->SetTitleSize(0.06);
-  hsPhiS1pi->GetYaxis()->SetTitleSize(0.06);
   c1_s14->SetLeftMargin(0.13);
   c1_s14->SetBottomMargin(0.13);
   c1_s14->SetGridx();
@@ -2026,10 +1989,6 @@ void angularDistS3_newSample(const char* saveDir,
   c1_s14->Print(Form("%s/phiS1pi.tex", saveDir));
   TCanvas *c1_s15 = new TCanvas("c1_s15");
   hsThetaS1ratio->Draw("hist e nostack");
-  hsThetaS1ratio->GetXaxis()->SetLabelSize(0.06);
-  hsThetaS1ratio->GetYaxis()->SetLabelSize(0.06);
-  hsThetaS1ratio->GetXaxis()->SetTitleSize(0.06);
-  hsThetaS1ratio->GetYaxis()->SetTitleSize(0.06);
   c1_s15->SetLeftMargin(0.13);
   c1_s15->SetBottomMargin(0.13);
   c1_s15->SetGridx();
@@ -2040,10 +1999,6 @@ void angularDistS3_newSample(const char* saveDir,
   c1_s15->Print(Form("%s/thetaS1ratio.tex", saveDir));
   TCanvas *c1_s16 = new TCanvas("c1_s16");
   hsPhiS1ratio->Draw("hist e nostack");
-  hsPhiS1ratio->GetXaxis()->SetLabelSize(0.06); 
-  hsPhiS1ratio->GetYaxis()->SetLabelSize(0.06);
-  hsPhiS1ratio->GetXaxis()->SetTitleSize(0.06);
-  hsPhiS1ratio->GetYaxis()->SetTitleSize(0.06);
   c1_s16->SetLeftMargin(0.13);
   c1_s16->SetBottomMargin(0.13);
   c1_s16->Update();
