@@ -41,8 +41,8 @@ void barCoins(const char* saveDir,
   const char* str4Block3 = "Data_2018_8_29_b1.root";
   std::vector<const char*> str4BlockVec = {/*str4Block0*/ str4Block1, str4Block2, str4Block3};
 
-  const double startLongTime=1536919200;
-  const double endLongTime  =1537005600;
+  const double startLongTime=1536746400;
+  const double endLongTime  =1536832800;
 
   const double coinCut = 1.; // Cut for determining if a coincidence has occurred
   const double deadtimeCut = 185.;
@@ -50,6 +50,7 @@ void barCoins(const char* saveDir,
   TFile *fout = new TFile(saveDir, "recreate");
 
   for (int sample=0; sample<6; sample++) {
+    cout<<"Sample "<<sample+1<<endl;
     int totalTime = 0;
     string name;
     vector<double> startTimes;
@@ -125,16 +126,19 @@ void barCoins(const char* saveDir,
 
     // Loop over samples
     for (int n=0; n<startTimes.size(); n++) {
+      cout<<"Subsample "<<n+1<<" of "<<startTimes.size()<<endl;
       int startTime = startTimes.at(n);
       int endTime   = endTimes.at(n);
       int nSpills = 0;
       double lastSpill = 0.;
-      int runMin = -1;
-      int runMax = -1;
-
+      vector<double> spills1;
+      vector<double> spills2;
       vector<double> deadtimeVec;
       deadtimeVec.resize(10, 0.);
+
       // Find dtof runs
+      int runMin = -1;
+      int runMax = -1;
       for (int irun=950; irun<1400; irun++) {
 	TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
 	RawDsTofCoincidence *tofCoinTemp = NULL;
@@ -175,7 +179,7 @@ void barCoins(const char* saveDir,
       tofCoinChain2->SetBranchAddress("tofCoin", &tofCoin2);
       for (int h=0; h<tofCoinChain1->GetEntries(); h++) {
 	tofCoinChain1->GetEntry(h);
-	if (h % 100000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain1->GetEntries()<<endl;
+	if (h % 500000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain1->GetEntries()<<endl;
 
 	if (tofCoin1->unixTime[0]<startTime) continue;
 	if (tofCoin1->unixTime[0]>endTime) break;
@@ -183,12 +187,15 @@ void barCoins(const char* saveDir,
 	if (tofCoin1->lastDelayedBeamSignal != lastSpill) {
 	  nSpills++;
 	  lastSpill = tofCoin1->lastDelayedBeamSignal;
+	  if (lastSpill!=0) spills1.push_back(tofCoin1->lastDelayedBeamSignal);
 	}
 
 	int bar1 = tofCoin1->bar;
 	double dstofHitT1 = min(tofCoin1->fakeTimeNs[0], tofCoin1->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1])/2.);
 	if (!tofCoin1->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
 	  deadtimeVec.at(bar1-1) = dstofHitT1;
+	  double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
+	  h2CosmicRate->Fill(xpos, bar1);
 	  // Skip forward in this file to see if there any coincidences
 	  for (int h2=h; h2<tofCoinChain1->GetEntries(); h2++) {
 	    tofCoinChain1->GetEntry(h2);
@@ -197,7 +204,7 @@ void barCoins(const char* saveDir,
 	    int bar2 = tofCoin1->bar;
 	    if (!tofCoin1->inSpill && (dstofHitT2 - dstofHitT1) < coinCut && 
 		bar1 != bar2 && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut) {
-	      deadtimeVec.at(bar1-1) = dstofHitT2;
+	      deadtimeVec.at(bar2-1) = dstofHitT2;
 	      h2matrix->Fill(bar1, bar2);
 	    } // Is not in a spill
 	  } // Loop over TChain for a second time
@@ -207,17 +214,25 @@ void barCoins(const char* saveDir,
       deadtimeVec.clear();
       deadtimeVec.resize(10, 0.);
 
+      lastSpill = 0.;
       for (int h=0; h<tofCoinChain2->GetEntries(); h++) {
 	tofCoinChain2->GetEntry(h);
-	if (h % 100000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain2->GetEntries()<<endl;
+	if (h % 500000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain2->GetEntries()<<endl;
 
 	if (tofCoin2->unixTime[0]<startTime) continue;
 	if (tofCoin2->unixTime[0]>endTime) break;
+ 
+	if (tofCoin2->lastDelayedBeamSignal != lastSpill) {
+	  lastSpill = tofCoin2->lastDelayedBeamSignal;
+	  if (lastSpill != 0) spills2.push_back(tofCoin2->lastDelayedBeamSignal);
+	}
 
 	int bar1 = tofCoin2->bar;
 	double dstofHitT1 = min(tofCoin2->fakeTimeNs[0], tofCoin2->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1])/2.);
-	if (!tofCoin2->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) < deadtimeCut) {
+	if (!tofCoin2->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
 	  deadtimeVec.at(bar1-1) = dstofHitT1;
+	  double xpos = (((tofCoin2->fakeTimeNs[1] - tofCoin2->fakeTimeNs[0])*(7./2.) + 70.));
+	  h2CosmicRate->Fill(xpos, bar1);
 	  // Skip forward in this file to see if there any coincidences
 	  for (int h2=h; h2<tofCoinChain2->GetEntries(); h2++) {
 	    tofCoinChain2->GetEntry(h2);
@@ -226,18 +241,42 @@ void barCoins(const char* saveDir,
 	    int bar2 = tofCoin2->bar;
 	    if (!tofCoin2->inSpill && (dstofHitT2 - dstofHitT1) < coinCut && 
 		bar1 != bar2 && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut) {
-	      deadtimeVec.at(bar1-1) = dstofHitT2;
+	      deadtimeVec.at(bar2-1) = dstofHitT2;
 	      h2matrix->Fill(bar1, bar2);
 	    } // Is not in a spill
 	  } // Loop over TChain for a second time
 	} // Is not in a spill
       } // Loop over entries
-
       totalTime += endTime - startTime - nSpills;
+
+      deadtimeVec.clear();
+      deadtimeVec.resize(10, 0.);
+
+      cout.precision(11);
+      if (spills1.size() == spills2.size()) {
+	double avg = 0;
+	for (int s=0; s < spills1.size(); s++) {
+	  avg += spills1.at(s) - spills2.at(s);
+	} 
+	avg /= spills1.size();
+	cout<<"Average "<<avg<<endl;
+	TH1D *hRes = new TH1D(Form("hRes_%s_%d",name.c_str(),n), "Resolution; / ns", 400, avg-50., avg+50);
+	for (int s=0; s < spills1.size(); s++) {
+	  hRes->Fill(spills1.at(s) - spills2.at(s));
+	  cout<<(spills1.at(s) - spills2.at(s))<<endl;
+	}
+	fout->cd();
+	hRes->Write(); 
+      }
+      else {
+	cout<<"Different number of spills between TDCs"<<endl;
+      }
     } // Loop over the sub samples within a sample
 
+    h2CosmicRate->Scale(1. / totalTime);
     h2matrix->Scale(1. / totalTime);
     fout->cd();
+    h2CosmicRate->Write();
     h2matrix->Write();
   }
 
