@@ -41,8 +41,8 @@ void barCoins(const char* saveDir,
   const char* str4Block3 = "Data_2018_8_29_b1.root";
   std::vector<const char*> str4BlockVec = {/*str4Block0*/ str4Block1, str4Block2, str4Block3};
 
-  const double startLongTime=1536746400;
-  const double endLongTime  =1536832800;
+  const double startLongTime = 1536011900;
+  const double endLongTime   = 1536098300;
 
   const double coinCut = 1.; // Cut for determining if a coincidence has occurred
   const double deadtimeCut = 185.;
@@ -139,12 +139,19 @@ void barCoins(const char* saveDir,
       int endTime   = endTimes.at(n);
       int nSpills = 0;
       double lastSpill = 0.;
+      vector< vector<double> > spillsVec;
       vector<double> spills1;
       vector<double> spills2;
+      spillsVec.push_back(spills1);
+      spillsVec.push_back(spills2);
+      vector< vector<short> > runVec;
+      vector<short> run1;
+      vector<short> run2;
+      runVec.push_back(run1);
+      runVec.push_back(run2);
       vector<double> deadtimeVec;
       deadtimeVec.resize(10, 0.);
-      vector<short> runVec1;
-      vector<short> runVec2;
+
       // Find dtof runs
       int runMin = -1;
       int runMax = -1;
@@ -176,114 +183,72 @@ void barCoins(const char* saveDir,
       cout << "Min and max runs are " << runMin << " " << runMax << endl;
 
       // First match hits between bars in the same TDC
-      TChain *tofCoinChain1 = new TChain("tofCoinTree");
-      TChain *tofCoinChain2 = new TChain("tofCoinTree");
-      for (int irun=runMin; irun<runMax+1; irun++) {
-	// Load input files
-	tofCoinChain1->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun));
-	tofCoinChain2->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc2.root", dstofDir, irun, irun));
-      } // Loop over runs
-      RawDsTofCoincidence *tofCoin1 = NULL;
-      RawDsTofCoincidence *tofCoin2 = NULL;
-      tofCoinChain1->SetBranchAddress("tofCoin", &tofCoin1);
-      tofCoinChain2->SetBranchAddress("tofCoin", &tofCoin2);
-      for (int h=0; h<tofCoinChain1->GetEntries(); h++) {
-	tofCoinChain1->GetEntry(h);
-	if (h % 500000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain1->GetEntries()<<endl;
+      for (int itdc = 0; itdc < 2; itdc++) {
+	TChain *tofCoinChain = new TChain("tofCoinTree");
+	for (int irun=runMin; irun<runMax+1; irun++) {
+	  // Load input files
+	  tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
+	} // Loop over runs
+	RawDsTofCoincidence *tofCoin = NULL;
+	tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+	for (int h=0; h<tofCoinChain->GetEntries(); h++) {
+	  tofCoinChain->GetEntry(h);
+	  if (h % 500000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain->GetEntries()<<endl;
 
-	if (tofCoin1->unixTime[0]<startTime) continue;
-	if (tofCoin1->unixTime[0]>endTime) break;
+	  if (tofCoin->unixTime[0]<startTime) continue;
+	  if (tofCoin->unixTime[0]>endTime) break;
 
-	if (tofCoin1->lastDelayedBeamSignal != lastSpill) {
-	  nSpills++;
-	  lastSpill = tofCoin1->lastDelayedBeamSignal;
-	  if (lastSpill!=0) {
-	    spills1.push_back(tofCoin1->lastDelayedBeamSignal);
-	    runVec1.push_back(tofCoin1->run);
+	  if (tofCoin->lastDelayedBeamSignal != lastSpill) {
+	    lastSpill = tofCoin->lastDelayedBeamSignal;
+	    if (lastSpill!=0) {
+	      spillsVec[itdc].push_back(tofCoin->lastDelayedBeamSignal);
+	      runVec[itdc].push_back(tofCoin->run);
+	    }
 	  }
-	}
-	int bar1 = tofCoin1->bar;
-	double dstofHitT1 = min(tofCoin1->fakeTimeNs[0], tofCoin1->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1])/2.);
-	double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
-	h2CosmicRate->Fill(xpos, bar1);
-	hCosmicRate->Fill(bar1);
-	if (!tofCoin1->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
-	  deadtimeVec.at(bar1-1) = dstofHitT1;
-	  // Skip forward in this file to see if there any coincidences
-	  for (int h2=h; h2<tofCoinChain1->GetEntries(); h2++) {
-	    tofCoinChain1->GetEntry(h2);
-	    double dstofHitT2 = min(tofCoin1->fakeTimeNs[0], tofCoin1->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1])/2.);
-	    if (dstofHitT2-dstofHitT1 > 20.) break;
-	    int bar2 = tofCoin1->bar;
-	    if (!tofCoin1->inSpill && (dstofHitT2 - dstofHitT1) < coinCut && 
-		bar1 != bar2 && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut) {
-	      deadtimeVec.at(bar2-1) = dstofHitT2;
-	      h2matrix->Fill(bar1, bar2);
-	    } // Is not in a spill
-	  } // Loop over TChain for a second time
-	} // Is not in a spill
-      } // Loop over entries
+	  int bar1 = tofCoin->bar;
+	  double dstofHitT1 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1])/2.);
+	  if (!tofCoin->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
+	    double xpos = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
+	    h2CosmicRate->Fill(xpos, bar1);
+	    hCosmicRate->Fill(bar1);
+	    deadtimeVec.at(bar1-1) = dstofHitT1;
+	    // Skip forward in this file to see if there any coincidences
+	    for (int h2=h; h2<tofCoinChain->GetEntries(); h2++) {
+	      tofCoinChain->GetEntry(h2);
+	      double dstofHitT2 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1])/2.);
+	      if (dstofHitT2-dstofHitT1 > 20.) break;
+	      int bar2 = tofCoin->bar;
+	      if (!tofCoin->inSpill && (dstofHitT2 - dstofHitT1) < coinCut && 
+		  bar1 != bar2 && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut) {
+		deadtimeVec.at(bar2-1) = dstofHitT2;
+		h2matrix->Fill(bar1, bar2);
+	      } // Is not in a spill
+	    } // Loop over TChain for a second time
+	  } // Is not in a spill
+	} // Loop over entries
 
-      deadtimeVec.clear();
-      deadtimeVec.resize(10, 0.);
+	deadtimeVec.clear();
+	deadtimeVec.resize(10, 0.);
+	lastSpill = 0.;
 
-      lastSpill = 0.;
-      for (int h=0; h<tofCoinChain2->GetEntries(); h++) {
-	tofCoinChain2->GetEntry(h);
-	if (h % 500000 == 0) cout<<"Entry "<<h<<" of "<<tofCoinChain2->GetEntries()<<endl;
+	delete tofCoin;
+	delete tofCoinChain;
+      } // Loop over TDCs
 
-	if (tofCoin2->unixTime[0]<startTime) continue;
-	if (tofCoin2->unixTime[0]>endTime) break;
- 
-	if (tofCoin2->lastDelayedBeamSignal != lastSpill) {
-	  lastSpill = tofCoin2->lastDelayedBeamSignal;
-	  if (lastSpill != 0) {
-	    spills2.push_back(tofCoin2->lastDelayedBeamSignal);
-	    runVec2.push_back(tofCoin1->run);
-	  }
-	}
-
-	int bar1 = tofCoin2->bar;
-	double dstofHitT1 = min(tofCoin2->fakeTimeNs[0], tofCoin2->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1])/2.);
-	double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
-	h2CosmicRate->Fill(xpos, bar1);
-	hCosmicRate->Fill(bar1);
-	if (!tofCoin2->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
-	  deadtimeVec.at(bar1-1) = dstofHitT1;
-	  // Skip forward in this file to see if there any coincidences
-	  for (int h2=h; h2<tofCoinChain2->GetEntries(); h2++) {
-	    tofCoinChain2->GetEntry(h2);
-	    double dstofHitT2 = min(tofCoin2->fakeTimeNs[0], tofCoin2->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1])/2.);
-	    if (dstofHitT2-dstofHitT1 > 20.) break;
-	    int bar2 = tofCoin2->bar;
-	    if (!tofCoin2->inSpill && (dstofHitT2 - dstofHitT1) < coinCut && 
-		bar1 != bar2 && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut) {
-	      deadtimeVec.at(bar2-1) = dstofHitT2;
-	      h2matrix->Fill(bar1, bar2);
-	    } // Is not in a spill
-	  } // Loop over TChain for a second time
-	} // Is not in a spill
-      } // Loop over entries
-      totalTime += endTime - startTime - nSpills;
-
-      deadtimeVec.clear();
-      deadtimeVec.resize(10, 0.);
-
-      if (spills1.size() == spills2.size()) {
-
+      if (spillsVec[0].size() == spillsVec[1].size()) {
+	cout<<spillsVec[0].size()<<" spills"<<endl;
       }
       else {
 	cout<<"Different number of spills between TDCs"<<endl;
       }
-      delete tofCoin1;
-      delete tofCoin2;
-      delete tofCoinChain1;
-      delete tofCoinChain2;
+      totalTime += endTime - startTime - spillsVec[0].size();
     } // Loop over the sub samples within a sample
 
+    hCosmicRate->Scale(1. / totalTime);
     h2CosmicRate->Scale(1. / totalTime);
     h2matrix->Scale(1. / totalTime);
     fout->cd();
+    hCosmicRate->Write();
     h2CosmicRate->Write();
     h2matrix->Write();
   }
