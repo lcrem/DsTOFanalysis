@@ -108,6 +108,14 @@ void barCoins(const char* saveDir,
       endTimes.push_back(endLongTime);
     }
 
+    TH1D *hCosmicRate = new TH1D(Form("hCosmicRate_%s", name.c_str()), "Cosmic rate in S4; Bar; Rate / s^{-1}", 10, 0.5, 10.5);
+    hCosmicRate->GetXaxis()->SetTitleSize(.05);
+    hCosmicRate->GetXaxis()->SetLabelSize(.05);
+    hCosmicRate->GetYaxis()->SetTitleSize(.05);
+    hCosmicRate->GetYaxis()->SetLabelSize(.05);
+    hCosmicRate->GetZaxis()->SetTitleSize(.05);
+    hCosmicRate->GetZaxis()->SetLabelSize(.05);
+    hCosmicRate->Sumw2();
     TH2D *h2CosmicRate = new TH2D(Form("h2CosmicRate_%s", name.c_str()), "Cosmic rate in S4; Bar position / cm; Bar; Rate / s^{-1}", 20, 0., 140., 10, 0.5, 10.5);
     h2CosmicRate->GetXaxis()->SetTitleSize(.05);
     h2CosmicRate->GetXaxis()->SetLabelSize(.05);
@@ -135,7 +143,8 @@ void barCoins(const char* saveDir,
       vector<double> spills2;
       vector<double> deadtimeVec;
       deadtimeVec.resize(10, 0.);
-
+      vector<short> runVec1;
+      vector<short> runVec2;
       // Find dtof runs
       int runMin = -1;
       int runMax = -1;
@@ -166,6 +175,7 @@ void barCoins(const char* saveDir,
       } // for (int irun=950; irun<1400; irun++) 
       cout << "Min and max runs are " << runMin << " " << runMax << endl;
 
+      // First match hits between bars in the same TDC
       TChain *tofCoinChain1 = new TChain("tofCoinTree");
       TChain *tofCoinChain2 = new TChain("tofCoinTree");
       for (int irun=runMin; irun<runMax+1; irun++) {
@@ -187,15 +197,18 @@ void barCoins(const char* saveDir,
 	if (tofCoin1->lastDelayedBeamSignal != lastSpill) {
 	  nSpills++;
 	  lastSpill = tofCoin1->lastDelayedBeamSignal;
-	  if (lastSpill!=0) spills1.push_back(tofCoin1->lastDelayedBeamSignal);
+	  if (lastSpill!=0) {
+	    spills1.push_back(tofCoin1->lastDelayedBeamSignal);
+	    runVec1.push_back(tofCoin1->run);
+	  }
 	}
-
 	int bar1 = tofCoin1->bar;
 	double dstofHitT1 = min(tofCoin1->fakeTimeNs[0], tofCoin1->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin1->fakeTimeNs[0]-tofCoin1->fakeTimeNs[1])/2.);
+	double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
+	h2CosmicRate->Fill(xpos, bar1);
+	hCosmicRate->Fill(bar1);
 	if (!tofCoin1->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
 	  deadtimeVec.at(bar1-1) = dstofHitT1;
-	  double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
-	  h2CosmicRate->Fill(xpos, bar1);
 	  // Skip forward in this file to see if there any coincidences
 	  for (int h2=h; h2<tofCoinChain1->GetEntries(); h2++) {
 	    tofCoinChain1->GetEntry(h2);
@@ -224,15 +237,19 @@ void barCoins(const char* saveDir,
  
 	if (tofCoin2->lastDelayedBeamSignal != lastSpill) {
 	  lastSpill = tofCoin2->lastDelayedBeamSignal;
-	  if (lastSpill != 0) spills2.push_back(tofCoin2->lastDelayedBeamSignal);
+	  if (lastSpill != 0) {
+	    spills2.push_back(tofCoin2->lastDelayedBeamSignal);
+	    runVec2.push_back(tofCoin1->run);
+	  }
 	}
 
 	int bar1 = tofCoin2->bar;
 	double dstofHitT1 = min(tofCoin2->fakeTimeNs[0], tofCoin2->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin2->fakeTimeNs[0]-tofCoin2->fakeTimeNs[1])/2.);
+	double xpos = (((tofCoin1->fakeTimeNs[1] - tofCoin1->fakeTimeNs[0])*(7./2.) + 70.));
+	h2CosmicRate->Fill(xpos, bar1);
+	hCosmicRate->Fill(bar1);
 	if (!tofCoin2->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
 	  deadtimeVec.at(bar1-1) = dstofHitT1;
-	  double xpos = (((tofCoin2->fakeTimeNs[1] - tofCoin2->fakeTimeNs[0])*(7./2.) + 70.));
-	  h2CosmicRate->Fill(xpos, bar1);
 	  // Skip forward in this file to see if there any coincidences
 	  for (int h2=h; h2<tofCoinChain2->GetEntries(); h2++) {
 	    tofCoinChain2->GetEntry(h2);
@@ -252,25 +269,16 @@ void barCoins(const char* saveDir,
       deadtimeVec.clear();
       deadtimeVec.resize(10, 0.);
 
-      cout.precision(11);
       if (spills1.size() == spills2.size()) {
-	double avg = 0;
-	for (int s=0; s < spills1.size(); s++) {
-	  avg += spills1.at(s) - spills2.at(s);
-	} 
-	avg /= spills1.size();
-	cout<<"Average "<<avg<<endl;
-	TH1D *hRes = new TH1D(Form("hRes_%s_%d",name.c_str(),n), "Resolution; / ns", 400, avg-50., avg+50);
-	for (int s=0; s < spills1.size(); s++) {
-	  hRes->Fill(spills1.at(s) - spills2.at(s));
-	  cout<<(spills1.at(s) - spills2.at(s))<<endl;
-	}
-	fout->cd();
-	hRes->Write(); 
+
       }
       else {
 	cout<<"Different number of spills between TDCs"<<endl;
       }
+      delete tofCoin1;
+      delete tofCoin2;
+      delete tofCoinChain1;
+      delete tofCoinChain2;
     } // Loop over the sub samples within a sample
 
     h2CosmicRate->Scale(1. / totalTime);
