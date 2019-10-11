@@ -132,6 +132,25 @@ void barCoins(const char* saveDir,
     h2matrix->GetZaxis()->SetTitleSize(.05);
     h2matrix->GetZaxis()->SetLabelSize(.05);
 
+    vector<TH1D*> cosmicRateVec;
+    vector<double> cosmicsLeftVec;
+    vector<double> cosmicsRightVec;
+    vector<double> asymmetryVec;
+    cosmicsLeftVec.resize(10, 0.);
+    cosmicsRightVec.resize(10, 0.);
+    asymmetryVec.resize(10, 0.);
+    for (int b=0; b<10; b++) {
+      TH1D *hCosmicRateBar = new TH1D(Form("hCosmicRateBar_%s_%d", name.c_str(), b+1), Form("Bar %d; Horizontal position / cm; Rate / s^{-1}", b+1), 20., 0, 140.);
+      hCosmicRateBar->GetXaxis()->SetTitleSize(.05);
+      hCosmicRateBar->GetXaxis()->SetLabelSize(.05);
+      hCosmicRateBar->GetYaxis()->SetTitleSize(.05);
+      hCosmicRateBar->GetYaxis()->SetLabelSize(.05);
+      hCosmicRateBar->SetLineColor(52 + b*3);
+      hCosmicRateBar->SetLineWidth(2);
+      hCosmicRateBar->Sumw2();
+      cosmicRateVec.push_back(hCosmicRateBar);
+    }
+
     // Loop over samples
     for (int n=0; n<startTimes.size(); n++) {
       cout<<"Subsample "<<n+1<<" of "<<startTimes.size()<<endl;
@@ -210,6 +229,8 @@ void barCoins(const char* saveDir,
 	  double dstofHitT1 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10.-TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1])/2.);
 	  if (!tofCoin->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
 	    double xpos = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
+	    cosmicRateVec.at(bar1-1)->Fill(xpos);
+	    (xpos > 70.) ? cosmicsRightVec.at(bar1-1)++ : cosmicsLeftVec.at(bar1-1)++;
 	    h2CosmicRate->Fill(xpos, bar1);
 	    hCosmicRate->Fill(bar1);
 	    deadtimeVec.at(bar1-1) = dstofHitT1;
@@ -299,8 +320,7 @@ void barCoins(const char* saveDir,
 	      for (int h2=lasth2; h2<tofTree2->GetEntries(); h2++) {
 		tofTree2->GetEntry(h2);
 		double dstofHitT2 = min(tof2->fakeTimeNs[0], tof2->fakeTimeNs[1]) - (10.-TMath::Abs(tof2->fakeTimeNs[0]-tof2->fakeTimeNs[1])/2.);
-		if (itdc==0) dstofHitT2 += avg;
-		else dstofHitT2 -= avg;
+		dstofHitT2 = (itdc==0) ? dstofHitT2 + avg : dstofHitT2 - avg;
 
 		if (dstofHitT2 < dstofHitT1) {
 		  lasth2 = h2;
@@ -332,14 +352,30 @@ void barCoins(const char* saveDir,
       totalTime += endTime - startTime - spillsVec[0].size();
 
     } // Loop over the sub samples within a sample
+    fout->cd();
+    THStack *hsBarRates = new THStack(Form("hsBarRates_%s", name.c_str()), Form("%s block cosmic rates; Horizontal position / cm; Rate / s^{-1}", name.c_str()));
+    TGraph *grAsymm = new TGraph();
+    grAsymm->SetTitle(Form("Cosmic ray asymmetry, %s block; Bar; Asymmetry", name.c_str()));
+    int cosmicsLeft = 0;
+    int cosmicsRight = 0;
+    for (int i=0; i<cosmicRateVec.size(); i++) {
+      cosmicRateVec.at(i)->Scale(1. / totalTime);
+      cosmicRateVec.at(i)->Write();
+      grAsymm->SetPoint(i, i+1, (cosmicsRightVec.at(i)-cosmicsLeftVec.at(i))/(cosmicsRightVec.at(i)+cosmicsLeftVec.at(i)));
+      cosmicsLeft += cosmicsLeftVec.at(i);
+      cosmicsRight += cosmicsRightVec.at(i);
+      hsBarRates->Add(cosmicRateVec.at(i));
+    }
+    cout<<"Asymmetry: "<<((double)cosmicsRight-(double)cosmicsLeft)/((double)cosmicsRight+(double)cosmicsLeft)<<endl;
 
     hCosmicRate->Scale(1. / totalTime);
     h2CosmicRate->Scale(1. / totalTime);
     h2matrix->Scale(1. / totalTime);
-    fout->cd();
     hCosmicRate->Write();
     h2CosmicRate->Write();
     h2matrix->Write();
+    hsBarRates->Write();
+    grAsymm->Write(Form("grAsymm_%s", name.c_str()));
   }
   TLine *lh = new TLine(0.5, 5.5, 10.5, 5.5);
   TLine *lv = new TLine(5.5, 0.5, 5.5, 10.5);
