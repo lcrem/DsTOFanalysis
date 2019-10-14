@@ -2,8 +2,8 @@
 // Macro to estimate the number of coincidences we should see in each bar
 
 const double cosmicStartY = 10.;
-const double cosmicLowX = -12.;
-const double cosmicHiX  = 12.;
+const double cosmicLowX = -25.;
+const double cosmicHiX  = 25.;
 
 double yAtx(const double xStart, const double x, const double theta, const double yStart = cosmicStartY) 
 {
@@ -13,12 +13,13 @@ double yAtx(const double xStart, const double x, const double theta, const doubl
 
 bool crossesBar(const double barX, const double barY, const double xStart, const double theta) 
 {
-  double y = yAtx(xStart, barX, theta);
-  bool crosses = (y < barY && y > barY - 0.1);
+  double y1 = yAtx(xStart, barX, theta);
+  double y2 = yAtx(xStart, barX-0.01, theta); // Because bars have finite width
+  bool crosses = ((y1 < barY && y1 > barY - 0.1) || (y2 < barY && y2 > barY - 0.1));
   return crosses;
 }
 
-void toyS4Cosmics(const char* saveDir, const int nAttempts = 100000000)
+void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 {
   // S4 bar-by-bar
   // Bar 10
@@ -90,7 +91,11 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 100000000)
   hCosXDist->GetXaxis()->SetLabelSize(.05);
   hCosXDist->GetYaxis()->SetLabelSize(.05);
   TH2D *h2CosXAngDist = new TH2D("h2CosXAngDist", "Cosmic Distribution; X / m", 100., cosmicLowX, cosmicHiX, 100., -0.5, 0.5);
-
+  h2CosXAngDist->Sumw2();
+  h2CosXAngDist->GetXaxis()->SetTitleSize(.05);
+  h2CosXAngDist->GetYaxis()->SetTitleSize(.05);
+  h2CosXAngDist->GetXaxis()->SetLabelSize(.05);
+  h2CosXAngDist->GetYaxis()->SetLabelSize(.05);
   TH1D *hCosEndX = new TH1D("hCosEndX", "Cosmic end point; X / m; Events", 100., cosmicLowX, cosmicHiX);
   hCosEndX->Sumw2();
   hCosEndX->GetXaxis()->SetTitleSize(.05);
@@ -103,7 +108,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 100000000)
   hBarHits->GetYaxis()->SetTitleSize(.05);
   hBarHits->GetXaxis()->SetLabelSize(.05);
   hBarHits->GetYaxis()->SetLabelSize(.05);
-  TH2D *h2BarCoins = new TH2D("h2BarCoins", "Bar coincidences; First bar; Second bar; Events", 10, 0.5, 10.5, 10., 0.5, 10.5);
+  TH2D *h2BarCoins = new TH2D("h2BarCoins", "Bar coincidences; First bar; Second bar; Fraction", 10, 0.5, 10.5, 10., 0.5, 10.5);
   h2BarCoins->Sumw2();
   h2BarCoins->GetXaxis()->SetTitleSize(.05);
   h2BarCoins->GetYaxis()->SetTitleSize(.05);
@@ -145,8 +150,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 100000000)
       } // Loop over bars
     }
   }
-  //  hCosDist->Draw("hist");
-  //hCosXDist->Draw("hist");
+  h2BarCoins->Scale(1. / h2BarCoins->Integral());
 
   fout->cd();
   hBarHits->Write();
