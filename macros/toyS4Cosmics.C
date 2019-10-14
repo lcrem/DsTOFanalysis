@@ -1,11 +1,25 @@
 // toyS4Cosmics.C
 // Macro to estimate the number of coincidences we should see in each bar
 
-void toyS4Cosmics(const char* saveDir, const int nAttempts = 10000000)
+const double cosmicStartY = 10.;
+const double cosmicLowX = -12.;
+const double cosmicHiX  = 12.;
+
+double yAtx(const double xStart, const double x, const double theta, const double yStart = cosmicStartY) 
 {
-  const double cosmicStartY = 10.;
-  const double cosmicLowX = -12.;
-  const double cosmicHiX  = 12.;
+  double y = (1./TMath::Tan(theta)) * (x - xStart) + yStart; 
+  return y;
+}
+
+bool crossesBar(const double barX, const double barY, const double xStart, const double theta) 
+{
+  double y = yAtx(xStart, barX, theta);
+  bool crosses = (y < barY && y > barY - 0.1);
+  return crosses;
+}
+
+void toyS4Cosmics(const char* saveDir, const int nAttempts = 100000000)
+{
   // S4 bar-by-bar
   // Bar 10
   const TVector3 D5_U1L(-0.2796, 0.4325, 12.1776);
@@ -64,9 +78,40 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 10000000)
   // 2D approximation - x is such that the bars are 1d in x, y is vertical
   // Cosmics are considered to be distributed uniformly in x and all start at same height
   TH1D *hCosDist = new TH1D("hCosDist", "Cosmic Distribution; #theta / #pi", 100., -0.5, 0.5);
+  hCosDist->Sumw2();
+  hCosDist->GetXaxis()->SetTitleSize(.05);
+  hCosDist->GetYaxis()->SetTitleSize(.05);
+  hCosDist->GetXaxis()->SetLabelSize(.05);
+  hCosDist->GetYaxis()->SetLabelSize(.05);
   TH1D *hCosXDist = new TH1D("hCosXDist", "Cosmic Distribution; X / m", 100., cosmicLowX, cosmicHiX);
+  hCosXDist->Sumw2();
+  hCosXDist->GetXaxis()->SetTitleSize(.05);
+  hCosXDist->GetYaxis()->SetTitleSize(.05);
+  hCosXDist->GetXaxis()->SetLabelSize(.05);
+  hCosXDist->GetYaxis()->SetLabelSize(.05);
   TH2D *h2CosXAngDist = new TH2D("h2CosXAngDist", "Cosmic Distribution; X / m", 100., cosmicLowX, cosmicHiX, 100., -0.5, 0.5);
+
   TH1D *hCosEndX = new TH1D("hCosEndX", "Cosmic end point; X / m; Events", 100., cosmicLowX, cosmicHiX);
+  hCosEndX->Sumw2();
+  hCosEndX->GetXaxis()->SetTitleSize(.05);
+  hCosEndX->GetYaxis()->SetTitleSize(.05);
+  hCosEndX->GetXaxis()->SetLabelSize(.05);
+  hCosEndX->GetYaxis()->SetLabelSize(.05);
+  TH1D *hBarHits = new TH1D("hBarHits", "Cosmic hits in each bar; Bar; Hits", 10, 0.5, 10.5);
+  hBarHits->Sumw2();
+  hBarHits->GetXaxis()->SetTitleSize(.05);
+  hBarHits->GetYaxis()->SetTitleSize(.05);
+  hBarHits->GetXaxis()->SetLabelSize(.05);
+  hBarHits->GetYaxis()->SetLabelSize(.05);
+  TH2D *h2BarCoins = new TH2D("h2BarCoins", "Bar coincidences; First bar; Second bar; Events", 10, 0.5, 10.5, 10., 0.5, 10.5);
+  h2BarCoins->Sumw2();
+  h2BarCoins->GetXaxis()->SetTitleSize(.05);
+  h2BarCoins->GetYaxis()->SetTitleSize(.05);
+  h2BarCoins->GetXaxis()->SetLabelSize(.05);
+  h2BarCoins->GetYaxis()->SetLabelSize(.05);
+  h2BarCoins->GetZaxis()->SetTitleSize(.05);
+  h2BarCoins->GetZaxis()->SetLabelSize(.05);
+
   for (int n = 0; n < nAttempts; n++) {
     double flatpi = -TMath::Pi()/2. + rand->Rndm() * TMath::Pi();
     double flat = rand->Rndm();
@@ -76,16 +121,40 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 10000000)
       hCosXDist->Fill(xStart);
       h2CosXAngDist->Fill(xStart, flatpi/TMath::Pi());
       hCosEndX->Fill(xStart + cosmicStartY * TMath::Tan(flatpi));
+      // Now test to see which bar (if any) it passes through
+      for (int b=0; b < s4BarXs.size(); b++) {
+	if (crossesBar(s4BarXs.at(b), s4BarTops.at(b), xStart, flatpi)) {
+	  hBarHits->Fill(b+1);
+	  for (int b2=b; b2 < s4BarXs.size(); b2++) {
+	    if (crossesBar(s4BarXs.at(b2), s4BarTops.at(b2), xStart, flatpi) && b2 != b) {
+	      // Determine which of these was struck first using x coord
+	      if (xStart < s4BarXs.at(b) && s4BarXs.at(b) < s4BarXs.at(b2))
+		h2BarCoins->Fill(b+1, b2+1);
+	      else if (xStart < s4BarXs.at(b2) && s4BarXs.at(b2) < s4BarXs.at(b))
+		h2BarCoins->Fill(b2+1, b+1);
+	      else if (xStart > s4BarXs.at(b) && s4BarXs.at(b) > s4BarXs.at(b2))
+		h2BarCoins->Fill(b+1, b2+1);  
+	      else if (xStart > s4BarXs.at(b2) && s4BarXs.at(b2) > s4BarXs.at(b))
+		h2BarCoins->Fill(b2+1, b+1);
+	      else
+		cout<<"You need to think about this more carefully"<<endl;
+	      
+	    } // Cosmic strikes a bar
+	  } // Loop over bars again
+	} // Cosmic strikes a bar
+      } // Loop over bars
     }
   }
   //  hCosDist->Draw("hist");
   //hCosXDist->Draw("hist");
 
   fout->cd();
+  hBarHits->Write();
   h2CosXAngDist->Write();
   hCosXDist->Write();
   hCosDist->Write();
   hCosEndX->Write();
+  h2BarCoins->Write();
   fout->Close();
   delete fout;
 
