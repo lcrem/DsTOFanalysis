@@ -163,10 +163,12 @@ int main(int argc, char *argv[]) {
 	    // Branch vars
 	    double tSoSd;
 	    double tToF[50];
+	    double tTrig;
 	    int nhit;
 	    tree->SetBranchAddress("tSoSd", &tSoSd);
 	    tree->SetBranchAddress("tToF", tToF);
 	    tree->SetBranchAddress("nhit", &nhit);
+	    tree->SetBranchAddress("tTrig", &tTrig);
 	    double lastUnix = 0.;
 	    int nMatch = 0;
 	    vector<double> spills;
@@ -192,15 +194,21 @@ int main(int argc, char *argv[]) {
 	    for (int ds1=0; ds1<coinTree1->GetEntries(); ds1++) {
 	      coinTree1->GetEntry(ds1);
 	      // In spill
-	      if ((tempcoin1->fakeTimeNs[0] - firstSpillNs) < 1e9 && tempcoin1->fakeTimeNs[0] > firstSpillNs) {
-		dsHits1.push_back(tempcoin1->fakeTimeNs[0] - firstSpillNs);
+	      if ((tempcoin1->fakeTimeNs[0] - firstSpillNs) < 1e9 &&
+		  tempcoin1->fakeTimeNs[0] > firstSpillNs &&
+		  (tempcoin1->fakeTimeNs[0] - tempcoin1->usTofSignal - 40.) < 160. &&
+		  (tempcoin1->fakeTimeNs[0] - tempcoin1->usTofSignal - 40.) > 30.) {
+		dsHits1.push_back(tempcoin1->usTofSignal - firstSpillNs);
 	      }
 	    }
 	    for (int ds2=0; ds2<coinTree2->GetEntries(); ds2++) {
 	      coinTree2->GetEntry(ds2);
-	      // In spill
-	      if ((tempcoin2->fakeTimeNs[0] - firstSpillNs) < 1e9 && tempcoin2->fakeTimeNs[0] > firstSpillNs) {
-		dsHits2.push_back(tempcoin2->fakeTimeNs[0] - firstSpillNs);
+	      // In spill and has coincident S2 hit
+	      if ((tempcoin2->fakeTimeNs[0] - firstSpillNs) < 1e9 && 
+		  tempcoin2->fakeTimeNs[0] > firstSpillNs &&
+		  (tempcoin2->fakeTimeNs[0] - tempcoin2->usTofSignal - 40.) < 160. &&
+		  (tempcoin2->fakeTimeNs[0] - tempcoin2->usTofSignal - 40.) > 30.) {
+		dsHits2.push_back(tempcoin2->usTofSignal - firstSpillNs);
 	      }
 	    }
 	    // See if the hits match between ustof and dstof if there is more than one matching spill
@@ -212,12 +220,9 @@ int main(int argc, char *argv[]) {
 		int nMatchedHits = 0;
 		for (int i = 0; i<tree->GetEntries(); i++) {
 		  tree->GetEntry(i);
-		  // In spill
-		  if (tToF[0] > spillsNs[s] && tToF[0] - spillsNs[s] < 1e9) {
-		    for (int h=0; h<nhit; h++) {
-		      // Use crude drift correction. Should work...
-		      usHits.push_back((tToF[h] - spillsNs[s]) / (1. + stdDrift));	  
-		    } // hits
+		  // In spill and has S2 hit
+		  if (tToF[0] > spillsNs[s] && tToF[0] - spillsNs[s] < 1e9 && tTrig !=0) {
+		    usHits.push_back(tTrig - spillsNs[s]);	  
 		  }
 		} // ustof tree
 
@@ -252,13 +257,13 @@ int main(int argc, char *argv[]) {
 		  }
 		  // Put the cut on number of matched hits required to be matched at 75
 		  // Count the number of matched (<500ns separation) hits
-		  if (abs(lowest) <= 750) {
+		  if (lowest < 2000. && lowest > 190.) {
 		    nMatchedHits++;
 		  }
 		}
 		cout<<nMatchedHits<<" matched hits: ";
 	      
-		if(nMatchedHits > 1) {
+		if(nMatchedHits > 5) {
 		  spillTimes.at(2) = spillsNs[s];
 		  spillTimes.at(3) = spills[s];
 		  cout<<"PASSED"<<endl;
