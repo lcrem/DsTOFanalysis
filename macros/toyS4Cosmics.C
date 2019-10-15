@@ -152,6 +152,21 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   }
   h2BarCoins->Scale(1. / h2BarCoins->Integral());
 
+  // Some graphs to help show bar positions
+  TMultiGraph *mg = new TMultiGraph("mgBars", "S4 bar positions in MC; X / m; Y / m");
+  for (int i=0; i<s4BarTops.size(); i++) {
+    TGraph *grBar = new TGraph();
+    grBar->SetTitle(Form("Bar %d", i+1));
+    grBar->SetLineWidth(2);
+    grBar->SetLineColor(52 + i * 3);
+    grBar->SetPoint(grBar->GetN(), s4BarXs.at(i), s4BarTops.at(i));
+    grBar->SetPoint(grBar->GetN(), s4BarXs.at(i), s4BarTops.at(i)-0.1);
+    grBar->SetPoint(grBar->GetN(), s4BarXs.at(i)-0.01, s4BarTops.at(i)-0.1);
+    grBar->SetPoint(grBar->GetN(), s4BarXs.at(i)-0.01, s4BarTops.at(i));
+    grBar->SetPoint(grBar->GetN(), s4BarXs.at(i), s4BarTops.at(i));
+    mg->Add(grBar);
+  }
+
   fout->cd();
   hBarHits->Write();
   h2CosXAngDist->Write();
@@ -159,6 +174,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   hCosDist->Write();
   hCosEndX->Write();
   h2BarCoins->Write();
+  mg->Write();
   fout->Close();
   delete fout;
 
