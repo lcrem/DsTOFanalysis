@@ -1,7 +1,7 @@
 // toyS4Cosmics.C
 // Macro to estimate the number of coincidences we should see in each bar
 
-const double startRadius  = 5.;
+const double startRadius  = 7.;
 
 TVector3 intersectionPnt(const TVector3 startPnt, const TVector3 dir, 
 			 const TVector3 barVec, const TVector3 barPnt)
@@ -79,8 +79,8 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   vector<double> s4BarBottoms;
   TVector3 shiftVector(avgX, 0., avgZ);
 
-  vector<TVector3> s4LU, s4RU, s4LD, s4RD;
-  vector<TVector3> s4BarVec;
+  vector<TVector3> s4LU1, s4RU1, s4LD1, s4RD1, s4LU2, s4RU2, s4LD2, s4RD2;
+  vector<TVector3> s4BarVec1, s4BarVec2;
   for (int i=0; i<s4BarsL.size(); i++) {
     s4BarTops.push_back(s4BarsL.at(i).Y() + yOffset);
     s4BarBottoms.push_back(s4BarsL.at(i).Y() - 0.1 + yOffset);
@@ -94,17 +94,30 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
     LD.SetY(LD.Y()+yOffset-0.1);
     RD = s4BarsR.at(i);
     RD.SetY(RD.Y()+yOffset-0.1);
-    s4LU.push_back(LU);
-    s4RU.push_back(RU);
-    s4LD.push_back(LD);
-    s4RD.push_back(RD);
-    s4BarVec.push_back(((LU - RU).Cross(RD - RU)).Unit());
+    s4LU1.push_back(LU);
+    s4RU1.push_back(RU);
+    s4LD1.push_back(LD);
+    s4RD1.push_back(RD);
+    s4BarVec1.push_back(((LU - RU).Cross(RD - RU)).Unit());
+    LU.SetZ(LU.Z()-0.01);
+    RU.SetZ(RU.Z()-0.01);
+    LD.SetZ(LD.Z()-0.01);
+    RD.SetZ(RD.Z()-0.01);
+    s4LU2.push_back(LU);
+    s4RU2.push_back(RU);
+    s4LD2.push_back(LD);
+    s4RD2.push_back(RD);
+    s4BarVec2.push_back(((LU - RU).Cross(RD - RU)).Unit());
   }
-  vector< vector<TVector3> > s4Pnts;
-  s4Pnts.push_back(s4LU);
-  s4Pnts.push_back(s4RU);
-  s4Pnts.push_back(s4LD);
-  s4Pnts.push_back(s4RD);
+  vector< vector<TVector3> > s4Pnts1, s4Pnts2;
+  s4Pnts1.push_back(s4LU1);
+  s4Pnts1.push_back(s4RU1);
+  s4Pnts1.push_back(s4LD1);
+  s4Pnts1.push_back(s4RD1);
+  s4Pnts2.push_back(s4LU2);
+  s4Pnts2.push_back(s4RU2);
+  s4Pnts2.push_back(s4LD2);
+  s4Pnts2.push_back(s4RD2);
 
   TRandom3 *rand = new TRandom3(6789);
 
@@ -130,6 +143,12 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2CosPhiThetaDist->GetYaxis()->SetTitleSize(.05);
   h2CosPhiThetaDist->GetXaxis()->SetLabelSize(.05);
   h2CosPhiThetaDist->GetYaxis()->SetLabelSize(.05);
+  TH2D *h2PhiThetaSpatialDist = new TH2D("h2PhiThetaSpatialDist", "Cosmic Distribution; #phi / #pi; #theta / #pi", 100., -1., 0., 100., -1., 0.);
+  h2PhiThetaSpatialDist->Sumw2();
+  h2PhiThetaSpatialDist->GetXaxis()->SetTitleSize(.05);
+  h2PhiThetaSpatialDist->GetYaxis()->SetTitleSize(.05);
+  h2PhiThetaSpatialDist->GetXaxis()->SetLabelSize(.05);
+  h2PhiThetaSpatialDist->GetYaxis()->SetLabelSize(.05);
   TH1D *hBarHits = new TH1D("hBarHits", "Cosmic hits in each bar; Bar; Hits", 10, 0.5, 10.5);
   hBarHits->Sumw2();
   hBarHits->GetXaxis()->SetTitleSize(.05);
@@ -152,7 +171,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2EndPos->GetYaxis()->SetLabelSize(.05);
   h2EndPos->GetZaxis()->SetTitleSize(.05);
   h2EndPos->GetZaxis()->SetLabelSize(.05);
-  TH3D *h3StartPos = new TH3D("h3StartPos", "Cosmic ray start positions; X / m; Y / m; Z / m", 50, -5+shiftVector.X(), 5+shiftVector.X(), 50, -5, 5, 50, -5+shiftVector.Z(), 5+shiftVector.Z());
+  TH3D *h3StartPos = new TH3D("h3StartPos", "Cosmic ray start positions; X / m; Y / m; Z / m", 50, -6.+shiftVector.X(), 6.+shiftVector.X(), 50, -6., 6., 50, -6.+shiftVector.Z(), 6.+shiftVector.Z());
   h3StartPos->Sumw2();
   h3StartPos->GetXaxis()->SetTitleSize(.05);
   h3StartPos->GetYaxis()->SetTitleSize(.05);
@@ -199,42 +218,54 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
     if (flat < (TMath::Cos(dirTheta) * TMath::Cos(dirTheta))) {
       hCosDist->Fill(dirTheta/TMath::Pi());
       double dirPhi = TMath::Pi() * rand->Rndm();
-      double spatialPhi   = -TMath::Pi() * rand->Rndm();
-      double spatialTheta = -TMath::Pi() + TMath::Pi() * rand->Rndm();
-      hCosPhiDist->Fill(dirPhi / TMath::Pi());
-      h2CosPhiThetaDist->Fill(dirPhi/TMath::Pi(), dirTheta/TMath::Pi());
-      TVector3 v;
-      v.SetMagThetaPhi(startRadius, spatialTheta, spatialPhi);
-      v += shiftVector;
-      h3StartPos->Fill(v.X(), v.Y(), v.Z());
-      h2StartXY->Fill(v.X(), v.Y());
-      h2StartXZ->Fill(v.X(), v.Z());
-      TVector3 dir;
-      dir.SetMagThetaPhi(1., dirPhi, dirTheta);
-      h3StartDir->Fill(-dir.X(), -dir.Y(), -dir.Z());
-      TVector3 f(0., 0., 0.);
-      TVector3 floorInt = intersectionPnt(v, -dir, floorVec, f);
-      h2EndPos->Fill(floorInt.X(), floorInt.Z());
-      // Now test to see which bar (if any) it passes through
-      for (int b=0; b < s4Pnts[0].size(); b++) {	
-	TVector3 int1 = intersectionPnt(v, -dir, s4BarVec.at(b), s4Pnts.at(0).at(b));
-	if (crossesBar(v, -dir, s4BarVec.at(b), s4Pnts.at(1).at(b), 
-		       s4Pnts.at(0).at(b), s4Pnts.at(2).at(b)) && int1.Y() <= v.Y()) {
-	  hBarHits->Fill(b+1);
-	  for (int b2=b; b2 < s4Pnts[0].size(); b2++) {
-	    TVector3 int2 = intersectionPnt(v, -dir, s4BarVec.at(b2), s4Pnts.at(0).at(b2));
-	    if (crossesBar(v, -dir, s4BarVec.at(b2), s4Pnts.at(1).at(b2), 
-			   s4Pnts.at(0).at(b2), s4Pnts.at(2).at(b2)) && int2.Y() <= v.Y() && b!=b2) {
-	      if (int1.Y() > int2.Y()) h2BarCoins->Fill(b+1, b2+1);
-	      else h2BarCoins->Fill(b2+1, b+1);
-	      h3BarTot->Fill(int1.X(), int1.Z(), int1.Y());
-	      h3BarTot->Fill(int2.X(), int2.Z(), int2.Y());
-	      h3BarVec.at(b)->Fill(int1.X(), int1.Z(), int1.Y());
-	      h3BarVec.at(b2)->Fill(int2.X(), int2.Z(), int2.Y());
+      // Generate uniform points on sphere
+      double x = -startRadius + 2. * startRadius * rand->Rndm();
+      double z = -startRadius + 2. * startRadius * rand->Rndm();
+      double r = TMath::Sqrt(pow(x, 2)+pow(z, 2));
+      if (r < startRadius) {
+	double y = TMath::Sqrt(pow(startRadius, 2) - pow(x, 2) - pow(z, 2));
+	TVector3 v(x, y, z);
+	hCosPhiDist->Fill(dirPhi / TMath::Pi());
+	h2PhiThetaSpatialDist->Fill(v.Phi()/TMath::Pi(), v.Theta()/TMath::Pi());
+	h2CosPhiThetaDist->Fill(dirPhi/TMath::Pi(), dirTheta/TMath::Pi());
+	v += shiftVector;
+	cout<<"x, y, z "<<x<<", "<<y<<", "<<z<<endl;
+	h3StartPos->Fill(v.X(), v.Y(), v.Z());
+	h2StartXY->Fill(v.X(), v.Y());
+	h2StartXZ->Fill(v.X(), v.Z());
+	TVector3 dir;
+	dir.SetMagThetaPhi(1., dirPhi, dirTheta);
+	h3StartDir->Fill(-dir.X(), -dir.Y(), -dir.Z());
+	TVector3 f(0., 0., 0.);
+	TVector3 floorInt = intersectionPnt(v, -dir, floorVec, f);
+	h2EndPos->Fill(floorInt.X(), floorInt.Z());
+	// Now test to see which bar (if any) it passes through
+	for (int b=0; b < s4Pnts1[0].size(); b++) {	
+	  TVector3 int11 = intersectionPnt(v, -dir, s4BarVec1.at(b), s4Pnts1.at(0).at(b));
+	  TVector3 int12 = intersectionPnt(v, -dir, s4BarVec2.at(b), s4Pnts2.at(0).at(b));
+	  if ((crossesBar(v, -dir, s4BarVec1.at(b), s4Pnts1.at(1).at(b), 
+			  s4Pnts1.at(0).at(b), s4Pnts1.at(2).at(b)) && int11.Y() <= v.Y()) ||
+	      (crossesBar(v, -dir, s4BarVec2.at(b), s4Pnts2.at(1).at(b), 
+			  s4Pnts2.at(0).at(b), s4Pnts2.at(2).at(b)) && int12.Y() <= v.Y())) {
+	    hBarHits->Fill(b+1);
+	    for (int b2=b; b2 < s4Pnts1[0].size(); b2++) {
+	      TVector3 int21 = intersectionPnt(v, -dir, s4BarVec1.at(b2), s4Pnts1.at(0).at(b2));
+	      TVector3 int22 = intersectionPnt(v, -dir, s4BarVec2.at(b2), s4Pnts2.at(0).at(b2));
+	      if (((crossesBar(v, -dir, s4BarVec1.at(b2), s4Pnts1.at(1).at(b2), 
+			       s4Pnts1.at(0).at(b2), s4Pnts1.at(2).at(b2)) && int21.Y() <= v.Y()) ||
+		   (crossesBar(v, -dir, s4BarVec2.at(b2), s4Pnts2.at(1).at(b2), 
+			       s4Pnts2.at(0).at(b2), s4Pnts2.at(2).at(b2)) && int22.Y() <= v.Y())) && b!=b2) {
+		if (int11.Y() > int21.Y()) h2BarCoins->Fill(b+1, b2+1);
+		else h2BarCoins->Fill(b2+1, b+1);
+		h3BarTot->Fill(int11.X(), int11.Z(), int11.Y());
+		h3BarTot->Fill(int21.X(), int21.Z(), int21.Y());
+		h3BarVec.at(b)->Fill(int11.X(), int11.Z(), int11.Y());
+		h3BarVec.at(b2)->Fill(int21.X(), int21.Z(), int21.Y());
+	      }
 	    }
 	  }
-	}
-      } // Loop over bars
+	} // Loop over bars
+      }
     }
   }
   // h2BarCoins->Scale(1. / h2BarCoins->Integral());
@@ -263,7 +294,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2CosPhiThetaDist->Write();
   hCosPhiDist->Write();
   hCosDist->Write();
-  // hCosEndX->Write();
+  h2PhiThetaSpatialDist->Write();
   h2EndPos->Write();
   h3StartPos->Write();
   h3StartDir->Write();
