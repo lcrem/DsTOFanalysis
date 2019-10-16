@@ -2,6 +2,7 @@
 // Macro to estimate the number of coincidences we should see in each bar
 
 const double startRadius  = 7.;
+const double barRes = TMath::Sqrt(2.)*1e-9;
 
 TVector3 intersectionPnt(const TVector3 startPnt, const TVector3 dir, 
 			 const TVector3 barVec, const TVector3 barPnt)
@@ -163,6 +164,14 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2BarCoins->GetYaxis()->SetLabelSize(.05);
   h2BarCoins->GetZaxis()->SetTitleSize(.05);
   h2BarCoins->GetZaxis()->SetLabelSize(.05);
+  TH2D *h2BarCoinsRes = new TH2D("h2BarCoinsRes", "Bar coincidences; First bar; Second bar; Fraction", 10, 0.5, 10.5, 10., 0.5, 10.5);
+  h2BarCoinsRes->Sumw2();
+  h2BarCoinsRes->GetXaxis()->SetTitleSize(.05);
+  h2BarCoinsRes->GetYaxis()->SetTitleSize(.05);
+  h2BarCoinsRes->GetXaxis()->SetLabelSize(.05);
+  h2BarCoinsRes->GetYaxis()->SetLabelSize(.05);
+  h2BarCoinsRes->GetZaxis()->SetTitleSize(.05);
+  h2BarCoinsRes->GetZaxis()->SetLabelSize(.05);
   TH2D *h2EndPos = new TH2D("h2EndPos", "Cosmics end positions; X / m; Z / m; Number", 100, -8.+shiftVector.X(), 8.+shiftVector.X(), 100, -8.+shiftVector.Z(), 8.+shiftVector.Z());
   h2EndPos->Sumw2();
   h2EndPos->GetXaxis()->SetTitleSize(.05);
@@ -203,6 +212,16 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2StartXZ->GetYaxis()->SetLabelSize(.05);
   h2StartXZ->GetZaxis()->SetTitleSize(.05);
   h2StartXZ->GetZaxis()->SetLabelSize(.05);
+  TH1D *hHitSep = new TH1D("hHitSep", "Bar coincidence time separation; Time / s; Events", 50, 0., 4e-9); 
+  hHitSep->GetXaxis()->SetTitleSize(.05);
+  hHitSep->GetYaxis()->SetTitleSize(.05);
+  hHitSep->GetXaxis()->SetLabelSize(.05);
+  hHitSep->GetYaxis()->SetLabelSize(.05);
+  TH1D *hHitSepRes = new TH1D("hHitSepRes", "Bar coincidence time separation (with resolution); Time / s; Events", 75, -2e-9, 4e-9); 
+  hHitSepRes->GetXaxis()->SetTitleSize(.05);
+  hHitSepRes->GetYaxis()->SetTitleSize(.05);
+  hHitSepRes->GetXaxis()->SetLabelSize(.05);
+  hHitSepRes->GetYaxis()->SetLabelSize(.05);
 
   vector<TH3D*> h3BarVec;
   for (int b=0; b<10; b++) {
@@ -241,22 +260,44 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 	h2EndPos->Fill(floorInt.X(), floorInt.Z());
 	// Now test to see which bar (if any) it passes through
 	for (int b=0; b < s4Pnts1[0].size(); b++) {	
+	  bool int11Good = false;
+	  bool int12Good = false;
 	  TVector3 int11 = intersectionPnt(v, -dir, s4BarVec1.at(b), s4Pnts1.at(0).at(b));
 	  TVector3 int12 = intersectionPnt(v, -dir, s4BarVec2.at(b), s4Pnts2.at(0).at(b));
+	  // If ray crosses both edges of the bar
 	  if ((crossesBar(v, -dir, s4BarVec1.at(b), s4Pnts1.at(1).at(b), 
-			  s4Pnts1.at(0).at(b), s4Pnts1.at(2).at(b)) && int11.Y() <= v.Y()) ||
-	      (crossesBar(v, -dir, s4BarVec2.at(b), s4Pnts2.at(1).at(b), 
-			  s4Pnts2.at(0).at(b), s4Pnts2.at(2).at(b)) && int12.Y() <= v.Y())) {
+			  s4Pnts1.at(0).at(b), s4Pnts1.at(2).at(b)) && int11.Y() <= v.Y()))
+	    int11Good = true;
+	  if ((crossesBar(v, -dir, s4BarVec2.at(b), s4Pnts2.at(1).at(b), 
+			  s4Pnts2.at(0).at(b), s4Pnts2.at(2).at(b)) && int12.Y() <= v.Y()))
+	    int12Good=true;
+	  if (int12Good || int11Good) {
 	    hBarHits->Fill(b+1);
 	    for (int b2=b; b2 < s4Pnts1[0].size(); b2++) {
 	      TVector3 int21 = intersectionPnt(v, -dir, s4BarVec1.at(b2), s4Pnts1.at(0).at(b2));
 	      TVector3 int22 = intersectionPnt(v, -dir, s4BarVec2.at(b2), s4Pnts2.at(0).at(b2));
-	      if (((crossesBar(v, -dir, s4BarVec1.at(b2), s4Pnts1.at(1).at(b2), 
-			       s4Pnts1.at(0).at(b2), s4Pnts1.at(2).at(b2)) && int21.Y() <= v.Y()) ||
-		   (crossesBar(v, -dir, s4BarVec2.at(b2), s4Pnts2.at(1).at(b2), 
-			       s4Pnts2.at(0).at(b2), s4Pnts2.at(2).at(b2)) && int22.Y() <= v.Y())) && b!=b2) {
-		if (int11.Y() > int21.Y()) h2BarCoins->Fill(b+1, b2+1);
-		else h2BarCoins->Fill(b2+1, b+1);
+	      bool int21Good = false;
+	      bool int22Good = false;
+	      if (crossesBar(v, -dir, s4BarVec1.at(b2), s4Pnts1.at(1).at(b2), 
+			     s4Pnts1.at(0).at(b2), s4Pnts1.at(2).at(b2)) && int21.Y() <= v.Y() && b!=b2)
+		int21Good = true;
+	      if (crossesBar(v, -dir, s4BarVec2.at(b2), s4Pnts2.at(1).at(b2), 
+			     s4Pnts2.at(0).at(b2), s4Pnts2.at(2).at(b2)) && int22.Y() <= v.Y() && b!=b2)
+		int22Good = true;
+	      if (int21Good || int22Good) {
+		TVector3 int1 = (int11Good) ? int11 : int12;
+		TVector3 int2 = (int21Good) ? int21 : int22;
+		hHitSep->Fill(((int1-int2).Mag()/3e8));
+		double timeRes = rand->Gaus((int1-int2).Mag()/3e8, barRes); // Mimic finite resolution
+		hHitSepRes->Fill(timeRes);
+		if (int1.Y() > int2.Y()) {
+		  h2BarCoins->Fill(b+1, b2+1);
+		  (timeRes > 0.) ? h2BarCoinsRes->Fill(b+1, b2+1) : h2BarCoinsRes->Fill(b2+1, b+1);
+		}
+		else {
+		  h2BarCoins->Fill(b2+1, b+1);
+		  (timeRes > 0.) ? h2BarCoinsRes->Fill(b2+1, b+1) : h2BarCoinsRes->Fill(b+1, b2+1);
+		}
 		h3BarTot->Fill(int11.X(), int11.Z(), int11.Y());
 		h3BarTot->Fill(int21.X(), int21.Z(), int21.Y());
 		h3BarVec.at(b)->Fill(int11.X(), int11.Z(), int11.Y());
@@ -268,7 +309,8 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
       }
     }
   }
-  // h2BarCoins->Scale(1. / h2BarCoins->Integral());
+  h2BarCoins->Scale(1. / h2BarCoins->Integral());
+  h2BarCoinsRes->Scale(1. / h2BarCoinsRes->Integral());
 
   // Some graphs to help show bar positions
   TMultiGraph *mg = new TMultiGraph("mgBars", "S4 bar positions in MC; X / m; Y / m");
@@ -291,6 +333,8 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
     h3BarVec.at(b)->Write();
   }
   hBarHits->Write();
+  hHitSep->Write();
+  hHitSepRes->Write();
   h2CosPhiThetaDist->Write();
   hCosPhiDist->Write();
   hCosDist->Write();
@@ -301,6 +345,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   h2StartXY->Write();
   h2StartXZ->Write();
   h2BarCoins->Write();
+  h2BarCoinsRes->Write();
   mg->Write();
   fout->Close();
   delete fout;
