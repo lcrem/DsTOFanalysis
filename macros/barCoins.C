@@ -44,7 +44,7 @@ void barCoins(const char* saveDir,
   const double startLongTime = 1535997500;
   const double endLongTime   = 1536083900;
 
-  const double coinCut = 1.; // Cut for determining if a coincidence has occurred
+  const double coinCut = 4; // Cut for determining if a coincidence has occurred
   const double deadtimeCut = 185.;
 
   TFile *fout = new TFile(saveDir, "recreate");
@@ -124,13 +124,25 @@ void barCoins(const char* saveDir,
     h2CosmicRate->GetZaxis()->SetTitleSize(.05);
     h2CosmicRate->GetZaxis()->SetLabelSize(.05);
     h2CosmicRate->Sumw2();
-    TH2D *h2matrix = new TH2D(Form("matrix_%s", name.c_str()), "Bar coincidences; Bar 1; Bar 2; Rate / s^{-1}", 10, 0.5, 10.5, 10, 0.5, 10.5);
+    TH2D *h2matrix = new TH2D(Form("h2matrix_%s", name.c_str()), "Bar coincidences; First bar; Second bar; Rate / s^{-1}", 10, 0.5, 10.5, 10, 0.5, 10.5);
     h2matrix->GetXaxis()->SetTitleSize(.05);
     h2matrix->GetXaxis()->SetLabelSize(.05);
     h2matrix->GetYaxis()->SetTitleSize(.05);
     h2matrix->GetYaxis()->SetLabelSize(.05);
     h2matrix->GetZaxis()->SetTitleSize(.05);
     h2matrix->GetZaxis()->SetLabelSize(.05);
+    TH2D *h2matrixNorm = new TH2D(Form("h2matrixNorm_%s", name.c_str()), "Bar coincidences; First bar; Second Bar; Fraction", 10, 0.5, 10.5, 10, 0.5, 10.5);
+    h2matrixNorm->GetXaxis()->SetTitleSize(.05);
+    h2matrixNorm->GetXaxis()->SetLabelSize(.05);
+    h2matrixNorm->GetYaxis()->SetTitleSize(.05);
+    h2matrixNorm->GetYaxis()->SetLabelSize(.05);
+    h2matrixNorm->GetZaxis()->SetTitleSize(.05);
+    h2matrixNorm->GetZaxis()->SetLabelSize(.05);
+    TH1D *hHitSep = new TH1D(Form("hHitSep_%s", name.c_str()), "Coincidence time separation; Time / s; Events", 50, 0., 4e-9);
+    hHitSep->GetXaxis()->SetTitleSize(.05);
+    hHitSep->GetXaxis()->SetLabelSize(.05);
+    hHitSep->GetYaxis()->SetTitleSize(.05);
+    hHitSep->GetYaxis()->SetLabelSize(.05);
 
     vector<TH1D*> cosmicRateVec;
     vector<double> cosmicsLeftVec;
@@ -203,6 +215,7 @@ void barCoins(const char* saveDir,
 
       // First match hits between bars in the same TDC
       for (int itdc = 0; itdc < 2; itdc++) {
+	int thisRun = 0;
 	TChain *tofCoinChain = new TChain("tofCoinTree");
 	for (int irun=runMin; irun<runMax+1; irun++) {
 	  // Load input files
@@ -221,6 +234,12 @@ void barCoins(const char* saveDir,
 	    lastSpill = tofCoin->lastDelayedBeamSignal;
 	    spillsVec[itdc].push_back(tofCoin->lastDelayedBeamSignal);
 	    runVec[itdc].push_back(tofCoin->run);
+	  }
+
+	  if (tofCoin->run != thisRun) {
+	    deadtimeVec.clear();
+	    deadtimeVec.resize(10, 0.);
+	    thisRun = tofCoin->run;
 	  }
 
 	  if (tofCoin->inSpill) continue;
@@ -245,6 +264,8 @@ void barCoins(const char* saveDir,
 		  dstofHitT2 - deadtimeVec.at(bar2-1) > deadtimeCut) {
 		deadtimeVec.at(bar2-1) = dstofHitT2;
 		h2matrix->Fill(bar1, bar2);
+		h2matrixNorm->Fill(bar1, bar2);
+		hHitSep->Fill((dstofHitT2 - dstofHitT1)/1e9);
 	      } // Is not in a spill
 	    } // Loop over TChain for a second time
 	  } // Is not in a spill
@@ -295,6 +316,8 @@ void barCoins(const char* saveDir,
 	// Now use calculated average offset to do the matching between TDCs
 	// We are only matching in one direction so need to do this twice
 	for (int itdc=0; itdc < 2; itdc++) {
+	  deadtimeVec.clear();
+	  deadtimeVec.resize(10, 0.);
 	  cout<<"Cross TDC hits, TDC "<<itdc+1<<endl;
 	  int lasth2 = 0;
 	  int tdc1 = (itdc == 0) ? 1 : 2;
@@ -313,6 +336,7 @@ void barCoins(const char* saveDir,
 	    if (tof1->unixTime[0]<startTime) continue;
 	    if (tof1->unixTime[0]>endTime) break;
 	    if (tof1->inSpill) continue;
+
 	    int bar1 = tof1->bar;
 	    double dstofHitT1 = min(tof1->fakeTimeNs[0], tof1->fakeTimeNs[1]) - (10.-TMath::Abs(tof1->fakeTimeNs[0]-tof1->fakeTimeNs[1])/2.);
 	    if (!tof1->inSpill && (dstofHitT1 - deadtimeVec.at(bar1-1)) > deadtimeCut) {
@@ -329,10 +353,12 @@ void barCoins(const char* saveDir,
 
 		if (dstofHitT2 - dstofHitT1 > 20.) break;
 		int bar2 = tof2->bar;
-		if (!tof2->inSpill && (dstofHitT2 - deadtimeVec.at(bar2-1)) > deadtimeCut &&
-		    (dstofHitT2 - dstofHitT1) < coinCut && (dstofHitT2 - dstofHitT1) > 0.) {
+		if (!tof2->inSpill && dstofHitT2 - deadtimeVec.at(bar2-1) > deadtimeCut &&
+		    dstofHitT2 - dstofHitT1 < coinCut && dstofHitT2 - dstofHitT1 > 0.) {
 		  deadtimeVec.at(bar2-1) = dstofHitT2;
 		  h2matrix->Fill(bar1, bar2);
+		  h2matrixNorm->Fill(bar1, bar2);
+		  hHitSep->Fill((dstofHitT2 - dstofHitT1)/1e9);
 		  lasth2 = h2;
 		}
 	      } // Loop over second TDC entries
@@ -371,9 +397,12 @@ void barCoins(const char* saveDir,
     hCosmicRate->Scale(1. / totalTime);
     h2CosmicRate->Scale(1. / totalTime);
     h2matrix->Scale(1. / totalTime);
+    h2matrixNorm->Scale(1. / h2matrixNorm->Integral());
+    hHitSep->Write();
     hCosmicRate->Write();
     h2CosmicRate->Write();
     h2matrix->Write();
+    h2matrixNorm->Write();
     hsBarRates->Write();
     grAsymm->Write(Form("grAsymm_%s", name.c_str()));
   }
