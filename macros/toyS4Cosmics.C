@@ -213,6 +213,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 
   TVector3 floorVec(0., 1., 0.);
   for (int n = 0; n < nAttempts; n++) {
+    if (n % 1000000 == 0) cout<<n<<" of "<<nAttempts<<" done"<<endl;
     double dirTheta = -TMath::Pi()/2. + rand->Rndm() * TMath::Pi();
     double flat = rand->Rndm();
     if (flat < (TMath::Cos(dirTheta) * TMath::Cos(dirTheta))) {
@@ -229,7 +230,6 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 	h2PhiThetaSpatialDist->Fill(v.Phi()/TMath::Pi(), v.Theta()/TMath::Pi());
 	h2CosPhiThetaDist->Fill(dirPhi/TMath::Pi(), dirTheta/TMath::Pi());
 	v += shiftVector;
-	cout<<"x, y, z "<<x<<", "<<y<<", "<<z<<endl;
 	h3StartPos->Fill(v.X(), v.Y(), v.Z());
 	h2StartXY->Fill(v.X(), v.Y());
 	h2StartXZ->Fill(v.X(), v.Z());
