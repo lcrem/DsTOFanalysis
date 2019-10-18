@@ -25,8 +25,10 @@ bool crossesBar(const TVector3 startPnt, const TVector3 dir, const TVector3 barV
   return cross;
 }
 
-void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
+void toyS4Cosmics(const char* saveDir, const long long int nAttempts = 1e8)
 {
+  TH1D *hAttempts = new TH1D("hAttempts", "MC iterations", 2, 0, 2);
+  TH1D *hNCosmics = new TH1D("hNCosmics", "Generated cosmics", 2, 0, 2);
   // S4 bar-by-bar
   // Bar 10
   const TVector3 D5_U1L(-0.2796, 0.4325, 12.1776);
@@ -232,6 +234,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 
   TVector3 floorVec(0., 1., 0.);
   for (int n = 0; n < nAttempts; n++) {
+    hAttempts->Fill(1);
     if (n % 1000000 == 0) cout<<n<<" of "<<nAttempts<<" done"<<endl;
     double dirTheta = -TMath::Pi()/2. + rand->Rndm() * TMath::Pi();
     double flat = rand->Rndm();
@@ -243,6 +246,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
       double z = -startRadius + 2. * startRadius * rand->Rndm();
       double r = TMath::Sqrt(pow(x, 2)+pow(z, 2));
       if (r < startRadius) {
+	hNCosmics->Fill(1);
 	double y = TMath::Sqrt(pow(startRadius, 2) - pow(x, 2) - pow(z, 2));
 	TVector3 v(x, y, z);
 	hCosPhiDist->Fill(dirPhi / TMath::Pi());
@@ -314,6 +318,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
 
   // Some graphs to help show bar positions
   TMultiGraph *mg = new TMultiGraph("mgBars", "S4 bar positions in MC; X / m; Y / m");
+  TLegend *l = new TLegend(0.1, 0.1, 0.5, 0.5);
   for (int i=0; i<s4BarTops.size(); i++) {
     TGraph *grBar = new TGraph();
     grBar->SetTitle(Form("Bar %d", i+1));
@@ -324,6 +329,7 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
     grBar->SetPoint(grBar->GetN(), s4BarXs.at(i)-0.01, s4BarTops.at(i)-0.1);
     grBar->SetPoint(grBar->GetN(), s4BarXs.at(i)-0.01, s4BarTops.at(i));
     grBar->SetPoint(grBar->GetN(), s4BarXs.at(i), s4BarTops.at(i));
+    l->AddEntry(grBar, Form("Bar %d", i+1), "l");
     mg->Add(grBar);
   }
 
@@ -332,6 +338,9 @@ void toyS4Cosmics(const char* saveDir, const int nAttempts = 1e8)
   for(int b=0; b<10; b++) {
     h3BarVec.at(b)->Write();
   }
+  l->Write("l");
+  hNCosmics->Write();
+  hAttempts->Write();
   hBarHits->Write();
   hHitSep->Write();
   hHitSepRes->Write();
