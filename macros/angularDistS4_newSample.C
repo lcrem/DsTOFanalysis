@@ -48,13 +48,18 @@ double weightErrBar(const double barEff, const double barEffErr)
   return err;
 }
 
+double ratioErr(const double num, const double numErr, const double denom, const double denomErr)
+{
+  double err = (num / denom) * TMath::Sqrt(pow(numErr/num, 2) + pow(denomErr/denom, 2));
+  return err;
+}
+
 // Main macro
 void angularDistS4_newSample(const char* saveDir, 
 			     const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 			     const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
 			     const char* spillDBDir="/scratch0/sjones/spillDB/") 
-{
- 
+{ 
   gROOT->SetBatch(kTRUE);
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
@@ -84,10 +89,12 @@ void angularDistS4_newSample(const char* saveDir,
   // Timing cuts
   const double piLow  = 36.;
   const double piHi   = 51.;
-  double proLowOther = 62.;
-  double proHiOther  = 101.;
-  double proLow4 = 62.;
-  double proHi4  = 250;
+  // Cuts for selecting the protons
+  const double proCutLow = 62.;
+  const double proCutHi  = 285.;
+  // Fit regions for protons
+  const vector<double> proFitLow = {62., 62., 69., 75., 75.};
+  const vector<double> proFitHi  = {86., 94., 100., 105., 400.};
   // S1 -> S4 positions
   const double baselineS1S4End   = 13.9426;
   const double baselineS1S4Start = 14.0069;
@@ -123,10 +130,15 @@ void angularDistS4_newSample(const char* saveDir,
   const double s2s4Dist = 12.65;
   // S1 to S4 distance
   const double s1s4Dist = 14.0698;
+  // Bar efficiency factor in addition to cosmic data 
+  const double barOverallEff = 1.;
+  // For calculating ratios
+  const vector<double> dataS3    = {1983., 1656., 1325., 899., 136.3};
+  const vector<double> dataS3Err = {9., 6., 5., 6., 0.5};
 
-  TFile *fout = new TFile(Form("%s/angularDistS4Plots.root", saveDir), "recreate");
+  TFile *fout = new TFile(saveDir, "recreate");
 
-  THStack *hsBkgSub = new THStack("hsBkgSub", "S2 to S4 time of flight spectrum; t_{S4} - t_{S2} / ns; Events / spill");
+  // THStack *hsBkgSub = new THStack("hsBkgSub", "S2 to S4 time of flight spectrum; t_{S4} - t_{S2} / ns; Events / spill");
   THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; t_{S4} - t_{S2} / ns; Events / spill");
 
   THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #cap S2 #cap S4 angular distribution of proton hits; #phi / degrees; Events / spill / degree");
@@ -149,18 +161,27 @@ void angularDistS4_newSample(const char* saveDir,
   TLegend *legPiS4Vert  = new TLegend(0.60, 0.55, 0.88, .85);
 
   TLegend *legRatioVert = new TLegend(0.15, 0.5, 0.4, 0.8);
-  double proLow = 0.;
-  double proHi  = 0.;
+
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
-    if (nBlocks == 4) {
-      proLow = proLow4;
-      proHi  = proHi4;
-    }
-    else {
-      proLow = proLowOther;
-      proHi  = proHiOther;
-    }
-    if (nBlocks == 3) proLow = 79.;
+
+    fout->cd();
+    TTree *protonTree = new TTree(Form("protonTree%d", nBlocks), Form("protonTree%d", nBlocks));
+    double weight;
+    double tof;
+    double mom;
+    double theta;
+    double phi;
+    double mcx, mcy, mcz;
+    int spill;
+    protonTree->Branch("weight", &weight);
+    protonTree->Branch("tof", &tof);
+    protonTree->Branch("mom", &mom);
+    protonTree->Branch("theta", &theta);
+    protonTree->Branch("phi", &phi);
+    protonTree->Branch("mcX", &mcx); 
+    protonTree->Branch("mcY", &mcy); 
+    protonTree->Branch("mcZ", &mcz); 
+    protonTree->Branch("spill", &spill);
 
     THStack* hsEffComp = new THStack(Form("hsEffComp%d", nBlocks), Form("Efficiency comparison, %d blocks; Bar; Efficiency", nBlocks));
     THStack* hsEffComp2dNorm = new THStack(Form("hsEffComp2dNorm%d", nBlocks), Form("Efficiency comparison, %d blocks; Bar; Efficiency", nBlocks));
@@ -233,7 +254,7 @@ void angularDistS4_newSample(const char* saveDir,
     h2dProMCCompCut->GetZaxis()->SetLabelSize(.05);
  
     // 1D ToF 
-    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill", nBlocks), 109, 30, 160);
+    TH1D *hdtof1d = new TH1D(Form("hdtof1d_%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill", nBlocks), 182, 30, proCutHi);
     hdtof1d->GetXaxis()->SetTitleSize(.05);
     hdtof1d->GetXaxis()->SetLabelSize(.05);
     hdtof1d->GetYaxis()->SetTitleSize(.05);
@@ -242,23 +263,32 @@ void angularDistS4_newSample(const char* saveDir,
     vector<double> dtof1dErr;
     dtof1dErr.resize(hdtof1d->GetNbinsX()+2, 0);
 
+    // Number of signal particles using just cut and count
+    double nP  = 0.;
+    double nPi = 0.;
+
     if (nBlocks != 4) {
-      // Number of signal particles using just cut and count
-      double nP  = 0.;
-      double nPi = 0.;
       // Define signal and background functions to be fitted
       // Signals are gaussians
-      TF1 *sPro = new TF1(Form("sPro_%d", nBlocks), "gaus", proLow, proHi);
-      TF1 *sPi  = new TF1(Form("sPi_%d", nBlocks), "gaus", piLow, piHi);
+      TF1 *sPro = new TF1(Form("sPro%d", nBlocks), "gaus", proFitLow.at(nBlocks), proFitHi.at(nBlocks));
+      TF1 *sPi  = new TF1(Form("sPi%d", nBlocks), "gaus", piLow, piHi);
       // Exponential background
-      TF1 *fBkgExp = new TF1(Form("fBkgExp_%d", nBlocks),"expo", 30, 160);
+      // TF1 *fBkgExp = new TF1(Form("fBkgExp%d", nBlocks),"expo", 30, proCutHi);
+      TF1 *fBkg = new TF1(Form("fBkg%d", nBlocks),"pol0", 30, proCutHi);
       sPro->SetLineColor(kGreen+2);
       sPi->SetLineColor(kRed);
-      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, 160);
+      /*
+      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, proCutHi);
       fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
 			      "const 2", "mean 2", "sigma 2",
 			      "bkgconst", "bkgdecay");
       fSplusBExp->SetLineColor(kBlack);
+      */
+      TF1 *fSplusB = new TF1(Form("signal_plus_bkg_%d", nBlocks), "gaus(0)+gaus(3)+pol0(6)", 30, proCutHi);
+      fSplusB->SetParNames("piConst", "piMean", "piSigma",
+			   "proConst", "proMean", "proSigma",
+			   "bkg");
+      fSplusB->SetLineColor(kRed);
       // For spill counting normalisation
       int nSpills = 0;
       int nSpillsTrue = 0;
@@ -511,10 +541,10 @@ void angularDistS4_newSample(const char* saveDir,
 	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
 	  double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
 	  double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
-	  if (tofCalc < 250. && tofCalc > 30. && tofCoin->bar != 10) {
+	  if (tofCalc < proCutHi && tofCalc > 30. && tofCoin->bar != 10) {
 	    double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	    //double errSq = pow(weightErr(eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)), eff1dVec.at(tofCoin->bar-1)->GetBinError(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)), hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2); 
-	    double errSq = pow(weightErr(h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar), h2CosmicsEff->GetBinError(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
+	    double errSq = pow(weightErr(h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff, h2CosmicsEff->GetBinError(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
 	    double errSqBar = pow(weightErrBar(hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2);
 	    // Calculate position of hit in global coordinates
 	    double positionX = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 65.) / 130.) * (s4OffAxisEndX - s4OffAxisStartX) + s4OffAxisStartX;
@@ -533,11 +563,11 @@ void angularDistS4_newSample(const char* saveDir,
 	      // dtof1dErr.at(hdtof1d->GetXaxis()->FindBin(positionXP)) += errSq;
 	      // mSqErr.at(hMSq->GetXaxis()->FindBin(massFromTime(tofCalc, 0.8, s2s4Dist))) += errSq;
 
-	      hdtof1d->Fill(tofCalc, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+	      hdtof1d->Fill(tofCalc, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 	      dtof1dErr.at(hdtof1d->GetXaxis()->FindBin(positionXP)) += errSq;
 	      mSqErr.at(hMSq->GetXaxis()->FindBin(massFromTime(tofCalc, 0.8, s2s4Dist))) += errSq;
-	      //   }
+	      //   } 
 	      //	    else {
 	      // hdtof1d->Fill(tofCalc, 1. / hEff->GetBinContent(tofCoin->bar));
 	      // hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / hEff->GetBinContent(tofCoin->bar));
@@ -546,37 +576,36 @@ void angularDistS4_newSample(const char* saveDir,
 	      //	    }
 	      
 	    if (tofCalc < piHi & tofCalc > piLow) { 
-	      // nPi += (1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hPiS4Horz->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hPiS4Vert->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-
-	      nPi += (1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hPiS4Horz->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hPiS4Vert->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+	      nPi += (1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hPiS4Horz->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hPiS4Vert->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 
 	      piS4HorzErr.at(hPiS4Horz->GetXaxis()->FindBin(angleTheta)) += errSq;
 	      piS4VertErr.at(hPiS4Vert->GetXaxis()->FindBin(anglePhi))   += errSq;
 	    } // if (tofCalc < piHi & tofCalc > piLow)
-	    else if (tofCalc < proHi & tofCalc > proLow) {
-	      // nP += (1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hProS4Horz->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hProS4Vert->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // h2dAngProS1->Fill(angleTheta, anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-	      // h2dProMCComp->Fill(mcX, mcY, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
+	    else if (tofCalc < proCutHi & tofCalc > proCutLow) {
+	      tof = tofCalc;
+	      mom = momFromTime(0.938, s2s4Dist, tofCalc);
+	      weight = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff);
+	      theta = angleTheta;
+	      phi = anglePhi;
+	      mcx = mcX;
+	      mcy = mcY;
+	      mcz = mcZ;
+	      spill = nSpillsTrue;
+	      protonTree->Fill();
 
-	      hProS4Horz->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hProS4Vert->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      h2dAngProS1->Fill(angleTheta, anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-	      h2dProMCComp->Fill(mcX, mcY, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+	      nP += (1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hProS4Horz->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hProS4Vert->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      h2dAngProS1->Fill(angleTheta, anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+	      h2dProMCComp->Fill(mcX, mcY, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 	      if (positionXP > 10. && positionXP < 130.) {
-		//h2dProMCCompCut->Fill(mcX, mcY, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		h2dProMCCompCut->Fill(mcX, mcY, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+		//h2dProMCCompCut->Fill(mcX, mcY, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		h2dProMCCompCut->Fill(mcX, mcY, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 	      }
 	      proS4HorzErr.at(hProS4Horz->GetXaxis()->FindBin(angleTheta)) += errSq;
 	      proS4VertErr.at(hProS4Vert->GetXaxis()->FindBin(anglePhi))   += errSq;
@@ -618,31 +647,39 @@ void angularDistS4_newSample(const char* saveDir,
       fout->cd();
       hdtof1d->Fit(sPi, "R");
       hdtof1d->Fit(sPro, "R");
-      hdtof1d->Fit(fBkgExp, "R");
-      Double_t parExp[8];
-      sPro->GetParameters(&parExp[0]);
-      sPi->GetParameters(&parExp[3]);
-      fBkgExp->GetParameters(&parExp[6]);
-      fSplusBExp->SetParameters(parExp);
-      hdtof1d->Fit(fSplusBExp, "R");
+      hdtof1d->Fit(fBkg, "R");
+      Double_t par[7];
+      sPi->GetParameters(&par[0]);
+      sPro->GetParameters(&par[3]);
+      fBkg->GetParameters(&par[6]);
+      fSplusB->SetParameters(par);
+      hdtof1d->Fit(fSplusB, "R");
       hdtof1d->Write();
       sPro->Write();
       sPi->Write();
-      fBkgExp->Write();
-      fSplusBExp->Write();
+      fBkg->Write();
+      fSplusB->Write();
       h2Cosmics->Scale(1. / (endTime - startTime - nSpillsTrue));
       h2Cosmics->Write();
+
+      hProS4Horz->Scale(1. / nSpillsTrue);
+      hPiS4Horz->Scale(1. / nSpillsTrue);
+      hProS4Vert->Scale(1. / nSpillsTrue);
+      hPiS4Vert->Scale(1. / nSpillsTrue);
+      hProS4Horz->Scale(1., "width");
+      hPiS4Horz->Scale(1., "width");
+      hProS4Vert->Scale(1., "width");
+      hPiS4Vert->Scale(1., "width");
 
       // Now we have the fit values, loop over again and subtract the background
       // For each bin, find the fraction of each particle type which are background and 
       // this fraction from the bin
-      TF1 *fSub = new TF1("fSub", "exp([0]+[1]*x)", 30, 160);
-      fSub->SetParameter(0, fSplusBExp->GetParameter("bkgconst"));  
-      fSub->SetParameter(1, fSplusBExp->GetParameter("bkgdecay"));
+      TF1 *fSub = new TF1("fSub", "pol0", 30, proCutHi);
+      fSub->SetParameter(0, fSplusB->GetParameter("bkg"));  
       // Background subtracted tof spectrum
+      /*
       TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
       hdtof1d_sub->Add(fSub, -1.);
-
       // If the bin content drops below 0, set to 0
       for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
 	if (hdtof1d_sub->GetBinContent(b) < 0.) {
@@ -650,56 +687,51 @@ void angularDistS4_newSample(const char* saveDir,
 	  hdtof1d_sub->SetBinError(b, 0);
 	} // if (hdtof1d_sub->GetBinContent(b) < 0.)
       } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
-      TCanvas *cdtof_sub = new TCanvas(Form("%d_cdtof_sub",nBlocks));
-
+      */
       // Integrate background function between proton and pion windows and then subtract
-      double piBkg  = fSub->Integral(piLow,  piHi);// / (0.5*nSpillsTrue);
-      double proBkg = fSub->Integral(proLow, proHi);// / (0.5*nSpillsTrue);
-      cout<<"Pion backgrounds "<<piBkg<<", proton backgrounds "<<proBkg<<endl;
-
-      cdtof_sub->SetLogy();
-      hdtof1d_sub->Draw("hist");
-      hdtof1d_sub->GetXaxis()->SetLabelSize(0.05);
-      hdtof1d_sub->GetYaxis()->SetLabelSize(0.05);
-      hdtof1d_sub->GetXaxis()->SetTitleSize(0.05);
-      hdtof1d_sub->GetYaxis()->SetTitleSize(0.05);
-      hdtof1d_sub->Write();
-      cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.png", saveDir, nBlocks));
-      cdtof_sub->Print(Form("%s/%d_dtof1d_bkgSub.pdf", saveDir, nBlocks));
-
+      double bkgPerBin = fSplusB->GetParameter("bkg");
+      double bkgPerNs  = bkgPerBin / hdtof1d->GetBinWidth(5);
+      cout<<"Bkg per bin, per ns "<<bkgPerBin<<", "<<bkgPerNs<<endl;
+      double piBkg  = fSub->Integral(piLow,  piHi) / hdtof1d->GetBinWidth(5);
+      double proBkg = fSub->Integral(proCutLow, proCutHi) / hdtof1d->GetBinWidth(5);
+      cout<<"Pion background: "<<piBkg<<" per spill. Proton background: "<<proBkg<<" per spill"<<endl;
+      // Need to account for bin width
+      double piBkgHorz  = piBkg / hPiS4Horz->GetBinWidth(3);
+      double proBkgHorz = proBkg / hProS4Horz->GetBinWidth(3);
+      double piBkgVert  = piBkg / hPiS4Vert->GetBinWidth(3);
+      double proBkgVert = proBkg / hProS4Vert->GetBinWidth(3);
+      cout<<"Pion background vert: "<<piBkgVert<<" / spill / degree. Proton background vert "<<proBkgVert<<" / spill / degree"<<endl;
+      cout<<"Pion background horz: "<<piBkgHorz<<" / spill / degree. Proton background horz "<<proBkgHorz<<" / spill / degree"<<endl;
+      
       cout<<"Spills "<<nSpills<<" ("<<nSpillsTrue<<" true)"<<endl;
 
       // Subtract background hits
-      hProS4Horz->Scale(1. / nSpillsTrue);
-      for (int b=1; b < 21; b++) {
-	hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) - (proBkg/20.));
+      for (int b=1; b < hProS4Horz->GetNbinsX()+1; b++) {
+	hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) * (1 - proBkgHorz/nP));
 	if (hProS4Horz->GetBinContent(b) < 0.) {
 	  hProS4Horz->SetBinContent(b, 0);
 	  hProS4Horz->SetBinError(b, 0);
 	}
       }
 
-      hPiS4Horz->Scale(1. / nSpillsTrue);
-      for (int b=1; b < 21; b++) {
-	hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) - (piBkg/20.));
+      for (int b=1; b < hPiS4Horz->GetNbinsX()+1; b++) {
+	hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) * (1 - piBkgHorz/nPi));
 	if (hPiS4Horz->GetBinContent(b) < 0.) {
 	  hPiS4Horz->SetBinError(b, 0);
 	  hPiS4Horz->SetBinContent(b, 0);
 	}
       }
 
-      hProS4Vert->Scale(1. / nSpillsTrue);
       for (int b=1; b < 10; b++) {
-	hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) - (proBkg/9.));
+	hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) * (1 - proBkgVert/nP));
 	if (hProS4Vert->GetBinContent(b) < 0.) {
 	  hProS4Vert->SetBinError(b, 0);
 	  hProS4Vert->SetBinContent(b, 0);
 	}
       }
 
-      hPiS4Vert->Scale(1. / nSpillsTrue);
       for (int b=1; b < 10; b++) {
-	hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) - (piBkg/9.));
+	hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) * (1 - piBkgVert/nPi));
 	if (hPiS4Vert->GetBinContent(b) < 0.) {
 	  hPiS4Vert->SetBinError(b, 0);
 	  hPiS4Vert->SetBinContent(b, 0);
@@ -709,7 +741,7 @@ void angularDistS4_newSample(const char* saveDir,
       hProPiRatioS4Vert->Divide(hProS4Vert, hPiS4Vert, 1., 1., "B");
       hProPiRatioS4Horz->Divide(hProS4Horz, hPiS4Horz, 1., 1., "B");
 
-      hdtof1d_sub->SetLineWidth(2);
+      // hdtof1d_sub->SetLineWidth(2);
       hdtof1d->SetLineWidth(2);
       hProPiRatioS4Horz->SetLineWidth(2);
       hProPiRatioS4Vert->SetLineWidth(2);
@@ -718,11 +750,6 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->SetLineWidth(2);
       hPiS4Vert->SetLineWidth(2);
       hEff->SetLineWidth(2);    
-
-      hProS4Horz->Scale(1., "width");
-      hPiS4Horz->Scale(1., "width");
-      hProS4Vert->Scale(1., "width");
-      hPiS4Vert->Scale(1., "width");
 
       double eProS4Horz = 0;
       double ePiS4Horz  = 0;
@@ -737,7 +764,7 @@ void angularDistS4_newSample(const char* saveDir,
       hEffRatio2dNorm->SetLineWidth(2);
 
       if (nBlocks == 0) {
-	hdtof1d_sub->SetLineColor(kBlack);
+	// hdtof1d_sub->SetLineColor(kBlack);
 	hdtof1d->SetLineColor(kBlack);
 	hProPiRatioS4Horz->SetLineColor(kBlack);
 	hProPiRatioS4Vert->SetLineColor(kBlack);
@@ -754,12 +781,12 @@ void angularDistS4_newSample(const char* saveDir,
 	hEffRatio->SetLineColor(kBlack);
 	hEffRatio2dNorm->SetLineColor(kBlack);
 	leg->AddEntry(hdtof1d, "0 blocks", "l");     
-	legProS4Horz->AddEntry(hProS4Horz, Form("0 blocks - %.4g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
+	legProS4Horz->AddEntry(hProS4Horz, Form("0 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
 	legPiS4Horz->AddEntry(hPiS4Horz, Form("0 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
 	legRatioVert->AddEntry(hProPiRatioS4Vert, "0 blocks", "l");
       }
       else if (nBlocks == 1) {
-	hdtof1d_sub->SetLineColor(kRed);
+	// hdtof1d_sub->SetLineColor(kRed);
 	hdtof1d->SetLineColor(kRed);
 	hProPiRatioS4Horz->SetLineColor(kRed);
 	hProPiRatioS4Vert->SetLineColor(kRed);
@@ -776,12 +803,12 @@ void angularDistS4_newSample(const char* saveDir,
 	hEffRatio->SetLineColor(kRed);
 	hEffRatio2dNorm->SetLineColor(kRed);
 	leg->AddEntry(hdtof1d, "1 block", "l");
-	legProS4Horz->AddEntry(hProS4Horz, Form("1 block - %.4g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
+	legProS4Horz->AddEntry(hProS4Horz, Form("1 block - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
 	legPiS4Horz->AddEntry(hPiS4Horz, Form("1 block - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");     
 	legRatioVert->AddEntry(hProPiRatioS4Vert, "1 block", "l");
       }
       else if (nBlocks == 2) {
-	hdtof1d_sub->SetLineColor(kBlue);
+	// hdtof1d_sub->SetLineColor(kBlue);
 	hdtof1d->SetLineColor(kBlue);
 	hProPiRatioS4Horz->SetLineColor(kBlue);
 	hProPiRatioS4Vert->SetLineColor(kBlue);
@@ -797,12 +824,12 @@ void angularDistS4_newSample(const char* saveDir,
 	hEffRatio->SetLineColor(kBlue);
 	hEffRatio2dNorm->SetLineColor(kBlue);
 	leg->AddEntry(hdtof1d, "2 blocks", "l");
-	legProS4Horz->AddEntry(hProS4Horz, Form("2 blocks - %.4g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
+	legProS4Horz->AddEntry(hProS4Horz, Form("2 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
 	legPiS4Horz->AddEntry(hPiS4Horz, Form("2 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
 	legRatioVert->AddEntry(hProPiRatioS4Vert, "2 blocks", "l");
       }
       else if (nBlocks == 3) {
-	hdtof1d_sub->SetLineColor(kCyan+1);
+	// hdtof1d_sub->SetLineColor(kCyan+1);
 	hdtof1d->SetLineColor(kCyan+1);
 	hProPiRatioS4Horz->SetLineColor(kCyan+1);
 	hProPiRatioS4Vert->SetLineColor(kCyan+1);
@@ -831,10 +858,13 @@ void angularDistS4_newSample(const char* saveDir,
       h2dProMCComp->Scale(1. / nSpillsTrue);
       h2dProMCCompCut->Scale(1. / nSpillsTrue);
 
-      hsEffRatio->Add(hEffRatio2dNorm);
+      // Print out ratio with error
+      double rerr = ratioErr(intProS4Horz, eProS4Horz, dataS3.at(nBlocks), dataS3Err.at(nBlocks));
+      cout<<"Ratio = "<<(intProS4Horz/dataS3.at(nBlocks))<<" +- "<<rerr<<endl;
 
+      hsEffRatio->Add(hEffRatio2dNorm);
       hsDtof->Add(hdtof1d);
-      hsBkgSub->Add(hdtof1d_sub);
+      // hsBkgSub->Add(hdtof1d_sub);
       hsProS4Vert->Add(hProS4Vert);
       hsProS4Horz->Add(hProS4Horz);
       hsPiS4Vert->Add(hPiS4Vert);
@@ -866,6 +896,7 @@ void angularDistS4_newSample(const char* saveDir,
       hEff->Write();
       hsEffComp->Write();
       hsEffComp2dNorm->Write();
+      protonTree->Write();
 
       h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
       h2dAngProS1->Write();
@@ -880,7 +911,6 @@ void angularDistS4_newSample(const char* saveDir,
       else if (nBlocks==2) nustof = Form("%sData_2018_9_1_b2_800MeV_2block_bend4cm.root", ustofDir);
       else if (nBlocks==3) nustof = Form("%sData_2018_9_1_b3_800MeV_3block_bend4cm.root", ustofDir);
  
-      cout<<nustof<<endl;
       // Read in ustof file
       TFile *finustof = new TFile(nustof, "read");
       TTree *utree = (TTree*)finustof->Get("tree");
@@ -920,9 +950,8 @@ void angularDistS4_newSample(const char* saveDir,
       const double s4ThetaLow = 0.401;
       const double s4ThetaHi  = 6.083;
       double s2Int = hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s2ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s2ThetaHi));
-      cout<<s2Int<<endl;
-      hXAngleS1S2->Scale(1. / s2Int);
-      cout<<"Integral "<<hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s2ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s2ThetaHi))<<endl;
+      
+      hXAngleS1S2->Scale(1. / s2Int);    
       double s4Int = hXAngleS1S2->Integral(hXAngleS1S2->GetXaxis()->FindBin(s4ThetaLow), hXAngleS1S2->GetXaxis()->FindBin(s4ThetaHi));
       cout<<"S4 correction factor "<<s4Int<<endl;
 
@@ -930,21 +959,19 @@ void angularDistS4_newSample(const char* saveDir,
     } // Non 4 block data
     // Loop over all the 4 block data
     else {
-      // Number of signal particles using just cut and count
-      double nP  = 0.;
-      double nPi = 0.;
       // Define signal and background functions to be fitted
       // Signals are gaussians
-      TF1 *sPro  = new TF1(Form("sPro_%d", nBlocks), "gaus", proLow, proHi);
+      TF1 *sPro  = new TF1(Form("sPro_%d", nBlocks), "gaus", proFitLow.at(nBlocks), proFitHi.at(nBlocks));
       TF1 *sPi  = new TF1(Form("sPi_%d", nBlocks), "gaus", piLow, piHi);
       // Exponential background
-      TF1 *fBkgExp = new TF1(Form("fBkgExp_%d", nBlocks),"expo", 30, 160);
+      TF1 *fBkg = new TF1(Form("fBkg_%d", nBlocks),"expo", 30, proCutHi);
       sPi->SetLineColor(kRed);
-      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, 160);
-      fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
-			      "const 2", "mean 2", "sigma 2",
-			      "bkgconst", "bkgdecay");
-      fSplusBExp->SetLineColor(kBlack);
+      TF1 *fSplusB = new TF1(Form("signal_plus_bkg_%d", nBlocks), "gaus(0)+gaus(3)+pol0(6)", 30, proCutHi);
+      fSplusB->SetParNames("piConst", "piMean", "piSigma",
+			   "proConst", "proMean", "proSigma",
+			   "bkg");
+
+      fSplusB->SetLineColor(kRed);
       // For spill counting normalisation
       int nSpills = 0;
       int nSpillsTrue = 0;
@@ -1232,16 +1259,16 @@ void angularDistS4_newSample(const char* saveDir,
 	    double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]  );
 	    double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (10. - TMath::Abs(deltat) / 2. );
 	    double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
-	    if (tofCalc < 250. && tofCalc > 30. && tofCoin->bar != 10) {
+	    if (tofCalc < proCutHi && tofCalc > 30. && tofCoin->bar != 10) {
 	      double positionXP = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(7./2.) + 70.));
 	      //double errSq = pow(weightErr(eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)), eff1dVec.at(tofCoin->bar-1)->GetBinError(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)), hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2); 
-	      double errSq = pow(weightErr(h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar), h2CosmicsEff->GetBinError(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
+	      double errSq = pow(weightErr(h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff, h2CosmicsEff->GetBinError(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
 	      double errSqBar = pow(weightErrBar(hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2);
 	      // if (positionXP > 15. && positionXP < 125.) {
 	      // 	hdtof1d->Fill(tofCalc, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
 	      // 	hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar))); 
-		hdtof1d->Fill(tofCalc, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+		hdtof1d->Fill(tofCalc, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 		dtof1dErr.at(hdtof1d->GetXaxis()->FindBin(tofCalc)) += errSq;
 		mSqErr.at(hMSq->GetXaxis()->FindBin(massFromTime(tofCalc, 0.8, s2s4Dist))) += errSq;
 	      // }
@@ -1263,47 +1290,43 @@ void angularDistS4_newSample(const char* saveDir,
 	      double angleTheta = TMath::ATan(positionX / positionY) * (180./TMath::Pi());
 	      double anglePhi   = TMath::ATan(positionZ / positionY) * (180./TMath::Pi());
 	      if (tofCalc < piHi & tofCalc > piLow) { 
-		// nPi += (1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hPiS4Horz->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hPiS4Vert->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hPiS4HorzTmp->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hPiS4VertTmp->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		nPi += (1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hPiS4Horz->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hPiS4Vert->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hPiS4HorzTmp->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hPiS4VertTmp->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+		nPi += (1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hPiS4Horz->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hPiS4Vert->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hPiS4HorzTmp->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hPiS4VertTmp->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		h2dAngPiS1->Fill(angleTheta, anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 		piS4HorzErr.at(hPiS4Horz->GetXaxis()->FindBin(angleTheta)) += errSq;
 		piS4VertErr.at(hPiS4Vert->GetXaxis()->FindBin(anglePhi))   += errSq;
 	      } // if (tofCalc < piHi & tofCalc > piLow)
-	      else if (tofCalc < proHi & tofCalc > proLow) {
-		// nP += (1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hProS4Horz->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hProS4Vert->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hProS4HorzTmp->Fill(angleTheta, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hProS4VertTmp->Fill(anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// h2dAngProS1->Fill(angleTheta, anglePhi, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		// h2dProMCComp->Fill(mcX, mcY, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
+	      else if (tofCalc < proCutHi & tofCalc > proCutLow) {
 
-		nP += (1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hProS4Horz->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hProS4Vert->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hProS4HorzTmp->Fill(angleTheta, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hProS4VertTmp->Fill(anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		h2dAngProS1->Fill(angleTheta, anglePhi, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
-		h2dProMCComp->Fill(mcX, mcY, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+		tof = tofCalc;
+		mom = momFromTime(0.938, s2s4Dist, tofCalc);
+		weight = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff);
+		theta = angleTheta;
+		phi = anglePhi;
+		mcx = mcX;
+		mcy = mcY;
+		mcz = mcZ;
+		spill = nSpillsTrue;
+		protonTree->Fill();
+
+		nP += (1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hProS4Horz->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hProS4Vert->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hProS4HorzTmp->Fill(angleTheta, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hProS4VertTmp->Fill(anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		h2dAngProS1->Fill(angleTheta, anglePhi, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
+		h2dProMCComp->Fill(mcX, mcY, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 		proS4VertErr.at(hProS4Vert->GetXaxis()->FindBin(anglePhi))   += errSq;
 		proS4HorzErr.at(hProS4Horz->GetXaxis()->FindBin(angleTheta)) += errSq;
 		momErr.at(hMom->GetXaxis()->FindBin(momFromTime(0.938, s2s4Dist, tofCalc))) += errSq;
 		if (positionXP > 10. && positionXP < 130.) {
 		  // h2dProMCCompCut->Fill(mcX, mcY, 1. / (eff1dVec.at(tofCoin->bar-1)->GetBinContent(eff1dVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(positionXP)) * hEff->GetBinContent(tofCoin->bar)));
-		  h2dProMCCompCut->Fill(mcX, mcY, 1. / h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar));
+		  h2dProMCCompCut->Fill(mcX, mcY, 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff));
 		}
 	      } // else if (tofCalc < proHi & tofCalc > proLow) 
 	    } // if (tofCalc < 160. && tofCalc > 30.) 
@@ -1362,29 +1385,32 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->Scale(1. / nSpillsTrue);
       hProS4Vert->Scale(1. / nSpillsTrue);
       hPiS4Vert->Scale(1. / nSpillsTrue);
+      hProS4Horz->Scale(1., "width");
+      hPiS4Horz->Scale(1., "width");
+      hProS4Vert->Scale(1., "width");
+      hPiS4Vert->Scale(1., "width");
 
       hdtof1d->Fit(sPi, "R");
       hdtof1d->Fit(sPro, "R");
-      hdtof1d->Fit(fBkgExp, "R");
-      Double_t parExp[8];
-      sPro->GetParameters(&parExp[0]);
-      sPi->GetParameters(&parExp[3]);
-      fBkgExp->GetParameters(&parExp[6]);
-      fSplusBExp->SetParameters(parExp);
-      hdtof1d->Fit(fSplusBExp, "R");
+      hdtof1d->Fit(fBkg, "R");
+      Double_t par[7];
+      sPi->GetParameters(&par[0]);
+      sPro->GetParameters(&par[3]);
+      fBkg->GetParameters(&par[6]);
+      fSplusB->SetParameters(par);
+      hdtof1d->Fit(fSplusB, "R");
       hdtof1d->Write();
-      fSplusBExp->Write();
+      fSplusB->Write();
 
       // Now we have the fit values, loop over again and subtract the background
       // For each bin, find the fraction of each particle type which are background and 
       // this fraction from the bin
-      TF1 *fSub = new TF1("fSub", "exp([0]+[1]*x)", 30, 160);
-      fSub->SetParameter(0, fSplusBExp->GetParameter("bkgconst"));  
-      fSub->SetParameter(1, fSplusBExp->GetParameter("bkgdecay"));
+      TF1 *fSub = new TF1("fSub", "pol0", 30, proCutHi);
+      fSub->SetParameter(0, fSplusB->GetParameter("bkg"));  
+      /*
       // Background subtracted tof spectrum
       TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
       hdtof1d_sub->Add(fSub, -1.);
-
       // If the bin content drops below 0, set to 0
       for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
 	if (hdtof1d_sub->GetBinContent(b) < 0.) {
@@ -1393,34 +1419,41 @@ void angularDistS4_newSample(const char* saveDir,
 	} // if (hdtof1d_sub->GetBinContent(b) < 0.)
       } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
       TCanvas *cdtof_sub = new TCanvas(Form("%d_cdtof_sub",nBlocks));
-
+      */
       // Integrate background function between proton and pion windows and then subtract
-      double piBkg  = fSub->Integral(piLow,  piHi);// / (0.5*nSpillsTrue);
-      double proBkg = fSub->Integral(proLow, proHi);// / (0.5*nSpillsTrue);
-      cout<<"Pion backgrounds "<<piBkg<<", proton backgrounds "<<proBkg<<endl;
-
+      double bkgPerBin = fSplusB->GetParameter("bkg");
+      double bkgPerNs  = bkgPerBin / hdtof1d->GetBinWidth(5);
+      cout<<"Bkg per bin, per ns "<<bkgPerBin<<", "<<bkgPerNs<<endl;
+      double piBkg  = fSub->Integral(piLow,  piHi) / hdtof1d->GetBinWidth(5);
+      double proBkg = fSub->Integral(proCutLow, proCutHi) / hdtof1d->GetBinWidth(5);
+      cout<<"Pion background: "<<piBkg<<" per spill. Proton background "<<proBkg<<" per spill"<<endl;
+      // Need to account for bin width
+      double piBkgHorz  = piBkg / hPiS4Horz->GetBinWidth(3);
+      double proBkgHorz = proBkg / hProS4Horz->GetBinWidth(3);
+      double piBkgVert  = piBkg / hPiS4Vert->GetBinWidth(3);
+      double proBkgVert = proBkg / hProS4Vert->GetBinWidth(3);
+      cout<<"Pion background vert: "<<piBkgVert<<" / spill / degree. Proton background vert "<<proBkgVert<<" / spill / degree"<<endl;
+      cout<<"Pion background horz: "<<piBkgHorz<<" / spill / degree. Proton background horz "<<proBkgHorz<<" / spill / degree"<<endl;
+      /*
       hdtof1d_sub->GetXaxis()->SetLabelSize(0.05);
       hdtof1d_sub->GetYaxis()->SetLabelSize(0.05);
       hdtof1d_sub->GetXaxis()->SetTitleSize(0.05);
       hdtof1d_sub->GetYaxis()->SetTitleSize(0.05);
       hdtof1d_sub->Write();
-
+      */
       cout<<"Spills "<<nSpills<<" ("<<nSpillsTrue<<" true)"<<endl;
 
       // Subtract background hits
-
-      /*
-      for (int b=1; b < 21; b++) {
-	hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) - (proBkg/20.));
+      for (int b=1; b < hProS4Horz->GetNbinsX()+1; b++) {
+	hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) * (1 - proBkgHorz/nP));
 	if (hProS4Horz->GetBinContent(b) < 0.) {
 	  hProS4Horz->SetBinContent(b, 0);
 	  hProS4Horz->SetBinError(b, 0);
 	}
       }
-      */
 
-      for (int b=1; b < 21; b++) {
-	hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) - (piBkg/20.));
+      for (int b=1; b < hPiS4Horz->GetNbinsX()+1; b++) {
+	hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) * (1 - piBkgHorz/nPi));
 	if (hPiS4Horz->GetBinContent(b) < 0.) {
 	  hPiS4Horz->SetBinError(b, 0);
 	  hPiS4Horz->SetBinContent(b, 0);
@@ -1428,7 +1461,7 @@ void angularDistS4_newSample(const char* saveDir,
       }
 
       for (int b=1; b < 10; b++) {
-	hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) - (proBkg/9.));
+	hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) * (1 - proBkgVert/nP));
 	if (hProS4Vert->GetBinContent(b) < 0.) {
 	  hProS4Vert->SetBinError(b, 0);
 	  hProS4Vert->SetBinContent(b, 0);
@@ -1436,18 +1469,17 @@ void angularDistS4_newSample(const char* saveDir,
       }
 
       for (int b=1; b < 10; b++) {
-	hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) - (piBkg/9.));
+	hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) * (1 - piBkgVert/nPi));
 	if (hPiS4Vert->GetBinContent(b) < 0.) {
 	  hPiS4Vert->SetBinError(b, 0);
 	  hPiS4Vert->SetBinContent(b, 0);
 	}
       }
-      hPiS4Vert->Draw("hist e");
 
       hProPiRatioS4Vert->Divide(hProS4Vert, hPiS4Vert, 1., 1., "B");
       hProPiRatioS4Horz->Divide(hProS4Horz, hPiS4Horz, 1., 1., "B");
 
-      hdtof1d_sub->SetLineWidth(2);
+      //hdtof1d_sub->SetLineWidth(2);
       hdtof1d->SetLineWidth(2);
       hProPiRatioS4Horz->SetLineWidth(2);
       hProPiRatioS4Vert->SetLineWidth(2);
@@ -1456,7 +1488,7 @@ void angularDistS4_newSample(const char* saveDir,
       hPiS4Horz->SetLineWidth(2);
       hPiS4Vert->SetLineWidth(2);
     
-      hdtof1d_sub->SetLineColor(kOrange+1);
+      // hdtof1d_sub->SetLineColor(kOrange+1);
       hdtof1d->SetLineColor(kOrange+1);
       hProPiRatioS4Horz->SetLineColor(kOrange+1);
       hProPiRatioS4Vert->SetLineColor(kOrange+1);
@@ -1477,19 +1509,19 @@ void angularDistS4_newSample(const char* saveDir,
 
       h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
       hsDtof->Add(hdtof1d);
-      hsBkgSub->Add(hdtof1d_sub);
-      hProS4Horz->Scale(1., "width");
-      hPiS4Horz->Scale(1., "width");
-      hProS4Vert->Scale(1., "width");
-      hPiS4Vert->Scale(1., "width");
+      // hsBkgSub->Add(hdtof1d_sub);
 
       double eProS4Horz = 0;
       double ePiS4Horz  = 0;
-      double intProS4Horz = hProS4Horz->IntegralAndError(0, 21, eProS4Horz, "width");
-      double intPiS4Horz  = hPiS4Horz->IntegralAndError(0, 21, ePiS4Horz, "width");
-      legProS4Horz->AddEntry(hProS4Horz, Form("4 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
+      double intProS4Horz = hProS4Horz->IntegralAndError(1, 20, eProS4Horz, "width");
+      double intPiS4Horz  = hPiS4Horz->IntegralAndError(1, 20, ePiS4Horz, "width");
+      legProS4Horz->AddEntry(hProS4Horz, Form("4 blocks - %.2g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("4 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");     
       legRatioVert->AddEntry(hProPiRatioS4Vert, "4 blocks", "l");
+
+      // Print out ratio with error
+      double rerr = ratioErr(intProS4Horz, eProS4Horz, dataS3.at(nBlocks), dataS3Err.at(nBlocks));
+      cout<<"Ratio = "<<(intProS4Horz/dataS3.at(nBlocks))<<" +- "<<rerr<<endl;
 
       hsProS4Vert->Add(hProS4Vert);
       hsProS4Horz->Add(hProS4Horz);
@@ -1527,6 +1559,7 @@ void angularDistS4_newSample(const char* saveDir,
       hsEffComp2dNorm->Add(hEffTotal);
       hsEffComp->Write();
       hsEffComp2dNorm->Write();
+      protonTree->Write();
 
       TH1D *hEffRatio = new TH1D(Form("hEffRatio%d", nBlocks), Form("Beam data efficiency / Cosmic efficiency, %d blocks; Bar, Beam / Cosmic", nBlocks), 10, 0.5, 10.5);
       hEffRatio->Divide(hEffTotal, hCosmicsVertEffAll, 1., 1., "B");
@@ -1595,136 +1628,29 @@ void angularDistS4_newSample(const char* saveDir,
       hAllS4Horz->Scale(1. / nSpillsTrue);
     } // Loop over 4 block data
   } // for (int nBlocks = 0; nBlocks < 4; nBlocks++) 
+
   fout->cd();
   hsEff->Write();
-  TCanvas *csDtof = new TCanvas("csDstof");
-  csDtof->SetLogy();
-  hsDtof->Draw("hist nostack");
-  hsDtof->GetYaxis()->SetRangeUser(1e-2, 2e2);
-  csDtof->Update();
-  leg->Draw();
   hsDtof->Write();
-  csDtof->Print(Form("%s/s4ToF.png", saveDir));
-  csDtof->Print(Form("%s/s4ToF.pdf", saveDir));
-  csDtof->Print(Form("%s/s4ToF.tex", saveDir));
-  TCanvas *csBkgSub = new TCanvas("csBkgSub");
-  csBkgSub->SetLogy();
-  hsBkgSub->Draw("hist nostack");
-  hsBkgSub->GetYaxis()->SetRangeUser(1e-2, 2e2);
-  hsBkgSub->GetXaxis()->SetLabelSize(0.06);
-  hsBkgSub->GetYaxis()->SetLabelSize(0.06);
-  hsBkgSub->GetXaxis()->SetTitleSize(0.06);
-  hsBkgSub->GetYaxis()->SetTitleSize(0.06);
-  csBkgSub->SetLeftMargin(0.13);
-  csBkgSub->SetBottomMargin(0.13);
-  csBkgSub->SetGridx();
-  csBkgSub->SetGridy();
-  csBkgSub->Update();
-  leg->Draw();
-  hsBkgSub->Write();
-  csBkgSub->Print(Form("%s/s4BkgSub.png", saveDir));
-  csBkgSub->Print(Form("%s/s4BkgSub.pdf", saveDir));
-  csBkgSub->Print(Form("%s/s4BkgSub.tex", saveDir));
-
-  TCanvas *cspros4vert = new TCanvas("cspros4vert");
-  hsProS4Vert->Draw("hist e nostack");
-  hsProS4Vert->GetXaxis()->SetLabelSize(0.06);
-  hsProS4Vert->GetYaxis()->SetLabelSize(0.06);
-  hsProS4Vert->GetXaxis()->SetTitleSize(0.06);
-  hsProS4Vert->GetYaxis()->SetTitleSize(0.06);
-  cspros4vert->SetGridx();
-  cspros4vert->SetGridy();
-  leg->Draw();
+  // hsBkgSub->Write();
   hsProS4Vert->Write();
-  cspros4vert->Print(Form("%s/proS4Vert.png",saveDir));
-  cspros4vert->Print(Form("%s/proS4Vert.pdf",saveDir));
-  cspros4vert->Print(Form("%s/proS4Vert.tex",saveDir));
-  TCanvas *cspis4vert  = new TCanvas("cspis4vert");
-  hsPiS4Vert->Draw("hist e nostack");
-  hsPiS4Vert->GetXaxis()->SetLabelSize(0.05);
-  hsPiS4Vert->GetYaxis()->SetLabelSize(0.05);
-  hsPiS4Vert->GetXaxis()->SetTitleSize(0.05);
-  hsPiS4Vert->GetYaxis()->SetTitleSize(0.05);
-  cspis4vert->SetGridx();
-  cspis4vert->SetGridy();
-  leg->Draw();
   hsPiS4Vert->Write();
-  cspis4vert->Print(Form("%s/piS4Vert.png",saveDir));
-  cspis4vert->Print(Form("%s/piS4Vert.pdf",saveDir));
-  cspis4vert->Print(Form("%s/piS4Vert.tex",saveDir));
-  TCanvas *cspros4horz = new TCanvas("cspros4horz");
-  hsProS4Horz->Draw("hist e nostack");
-  hsProS4Horz->GetXaxis()->SetLabelSize(0.06);
-  hsProS4Horz->GetYaxis()->SetLabelSize(0.06);
-  hsProS4Horz->GetXaxis()->SetTitleSize(0.06);
-  hsProS4Horz->GetYaxis()->SetTitleSize(0.06);
-  cspros4horz->SetLeftMargin(0.13);
-  cspros4horz->SetBottomMargin(0.13);
-  cspros4horz->SetGridx();
-  cspros4horz->SetGridy();
-  legProS4Horz->Draw();
-  legProS4Horz->Write("legproS4Horz");
+  legProS4Horz->Write("legProS4Horz");
   hsProS4Horz->Write();
-  cspros4horz->Print(Form("%s/proS4Horz.png",saveDir));
-  cspros4horz->Print(Form("%s/proS4Horz.pdf",saveDir));
-  cspros4horz->Print(Form("%s/proS4Horz.tex",saveDir));
-  TCanvas *cspis4horz  = new TCanvas("cspis4horz");
-  hsPiS4Horz->Draw("hist e nostack");
-  hsPiS4Horz->GetXaxis()->SetLabelSize(0.06);
-  hsPiS4Horz->GetYaxis()->SetLabelSize(0.06);
-  hsPiS4Horz->GetXaxis()->SetTitleSize(0.06);
-  hsPiS4Horz->GetYaxis()->SetTitleSize(0.06);
-  cspis4horz->SetLeftMargin(0.13);
-  cspis4horz->SetBottomMargin(0.13);
-  cspis4horz->SetGridx();
-  cspis4horz->SetGridy();
-  legPiS4Horz->Draw();
-  legPiS4Horz->Write("legpiS4Horz");
+  legPiS4Horz->Write("legPiS4Horz");
   hsPiS4Horz->Write();
-  cspis4horz->Print(Form("%s/piS4Horz.png",saveDir));
-  cspis4horz->Print(Form("%s/piS4Horz.pdf",saveDir));
-  cspis4horz->Print(Form("%s/piS4Horz.tex",saveDir));
-
-  TCanvas *csratios4vert = new TCanvas("csratios4vert");
-  hsRatioS4Vert->Draw("hist e nostack");
-  hsRatioS4Vert->GetXaxis()->SetLabelSize(0.06);
-  hsRatioS4Vert->GetYaxis()->SetLabelSize(0.06);
-  hsRatioS4Vert->GetXaxis()->SetTitleSize(0.06);
-  hsRatioS4Vert->GetYaxis()->SetTitleSize(0.06);
-  csratios4vert->SetLeftMargin(0.13);
-  csratios4vert->SetBottomMargin(0.13);
-  csratios4vert->SetGridx();
-  csratios4vert->SetGridy();
-  legRatioVert->Draw();
   leg->Write("legOrdinary");
   hsRatioS4Vert->Write();
-  csratios4vert->Print(Form("%s/ratioS4Vert.png", saveDir));
-  csratios4vert->Print(Form("%s/ratioS4Vert.pdf", saveDir));
-  csratios4vert->Print(Form("%s/ratioS4Vert.tex", saveDir));
-  TCanvas *csratios4horz = new TCanvas("csratios4horz");
-  hsRatioS4Horz->Draw("hist e nostack");
-  hsRatioS4Horz->GetXaxis()->SetLabelSize(0.06);
-  hsRatioS4Horz->GetYaxis()->SetLabelSize(0.06);
-  hsRatioS4Horz->GetXaxis()->SetTitleSize(0.06);
-  hsRatioS4Horz->GetYaxis()->SetTitleSize(0.06);
-  csratios4horz->SetLeftMargin(0.13);
-  csratios4horz->SetBottomMargin(0.13);
-  csratios4horz->SetGridx();
-  csratios4horz->SetGridy();
-  leg->Draw();
   hsRatioS4Horz->Write();
-  csratios4horz->Print(Form("%s/ratioS4Horz.png", saveDir));
-  csratios4horz->Print(Form("%s/ratioS4Horz.pdf", saveDir));
-  csratios4horz->Print(Form("%s/ratioS4Horz.tex", saveDir));
 
   TArrow *arPi  = new TArrow(0.0195, 8e2, 0.0195, 1e2, 0.03, "|>");
   TArrow *arPro = new TArrow(0.8804, 8e2, 0.8804, 3e1, 0.03, "|>");
   TText *tPi  = new TText(.15, 2.5e2, "pion");
   TText *tPro = new TText(1., 2.5e2, "proton"); 
-  arPi->Write();
-  tPi->Write();
-  arPro->Write();
-  tPro->Write();
+  arPi->Write("piArrow");
+  tPi->Write("piText");
+  arPro->Write("protonArrow");
+  tPro->Write("protonText");
 
   fout->Close();
   delete fout;  
