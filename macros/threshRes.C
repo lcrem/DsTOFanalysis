@@ -4,13 +4,14 @@
 
 std::vector<const char*> days = {/*"05", "06", */"09", "10", "11", "12", 
 				 "13", "16",/* "17",*/ "19", "20", "23"};
-std::vector<double> thresholds = {5, 10, 15, 20};
+std::vector<double> thresholds = {10, 15, 20};
 std::vector<const char*> trigCh     = {"3", "4"};
 std::vector<const char*> readCh     = {"3", "4"};
 std::vector<int> sourceDist   = {16, 32, 48, 64, 80, 96, 112};
 
 void threshRes(const char *outFile, const char *fileDir="/unix/dune/tof/")
 {
+  gROOT->SetBatch(kTRUE);
   TFile *fout = new TFile(outFile, "recreate");
 
   for (int i = 0; i<days.size(); i++) {
@@ -22,14 +23,16 @@ void threshRes(const char *outFile, const char *fileDir="/unix/dune/tof/")
       // cout<<barFile<<endl;
       // Append bar name, source position, threshold, readout channel and trigger channel
       if (barFile.Contains("BarD")) {
-	for (int t=0; t<thresholds.size(); t++) {
-	  for (int tch=0; tch<trigCh.size(); tch++) { 
+	for (int tch=0; tch<trigCh.size(); tch++) { 
+	  TMultiGraph *mgResCh = new TMultiGraph(Form("mgRes_%s_trig%s", barFile.Data(), trigCh.at(tch)), Form("%s, trigger channel %s: Resolution as function of bar position; Bar position / cm; #deltat / ns", barFile.Data(), trigCh.at(tch)));
+	  TMultiGraph *mgDiffCh = new TMultiGraph(Form("mgDiff_%s_trig%s", barFile.Data(), trigCh.at(tch)), Form("%s, trigger channel %s: Time difference as function of bar position; Bar position / cm; #Deltat / ns", barFile.Data(), trigCh.at(tch)));
+	  for (int t=0; t<thresholds.size(); t++) {
 	    TGraph *grResDist = new TGraph();
 	    TGraph *grDiffDist = new TGraph();
 	    grResDist->SetName(Form("grResDist_%s_thresh%dmV_trig%s", barFile.Data(), (int)(thresholds.at(t)), trigCh.at(tch)));
-	    grResDist->SetTitle(Form("%s: resolution as function of distance; Position / cm; Resolution / s", barFile.Data()));
-	    grDiffDist->SetName(Form("grResDist_%s_thresh%dmV_trig%s", barFile.Data(), (int)(thresholds.at(t)), trigCh.at(tch)));
-	    grDiffDist->SetTitle(Form("%s: #Deltat as function of distance; Position / cm; #Deltat / s", barFile.Data()));
+	    grResDist->SetTitle(Form("%s: #deltat, %dmV threshold; Position / cm; Resolution / ns", barFile.Data(), (int)(thresholds.at(t))));
+	    grDiffDist->SetName(Form("grDiffDist_%s_thresh%dmV_trig%s", barFile.Data(), (int)(thresholds.at(t)), trigCh.at(tch)));
+	    grDiffDist->SetTitle(Form("%s: #Deltat, %dmV threshold; Position / cm; #Deltat / ns", barFile.Data(), (int)(thresholds.at(t))));
 	    for (int src=0; src<sourceDist.size(); src++) {
 	      TFile *finch3 = new TFile(Form("%s/2018Jul%s/%s/SourceAt%dcm/TrigCh%s_thres%dmV_20mVdiv.ch3.traces.root", fileDir, days.at(i), barFile.Data(), sourceDist.at(src), trigCh.at(tch), (int)(thresholds.at(t))), "read");
 	      TFile *finch4 = new TFile(Form("%s/2018Jul%s/%s/SourceAt%dcm/TrigCh%s_thres%dmV_20mVdiv.ch4.traces.root", fileDir, days.at(i), barFile.Data(), sourceDist.at(src), trigCh.at(tch), (int)(thresholds.at(t))), "read");
@@ -70,8 +73,8 @@ void threshRes(const char *outFile, const char *fileDir="/unix/dune/tof/")
 		fout->cd();
 		TF1 *f = new TF1("f", "gaus");
 		hDiff->Fit(f, "Q");
-		grResDist->SetPoint(grResDist->GetN(), sourceDist.at(src), f->GetParameter(2));
-		grDiffDist->SetPoint(grDiffDist->GetN(), sourceDist.at(src), f->GetParameter(1));
+		grResDist->SetPoint(grResDist->GetN(), sourceDist.at(src), f->GetParameter(2)*1e9);
+		grDiffDist->SetPoint(grDiffDist->GetN(), sourceDist.at(src), f->GetParameter(1)*1e9);
 		hDiff->Write();
 		delete f;
 		finch3->Close();
@@ -85,10 +88,25 @@ void threshRes(const char *outFile, const char *fileDir="/unix/dune/tof/")
 	      delete finch4;
 	    } // Loop over distances
 	    fout->cd();
+	    grResDist->SetLineWidth(2);
+	    grDiffDist->SetLineWidth(2);
+	    grResDist->SetMarkerSize(2);
+	    grDiffDist->SetMarkerSize(2);
+	    grResDist->SetMarkerStyle(20);
+	    grDiffDist->SetMarkerStyle(20);
 	    grResDist->Write();
 	    grDiffDist->Write();
-	  } // Loop over trigger channels
-	} // Loop over thresholds
+	    grResDist->SetLineColor(52 + t * 5);
+	    grDiffDist->SetLineColor(52 + t * 5);
+	    grResDist->SetMarkerColor(52 + t * 5);
+	    grDiffDist->SetMarkerColor(52 + t * 5);
+	    mgResCh->Add(grResDist);
+	    mgDiffCh->Add(grDiffDist);
+	  } // Loop over thresholds
+	  fout->cd();
+	  mgResCh->Write();
+	  mgDiffCh->Write();
+	} // Loop over trigger channels
       } // Correct bar format
     } // Loop through directories
   } // Loop over days
