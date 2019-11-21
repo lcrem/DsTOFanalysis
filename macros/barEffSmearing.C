@@ -1,6 +1,6 @@
 // barEffSmearing.C
 // Simulates the effect of time resolution on the efficiency correction used
-const std::vector<double> timeRes  = {1, 1.2, 1.4, 1.6, 1.8, 2.}; // in ns
+const std::vector<double> timeRes  = {1, 1.2, 1.4}; // in ns
 const std::vector<double> effWidth = {0.2, 0.22, 0.24, 0.26}; // one sigma values for efficiency curves
 const double timeToDist = 0.0768; // Factor to go from time to position in m
 
@@ -32,7 +32,15 @@ double gauss4(const double x, const double width, const double mean=.7)
   return val;
 }
 
-void barEffSmearing(const char* outFile, bool trueBars=false, const int nEntries=10000000, const char* s4Plots="/scratch0/sjones/plots/angularDistS4_newSample/withTree/includesUnweightedHists.root")
+// Generating function for MC with a convolution of sigmoids
+double sigmoids(const double x,
+		const double mid1, const double steep1, const double mid2, const double steep2)
+{
+  double val = 1 / ((1+exp(-steep1*(x - mid1))) *  (1+exp(-steep2*(x - mid2))));
+  return val;
+}
+
+void barEffSmearing(const char* outFile, bool trueBars=false, const char* s4Plots="/scratch0/sjones/plots/angularDistS4_newSample/withTree/includesUnweightedHists.root", const int nEntries=10000000)
 {
   gROOT->SetBatch(kTRUE);
 
@@ -122,7 +130,6 @@ void barEffSmearing(const char* outFile, bool trueBars=false, const int nEntries
       if (h==0) legRes->Write("legRes");
     }
   } // Generic bars
-
   else {
     TFile *fin = new TFile(s4Plots, "read");
     // Get the cosmic histograms
@@ -132,32 +139,52 @@ void barEffSmearing(const char* outFile, bool trueBars=false, const int nEntries
       cout<<"Sample "<<sample<<endl;
       TH2D *h2Cosmics = (TH2D*)fin->Get(Form("h2Cosmics%d", sample));
       for (int b=1; b<10; b++) {
-	TH1D *hBarSmear = new TH1D(Form("hBlock%dBar%dSmear", sample, b), Form("Block %d, bar %d", sample, b), 20, 0., 140.);
+	vector<TH1D*> barSmearVec;
+	vector<TH1D*> barRatioVec;
+	for (int t=0; t<timeRes.size(); t++) {
+	  TH1D *hBarSmear = new TH1D(Form("hBlock%dBar%dRes%dSmear", sample, b, (int)(timeRes[t]*10)), Form("Block %d, bar %d", sample, b), 20, 0., 140.);
+	  TH1D *hBarRatio = new TH1D(Form("hBlock%dBar%dRes%dRatio", sample, b, (int)(timeRes[t]*10)), Form("Block %d, bar %d", sample, b), 20, 0., 140.);
+	  barSmearVec.push_back(hBarSmear);
+	  barRatioVec.push_back(hBarRatio);
+	}
 	TH1D *hBarEff = new TH1D(Form("hBlock%dBar%dEff", sample, b), Form("Block %d, bar %d", sample, b), 20, 0., 140.);
-	TH1D *hBarRatio = new TH1D(Form("hBlock%dBar%dRatio", sample, b), Form("Block %d, bar %d", sample, b), 20, 0., 140.);
-	TF1 *f1 = new TF1( "f1", "[0]*exp(-1*pow((x-[1])/(2*[2]), 4))" );
-	f1->SetParameter(0, 1.);
-	f1->SetParameter(1, 70.);
-	f1->SetParameter(2, 30.);
+
+	TF1 *f1 = new TF1(Form("f1block%dbar%d", sample, b), "([0]/(1+exp(-[1]*(x-[2]))))*(1/(1+exp(-[3]*(x-[4]))))", 0, 140 );
+	f1->SetParameter(0, 2);
+	f1->SetParameter(1, 0.15);
+	f1->SetParameter(2, 20);
+	f1->SetParameter(3, -0.15);
+	f1->SetParameter(4, 120);
+	f1->SetParameter(5, 0.2);
+	f1->SetParameter(6, 0.2);
 	TH1D *hCosmic = h2Cosmics->ProjectionX(Form("block%dbar%d", sample, b), b, b);
-	hCosmic->Fit(f1);
-	// We don't want to use the width, just the mean
-	meanVec.at(b-1) = f1->GetParameter(1);
+	hCosmic->Fit(f1,"q");
+	hCosmic->Fit(f1,"q");
+	
 	// Loop over number of entries
 	for (int n=0; n<nEntries; n++) {
 	  if (n % 100000 == 0) std::cout<<n<<" of "<<nEntries<<std::endl;
 	  double r1 = r->Rndm();
 	  double r2 = r->Rndm() * 140;
-	  if (r1 < gauss4(r2, 23., f1->GetParameter(1))) {
+	  if (r1 < sigmoids(r2, f1->GetParameter(2), f1->GetParameter(1),
+			    f1->GetParameter(4), f1->GetParameter(3))) {
 	    hBarEff->Fill(r2);
-	    hBarSmear->Fill(r->Gaus(r2, 1.4*timeToDist*100.));
+	    for (int t=0; t<timeRes.size(); t++) {
+	      barSmearVec[t]->Fill(r->Gaus(r2, timeRes[t]*timeToDist*100.));
+	    }
 	  } 
 	} // Loop over entries
-	hBarRatio->Divide(hBarSmear, hBarEff, 1., 1., "B");
 	fout->cd();
+	THStack *hsBar = new THStack(Form("hsBlock%dBar%d", sample, b), Form("%d block, bar %d", sample, b));
+	for (int t=0; t<timeRes.size(); t++) {
+	  barRatioVec[t]->Divide(barSmearVec[t], hBarEff, 1., 1., "B");
+	  barSmearVec[t]->Write();
+	  barRatioVec[t]->Write();
+	  barRatioVec[t]->SetLineColor(52 + t*6);
+	  hsBar->Add(barRatioVec[t]);
+	}
+	hsBar->Write();
 	hBarEff->Write();
-	hBarSmear->Write();
-	hBarRatio->Write();
       } // Loop over bars
     } // Loop over samples
     fin->Close();
