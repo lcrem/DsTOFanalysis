@@ -1,4 +1,11 @@
 // angularDistS3.C
+// Does the analysis for the S3 flux data
+
+// S3 calculated edges
+const TVector3 S3_TL(0.6012, 0.6244, 9.0724);
+const TVector3 S3_TR(-1.0725, 0.6220, 8.9171);
+const TVector3 S3_BL(0.5917, -0.5993, 9.0562);
+const TVector3 S3_BR(-1.0809, -0.6012, 8.8973);
 
 // Outputs momentum in GeV/c
 double momFromTime(const double mass, const double baseline, const double time)
@@ -21,6 +28,14 @@ double dtVar(const double slope, const double slopeErr, const double hits,
   double weight = 1. / (slope * hits + constant);
   double var = pow(weight, 2) + pow(weight, 4) * (pow(slope,2)*hits + pow(hits*slopeErr,2) + pow(constantErr,2));
   return var;
+}
+
+TVector3 utofGlobalCoords(const double xtof, const double ytof) {
+  double posX = (xtof / 168.) * (S3_TR.X() - S3_TL.X()) + S3_TL.X();
+  double posY = (ytof / 100.) + (S3_BR.Y() + S3_BL.Y())/2.;
+  double posZ = (xtof / 168.) * (S3_TR.Z() - S3_TL.Z()) + S3_TL.Z();
+  TVector3 coords(posX, posY, posZ);  
+  return coords;
 }
 
 void angularDistS3_newSample(const char* saveDir,
@@ -181,6 +196,7 @@ void angularDistS3_newSample(const char* saveDir,
   THStack *hsutof1dS1NoS2   = new THStack("hsutof1dS1NoS2", "Time of flight as measured in S3 (no S2 trigger); Time of flight / ns; Events / spill");
 
   TFile *fout = new TFile(Form("%s/angularDistS3plots.root", saveDir), "recreate");
+  TFile *fTrees = new TFile(Form("%s/s3ProtonWeightTrees.root", saveDir), "recreate");
 
   TLegend *leg = new TLegend(0.15, 0.55, 0.3, 0.85);
   TLegend *legTheta = new TLegend(0.23, 0.5, 0.38, 0.85);
@@ -214,6 +230,22 @@ void angularDistS3_newSample(const char* saveDir,
 
   double proHi = 0.;
   for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
+    // Tree for the S3 proton weights
+    TTree *protonTree = new TTree(Form("protonTree%dBlocks", nBlocks), Form("protonTree%dBlocks", nBlocks));
+    double tof, mom;
+    double x, y, z;
+    double weight;
+    int spill;
+    int isS2;
+    protonTree->Branch("tof", &tof);
+    protonTree->Branch("mom", &mom);
+    protonTree->Branch("x", &x);
+    protonTree->Branch("y", &y);
+    protonTree->Branch("z", &z);
+    protonTree->Branch("weight", &weight);
+    protonTree->Branch("spill", &spill);
+    protonTree->Branch("isS2", &isS2);
+
     int nSpills = 0;
 
     if (nBlocks == 0) proHi = proHi0;
@@ -598,12 +630,7 @@ void angularDistS3_newSample(const char* saveDir,
 	    tree->GetEntry(t);
 	    if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
 	    if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
-	    // Count number of spills
-	    // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) {
-	    // nSpills++;
-	    // lastSpill = tSoSd;
-	    // } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
-
+	    
 	    for (int nh=0; nh<nhit; nh++) {
 	      // Checks if the next S3 hit is in a neighbouring bar
 	      // Only want to count one of them if it is
@@ -658,6 +685,19 @@ void angularDistS3_newSample(const char* saveDir,
 		} // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		// Is a proton
 		else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		  // Variables for the proton tree
+		  tof = tofCalc;
+		  mom = momFromTime(0.938, 10.9, tofCalc);
+		  TVector3 utofCoords = utofGlobalCoords(xToF[nh], yToF[nh]);
+		  x = utofCoords.X() + 0.491;
+		  y = utofCoords.Y() + 0.0114;
+		  z = utofCoords.Z() - 10.829;
+		  isS2 = 0;
+		  weight = 1. / deadtimeWeight;
+		  if (tTrig != 0) isS2 = 1;
+		  spill = nSpills;
+		  protonTree->Fill();
+
 		  nP++;
 		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
@@ -1172,6 +1212,7 @@ void angularDistS3_newSample(const char* saveDir,
       h2dTofThetaWC->Write();
       h2dTofPhiS1->Write();
       h2dTofPhiWC->Write();
+
     } // if (nBlocks != 4)
     else {
       // Loop through 4 block data
@@ -1431,6 +1472,19 @@ void angularDistS3_newSample(const char* saveDir,
 		  } // if ( tofCalc > piLow && tofCalc < piHi )
 		  // Is a proton
 		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		    // Variables for the proton tree
+		    tof = tofCalc;
+		    mom = momFromTime(0.938, 10.9, tofCalc);
+		    TVector3 utofCoords = utofGlobalCoords(xToF[nh], yToF[nh]);
+		    x = utofCoords.X() + 0.491;
+		    y = utofCoords.Y() + 0.0114;
+		    z = utofCoords.Z() - 10.829;
+		    isS2 = 0;
+		    weight = 1. / deadtimeWeight;
+		    if (tTrig != 0) isS2 = 1;
+		    spill = nSpills;
+		    protonTree->Fill();
+
 		    nP++;
 		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
@@ -1778,8 +1832,11 @@ void angularDistS3_newSample(const char* saveDir,
 
       cout<<"Completed this dataset"<<endl;
     } // 4 block data
-
+    fTrees->cd();
+    protonTree->Write();
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
+
+  //fTrees->Close();
 
   fout->cd();
   leg->Write("leg");
