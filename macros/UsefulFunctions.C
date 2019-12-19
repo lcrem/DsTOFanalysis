@@ -157,7 +157,7 @@ double localDtofPosition(const double fakeTime0, const double fakeTime1)
 // Converts global coordinates to the coordinate system in the MC
 TVector3 globalToMCCoords(TVector3 v)
 {
-  TVector vec;
+  TVector3 vec;
   vec.SetX(v.X() + 0.491);
   vec.SetY(v.Y() + 0.0114);
   vec.SetZ(v.Z() - 10.829);
