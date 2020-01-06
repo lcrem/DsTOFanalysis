@@ -108,7 +108,7 @@ std::vector<const char*> str4BlockVec = {str4Block1, str4Block2, str4Block3};
 // Time for signal to travel down and S4
 const double s4BarTime = 18.2;
 // Maximum rate of cosmics measured for some arbitrary area -- used for normalisation
-const double maxCosmics = 1.739; // Hz
+const double maxCosmics = 1.627; // Hz
 
 // S4 fitting regions and timing cuts
 // Timing cuts
@@ -120,6 +120,9 @@ const double proCutHiS4  = 285.;
 // Fit regions for protons
 const vector<double> proFitLowS4 = {62., 62., 69., 75., 75.};
 const vector<double> proFitHiS4  = {86., 94., 100., 105., 285.};
+// Deadtime cut for S4
+// Enforces a deadtime on S4 bars, necessary to avoid some weird effects
+const double s4DeadtimeCut = 200.; // ns
 
 /// Functions
 // Histogram styles
@@ -177,6 +180,12 @@ TVector3 globalToMCCoords(TVector3 v)
   vec.SetY(v.Y() + 0.0114);
   vec.SetZ(v.Z() - 10.829);
   return vec;
+}
+
+// Calculating actual time of hit in S4
+double dtofHitTime(const double t0, const double t1) {
+  double t = min(t0, t1) - (s4BarTime/2. - TMath::Abs(t0 - t1) / 2.);
+  return t;
 }
 
 // Converts MC coordinates to the global coordinate system from the survey
