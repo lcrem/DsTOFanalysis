@@ -107,7 +107,22 @@ const char* str4Block3 = "Data_2018_8_29_b1.root";
 std::vector<const char*> str4BlockVec = {str4Block1, str4Block2, str4Block3};
 // Time for signal to travel down and S4
 const double s4BarTime = 18.2;
+// Maximum rate of cosmics measured for some arbitrary area -- used for normalisation
+const double maxCosmics = 1.739; // Hz
 
+// S4 fitting regions and timing cuts
+// Timing cuts
+const double piLowS4  = 36.;
+const double piHiS4   = 51.;
+// Cuts for selecting the protons
+const double proCutLowS4 = 62.;
+const double proCutHiS4  = 285.;
+// Fit regions for protons
+const vector<double> proFitLowS4 = {62., 62., 69., 75., 75.};
+const vector<double> proFitHiS4  = {86., 94., 100., 105., 285.};
+
+/// Functions
+// Histogram styles
 void setHistAttr(TH1D *h) 
 {
   h->SetLineWidth(2);
@@ -174,4 +189,28 @@ TVector3 MCToGlobalCoords(TVector3 v)
   return vec;
 }
 
+// Mass squared from the time
+// momentum and mass in GeV
+// Time is in ns
+double massFromTime(const double time, const double mom, const double base) {
+  double mass = pow(mom,2) * (pow((time*1e-9)/base, 2)*pow(3e8, 2) - 1);
+  return mass;
+}
+
+// Time in ns
+// Outputs momentum in GeV/c
+double momFromTime(const double mass, const double baseline, const double time)
+{
+  double mom = 0.;
+  mom = mass * 1000. * (baseline/(time*1e-9))*(1/TMath::Sqrt((pow(3e8*1e-9*time,2) - pow(baseline,2))/pow(time*1e-9,2)));
+  return mom;
+}
+// Time in ns
+// Output K.E. in GeV
+double keFromTime(const double mass, const double baseline, const double time)
+{
+  double mom = momFromTime(mass, baseline, time);
+  double ke = TMath::Sqrt( pow(mom, 2) + pow(mass, 2) ) - mass;
+  return ke;
+}
 
