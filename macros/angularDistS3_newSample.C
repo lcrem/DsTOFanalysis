@@ -234,7 +234,7 @@ void angularDistS3_newSample(const char* saveDir,
     TTree *protonTree = new TTree(Form("protonTree%dBlocks", nBlocks), Form("protonTree%dBlocks", nBlocks));
     double tof, mom;
     double x, y, z;
-    double weight;
+    double weight, error;
     int spill;
     int isS2;
     protonTree->Branch("tof", &tof);
@@ -243,6 +243,7 @@ void angularDistS3_newSample(const char* saveDir,
     protonTree->Branch("y", &y);
     protonTree->Branch("z", &z);
     protonTree->Branch("weight", &weight);
+    protonTree->Branch("error", &error);
     protonTree->Branch("spill", &spill);
     protonTree->Branch("isS2", &isS2);
 
@@ -610,7 +611,7 @@ void angularDistS3_newSample(const char* saveDir,
       for (int s = 0; s < utofTimes.size(); s++) {
 	if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
 	double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	double deadtimeErr = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
+	double deadtimeVar = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
 	// Initial data quality loop
 	bool isGood = false;
 	for (int t=lastut; t<tree->GetEntries(); t++) {
@@ -663,7 +664,7 @@ void angularDistS3_newSample(const char* saveDir,
 		// All triggers
 		hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeErr;
+		utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeVar;
 		h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
 		h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
 		h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
@@ -675,8 +676,8 @@ void angularDistS3_newSample(const char* saveDir,
 		  nPi++;
 		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
-		  thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
+		  phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		  thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
 		  hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
@@ -694,6 +695,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  z = utofCoords.Z() - 10.829;
 		  isS2 = 0;
 		  weight = 1. / deadtimeWeight;
+		  error = TMath::Sqrt(deadtimeVar);
 		  if (tTrig != 0) isS2 = 1;
 		  spill = nSpills;
 		  protonTree->Fill();
@@ -701,8 +703,8 @@ void angularDistS3_newSample(const char* saveDir,
 		  nP++;
 		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
-		  thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
+		  phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		  thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
 		  if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		  hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		  h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
@@ -710,28 +712,28 @@ void angularDistS3_newSample(const char* saveDir,
 		  // Remove deuteron peak in 0 block data
 		  if (nBlocks != 0) {
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
+		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 		    // Only protons passing through TPC active area
 		    if (angleTheta > 1.439 && angleTheta < 3.778 &&
 			anglePhi > -2.662 && anglePhi < 2.575) {
 		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
+		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
+		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
 		    }
 		  }
 		  else {
 		    double mom = momFromTime(0.938, 10.9, tofCalc);
 		    if (mom > 0.45) {
 		      hMomS1->Fill(mom, 1./deadtimeWeight);
-		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
+		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 		      // Only protons passing through TPC active area
 		      if (angleTheta > 1.439 && angleTheta < 3.778 &&
 			  anglePhi > -2.662 && anglePhi < 2.575) {
 			hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 			hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
-			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
+			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
+			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
 		      }
 		    }
 		  }
@@ -1393,7 +1395,7 @@ void angularDistS3_newSample(const char* saveDir,
 	for (int s = 0; s < utofTimes.size(); s++) {
 	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
 	  double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	  double deadtimeErr = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
+	  double deadtimeVar = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
 	  // Do initial loop to check data quality
 	  bool isGood = false;
 	  for (int t=lastut; t<tree->GetEntries(); t++) {
@@ -1448,7 +1450,7 @@ void angularDistS3_newSample(const char* saveDir,
 		  // All triggers
 		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeErr;
+		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeVar;
 		  h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
 		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
 		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
@@ -1463,8 +1465,8 @@ void angularDistS3_newSample(const char* saveDir,
 		    if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
-		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
+		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
 		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
@@ -1481,6 +1483,7 @@ void angularDistS3_newSample(const char* saveDir,
 		    z = utofCoords.Z() - 10.829;
 		    isS2 = 0;
 		    weight = 1. / deadtimeWeight;
+		    error = TMath::Sqrt(deadtimeVar);
 		    if (tTrig != 0) isS2 = 1;
 		    spill = nSpills;
 		    protonTree->Fill();
@@ -1490,11 +1493,11 @@ void angularDistS3_newSample(const char* saveDir,
 		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		    hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeErr;
-		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeErr;
+		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
 		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc))) += deadtimeErr;
+		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc))) += deadtimeVar;
 		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 		    // Only protons passing through TPC active area
@@ -1502,8 +1505,8 @@ void angularDistS3_newSample(const char* saveDir,
 			anglePhi > -2.662 && anglePhi < 2.575) {
 		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeErr;
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeErr;
+		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
+		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
 		    }
 		    lastut = t;
 		    if (nBlocks == 0 && momFromTime(0.938, 10.8, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
