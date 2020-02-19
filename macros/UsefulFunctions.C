@@ -146,7 +146,6 @@ void setHistAttr(TH2D *h2)
   h2->GetXaxis()->SetLabelSize(.05);
   h2->GetYaxis()->SetLabelSize(.05);
   h2->GetZaxis()->SetLabelSize(.05);
-  h2->Sumw2();
 }
 
 // Downstream TOF global coordinates
@@ -176,9 +175,9 @@ double localDtofPosition(const double fakeTime0, const double fakeTime1)
 TVector3 globalToMCCoords(TVector3 v)
 {
   TVector3 vec;
-  vec.SetX(v.X() + 0.491);
-  vec.SetY(v.Y() + 0.0114);
-  vec.SetZ(v.Z() - 10.829);
+  vec.SetX(v.X() + 0.6706);
+  vec.SetY(v.Y() + 0.05305);
+  vec.SetZ(v.Z() - 10.8182);
   return vec;
 }
 
@@ -192,9 +191,9 @@ double dtofHitTime(const double t0, const double t1) {
 TVector3 MCToGlobalCoords(TVector3 v)
 {
   TVector3 vec;
-  vec.SetX(v.X() - 0.491);
-  vec.SetY(v.Y() - 0.0114);
-  vec.SetZ(v.Z() + 10.829);
+  vec.SetX(v.X() - 0.6706);
+  vec.SetY(v.Y() - 0.05305);
+  vec.SetZ(v.Z() + 10.8182);
   return vec;
 }
 
