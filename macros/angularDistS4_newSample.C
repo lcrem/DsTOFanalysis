@@ -135,7 +135,7 @@ void angularDistS4_newSample(const char* saveDir,
     endTimes.clear();
     fout->cd();
     TTree *protonTree = new TTree(Form("protonTree%d", nBlocks), Form("protonTree%d", nBlocks));
-    double weight;
+    double weight, error;
     double tof;
     double mom;
     double theta;
@@ -143,6 +143,7 @@ void angularDistS4_newSample(const char* saveDir,
     double mcx, mcy, mcz;
     int spill;
     protonTree->Branch("weight", &weight);
+    protonTree->Branch("error", &error);
     protonTree->Branch("tof", &tof);
     protonTree->Branch("mom", &mom);
     protonTree->Branch("theta", &theta);
@@ -390,10 +391,15 @@ void angularDistS4_newSample(const char* saveDir,
       // In this loop calculate the bar-by-bar efficiencies and the angular efficiencies
       double lastSpillSignal = 0.;
       int nSpillsCosmics = 0;
+
+      vector<double> barTimeVec;
+      barTimeVec.resize(10, 0.);
+
       for (int itdc=0; itdc<2; itdc++) {
 	// Need both the coincidence and the raw trees for this
 	double tempUstof;
 	double ustofNs;
+	unsigned int lastRun = 0;
 	for (int irun=runMin; irun<runMax+1; irun++) {
 	  // Load input files
 	  TFile *tofCoinFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
@@ -432,6 +438,16 @@ void angularDistS4_newSample(const char* saveDir,
 	    if (abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]) > s4BarTime) continue;
 	    double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]);
 	    double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2. );
+	    if (dstofHitT - barTimeVec.at(tofCoin->bar-1) < s4DeadtimeCut && tofCoin->run==lastRun) {
+	      continue;
+	    }
+	    else if (tofCoin->run != lastRun) {
+	      barTimeVec.clear();
+	      barTimeVec.resize(10, 0.);
+	      lastRun = tofCoin->run;
+	    }
+	    barTimeVec.at(tofCoin->bar-1) = dstofHitT;
+
 	    double tofCalc = dstofHitT - tofCoin->usTofSignal;
 	    // Count number of spills for time normalisation
 	    if (tofCoin->lastDelayedBeamSignal != lastSpillSignal && itdc==1) {
@@ -528,6 +544,7 @@ void angularDistS4_newSample(const char* saveDir,
       // Now loop over the coincidence files again and calculate the angular distributions
       cout<<"Getting signal hits"<<endl;
       for (int itdc=0; itdc<2; itdc++) {
+	unsigned int lastRun = 0;
 	// First of all tchain the relevant files together
 	TChain *tofCoinChain = new TChain("tofCoinTree");
 	for (int irun=runMin; irun<runMax+1; irun++){
@@ -569,7 +586,19 @@ void angularDistS4_newSample(const char* saveDir,
 	  // Need to calculate total signal hits here
 	  // Weight these by the efficiency of calculated above
 	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]);
-	  double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2.);
+	  double dstofHitT = dtofHitTime(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
+
+	  // Make bar go dead after hit
+	  if (dstofHitT - barTimeVec.at(tofCoin->bar-1) < s4DeadtimeCut && tofCoin->run==lastRun) {
+	    continue;
+	  }
+	  else if (tofCoin->run != lastRun) {
+	    barTimeVec.clear();
+	    barTimeVec.resize(10, 0.);
+	    lastRun = tofCoin->run;
+	  }
+	  barTimeVec.at(tofCoin->bar-1) = dstofHitT;
+
 	  double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
 	  if (tofCalc < proCutHiS4 && tofCalc > 30. && tofCoin->bar != 10 && deltat < s4BarTime) {
 	    double positionXP = localDtofPosition(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
@@ -586,7 +615,7 @@ void angularDistS4_newSample(const char* saveDir,
 	      tofCoinChain->GetEntry(dub);
 	      double dstofHitT2 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2.);
 	      int bar2 = tofCoin->bar;
-	      if (dstofHitT2 - dstofHitT < 2. && dstofHitT2 > dstofHitT && abs(bar1-bar2)==1) {
+	      if (dstofHitT2 - dstofHitT < 2. && dstofHitT2 > dstofHitT && abs(bar1-bar2) % 2 == 1) {
 		h2DoubleFirst->Fill(positionXP, bar1);
 		double positionXP2 = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(70./s4BarTime) + 70.));
 		h2DoubleSecond->Fill(positionXP2, bar2);
@@ -633,6 +662,7 @@ void angularDistS4_newSample(const char* saveDir,
 	      tof = tofCalc;
 	      mom = momFromTime(0.938, s2s4Dist, tofCalc);
 	      weight = w;
+	      error = sqrt(errSq);
 	      theta = angleTheta;
 	      phi = anglePhi;
 	      mcx = mcX;
