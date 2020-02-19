@@ -125,7 +125,7 @@ void angularDistS4_newSample(const char* saveDir,
 			  91., 98., 105., 112., 119., 126., 133., 140.};
   int binnum = sizeof(binsCosmics)/sizeof(double) - 1;
 
-  for (int nBlocks = 0; nBlocks <= 3; nBlocks++) {
+  for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     cout<<"=========================================="<<endl;
     cout<<nBlocks<<" blocks"<<endl;
     cout<<"=========================================="<<endl;
@@ -558,6 +558,7 @@ void angularDistS4_newSample(const char* saveDir,
 	// Use the spills recorded in the spill DB
 	for (int h=0; h<tofCoinChain->GetEntries(); h++) {
 	  tofCoinChain->GetEntry(h);
+	
 	  if (tofCoin->unixTime[0]<startTime) continue;
 	  if (tofCoin->unixTime[0]>endTime) break;
 	  if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
@@ -604,10 +605,10 @@ void angularDistS4_newSample(const char* saveDir,
 	    double positionXP = localDtofPosition(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
 	    TVector3 globalCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
 	    double mcXForSmear = globalToMCCoords(globalCoords).X();
-	    double smearWeight = smearHistVec.at(tofCoin->bar-1)->GetBinContent(smearHistVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(mcXForSmear));
-	    hSmearWeight->Fill(mcXForSmear, smearWeight);
+	    // double smearWeight = smearHistVec.at(tofCoin->bar-1)->GetBinContent(smearHistVec.at(tofCoin->bar-1)->GetXaxis()->FindBin(mcXForSmear));
+	    // hSmearWeight->Fill(mcXForSmear, smearWeight);
+	    // if (smearWeight > 40) smearWeight = 40.;
 
-	    if (smearWeight > 40) smearWeight = 40.;
 	    double w = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff); 
 	    // Need to count if there is a double hit associated with this one
 	    int bar1 = tofCoin->bar;
@@ -673,7 +674,7 @@ void angularDistS4_newSample(const char* saveDir,
 
 	      nP += w;
 	      hProS4Horz->Fill(angleTheta, w);
-	      hProS4HorzSmear->Fill(angleTheta, w*smearWeight);
+	      // hProS4HorzSmear->Fill(angleTheta, w*smearWeight);
 	      hProS4Vert->Fill(anglePhi, w);
 	      hProS4HorzUnwgt->Fill(angleTheta);
 	      hProS4VertUnwgt->Fill(anglePhi);
