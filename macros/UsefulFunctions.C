@@ -123,6 +123,19 @@ const vector<double> proFitHiS4  = {86., 94., 100., 105., 285.};
 // Deadtime cut for S4
 // Enforces a deadtime on S4 bars, necessary to avoid some weird effects
 const double s4DeadtimeCut = 200.; // ns
+const double barOverallEff    = .8;
+const double barOverallEffErr = .1;
+
+// Beam paper binnings and limits
+const int nBinsS4Horz = 20;
+const double binsS4HorzLow  = -6.;
+const double binsS4HorzHigh = 0.;
+const int nBinsS4Vert = 9;
+const double binsS4VertLow  = -1.5;
+const double binsS4VertHigh = 1.42;
+const int nBinsDtof = 182;
+const double binsDtofLow  = 30.;
+const double binsDtofHigh = proCutHiS4;
 
 /// Functions
 // Histogram styles
@@ -139,13 +152,14 @@ void setHistAttr(TH1D *h)
 
 void setHistAttr(TH2D *h2) 
 {
-  h2->SetOption("colz");
   h2->GetXaxis()->SetTitleSize(.05);
   h2->GetYaxis()->SetTitleSize(.05);
   h2->GetZaxis()->SetTitleSize(.05);
   h2->GetXaxis()->SetLabelSize(.05);
   h2->GetYaxis()->SetLabelSize(.05);
   h2->GetZaxis()->SetLabelSize(.05);
+  h2->Sumw2();
+  h2->SetOption("colz");
 }
 
 // Downstream TOF global coordinates
@@ -169,6 +183,25 @@ double localDtofPosition(const double fakeTime0, const double fakeTime1)
 {
   double pos = ((fakeTime1-fakeTime0)*(70./s4BarTime)+70.);
   return pos;
+}
+
+// Angles for beam flux paper from survey coordinates
+double getThetaFromGlobal(const TVector3 vec)
+{
+  const TVector3 vS1 = (D1_ULB+D1_ULT+D1_URB+D1_URT)*0.25;
+  TVector3 v = vec;
+  v = v - vS1;
+  double theta = TMath::ATan(v.X()/v.Z())*(180./TMath::Pi());
+  return theta;
+}
+
+double getPhiFromGlobal(const TVector3 vec)
+{
+  const TVector3 vS1 = (D1_ULB+D1_ULT+D1_URB+D1_URT)*0.25;
+  TVector3 v = vec;
+  v = v - vS1;
+  double phi = TMath::ATan(v.Y()/v.Z())*(180./TMath::Pi());
+  return phi;
 }
 
 // Converts global coordinates to the coordinate system in the MC
