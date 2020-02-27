@@ -137,6 +137,23 @@ const int nBinsDtof = 182;
 const double binsDtofLow  = 30.;
 const double binsDtofHigh = proCutHiS4;
 
+const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
+vector<double> getDtofEdges() 
+{
+  std::vector<double> vec;
+  for (int i=0; i<93; i++) {
+    double edge = i * (dtofFixedWidth) + binsDtofLow;
+    vec.push_back(edge);
+  }
+  for (int i=95; i<183; i++) {
+    if ((i+1) % 3==0) {
+      double edge = i * (dtofFixedWidth) + binsDtofLow;
+      vec.push_back(edge);
+    }
+  }
+  return vec;
+}
+
 /// Functions
 // Histogram styles
 void setHistAttr(TH1D *h) 
@@ -253,5 +270,18 @@ double keFromTime(const double mass, const double baseline, const double time)
   double mom = momFromTime(mass, baseline, time);
   double ke = TMath::Sqrt( pow(mom, 2) + pow(mass, 2) ) - mass;
   return ke;
+}
+
+// Get line colour from block colour
+int getColourFromBlock(const int block)
+{
+  int col = 0;
+  if (block==0) col=1;
+  else if (block==1) col=632;
+  else if (block==2) col=600;
+  else if (block==3) col=433;
+  else if (block==4) col=801;
+
+  return col;
 }
 
