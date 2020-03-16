@@ -12,10 +12,13 @@ double weightErr(const double posEff, const double posEffErr,
   return err;
 }
 
-double weightErr(const double weight, const double werr)
+double weightErr(const double weight, const double barerr, const double n)
 {
   double err = 0.;
-  err = TMath::Sqrt( weight*weight + pow(werr*(weight*weight), 2) );
+  if (n!=0) {
+    err = sqrt(pow(weight * sqrt(1. + (1. / n)), 2) + barerr*barerr);
+  }
+  //double err = TMath::Sqrt( weight*weight + pow(werr*(weight*weight), 2) );
   return err;
 }
 
@@ -74,7 +77,9 @@ void angularDistS4_newSample(const char* saveDir,
   TFile *fout = new TFile(saveDir, "recreate");
 
   // THStack *hsBkgSub = new THStack("hsBkgSub", "S2 to S4 time of flight spectrum; t_{S4} - t_{S2} / ns; Events / spill");
-  THStack *hsDtof   = new THStack("hsDtof", "S4 ToF spectrum; t_{S4} - t_{S2} / ns; Events / spill");
+  THStack *hsDtof     = new THStack("hsDtof", "S4 ToF spectrum; t_{S4} - t_{S2} / ns; Events / spill");
+  THStack *hsDtofSub  = new THStack("hsDtofSub", "S4 ToF spectrum; t_{S4} - t_{S2} / ns; Events / spill / ns");
+  THStack *hsDtofBins = new THStack("hsDtofBins", "S4 ToF spectrum; t_{S4} - t_{S2} / ns; Events / spill / ns");
 
   THStack *hsProS4Vert = new THStack("hsProS4Vert", "S1 #cap S2 #cap S4 angular distribution of proton hits; #phi / degrees; Events / spill / degree");
   THStack *hsPiS4Vert  = new THStack("hsPiS4Vert", "S1 #cap S2 #cap S4 angular distribution of MIP hits; #phi / degrees; Events / spill / degree");
@@ -122,6 +127,13 @@ void angularDistS4_newSample(const char* saveDir,
 			  81., 83., 85., 87., 89., 
 			  91., 98., 105., 112., 119., 126., 133., 140.};
   int binnum = sizeof(binsCosmics)/sizeof(double) - 1;
+
+  vector<double> edgesDtofVec = getDtofEdges();
+  double arr[edgesDtofVec.size()-1];
+  for (int i=0; i<edgesDtofVec.size(); i++) {
+    arr[i] = edgesDtofVec.at(i);
+    cout<<arr[i]<<endl;
+  }
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
     cout<<"=========================================="<<endl;
@@ -236,6 +248,10 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     setHistAttr(hdtof1d);
     TH1D *hdtof1dErr = new TH1D(Form("hdtof1dErr%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill", nBlocks), nBinsDtof, binsDtofLow, binsDtofHigh);
     setHistAttr(hdtof1dErr);
+    TH1D *hdtof1dBins = new TH1D(Form("hdtof1dBins%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill / ns", nBlocks), edgesDtofVec.size()-1, arr);
+    setHistAttr(hdtof1dBins);
+    TH1D *hdtof1dBinsErr = new TH1D(Form("hdtof1dBinsErr%d",nBlocks), Form("Time of flight, measured in S4, %d blocks; t_{S4} - t_{S2} / ns; Events / spill", nBlocks), edgesDtofVec.size()-1, arr);
+    setHistAttr(hdtof1dBinsErr);
     // Total efficiency
     TH1D *hEffTotal = new TH1D(Form("hEffTotal_%d", nBlocks), Form("With beam data, %d blocks; Bar; Events",nBlocks), 10, 0.5, 10.5);
 
@@ -327,6 +343,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       setHistAttr(h2Cosmics);
       TH2D *h2CosmicsEff = new TH2D(Form("h2CosmicsEff%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Eff", nBlocks), nBinsS4Horz, 0, 140, 10, 0.5, 10.5);
       setHistAttr(h2CosmicsEff);
+      TH2D *h2CosmicsErr = new TH2D(Form("h2CosmicsErr%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Err", nBlocks), nBinsS4Horz, 0, 140, 10, 0.5, 10.5);
+      setHistAttr(h2CosmicsErr);
       TH2D *h2CosmicsEffBins = new TH2D(Form("h2CosmicsEffBins%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Eff", nBlocks), binnum, binsCosmics, 10, 0.5, 10.5);
       setHistAttr(h2CosmicsEffBins);
       TH2D *h2CosmicsEffMC = new TH2D(Form("h2CosmicsEffMC%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; y / cm; Eff", nBlocks), nBinsS4Horz, -0.95, 0.41, 10, -0.3361, 0.4139);
@@ -337,6 +355,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       setHistAttr(hCosmicsVertEff2dNorm);
       TH1D *hCosmicsHorz = new TH1D(Form("hCosmicsHorz%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Rate / Hz",nBlocks), nBinsS4Horz, 0, 140);
       setHistAttr(hCosmicsHorz);
+
       // Bar by bar efficiencies calculated by cosmics
       std::vector<TH1D*> eff1dVec;
       for (int b=0; b<10; b++) {
@@ -461,6 +480,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 		eff1dVec.at(tofCoin->bar-1)->Fill(positionX);
 		h2Cosmics->Fill(positionX, tofCoin->bar);
 		h2CosmicsEff->Fill(positionX, tofCoin->bar);
+		h2CosmicsErr->Fill(positionX, tofCoin->bar);
 		h2CosmicsEffBins->Fill(positionX, tofCoin->bar);
 		h2CosmicsEffMC->Fill(mcX, mcY);
 		hCosmicsVertEff->Fill(tofCoin->bar);
@@ -520,12 +540,19 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       h2CosmicsEffBins->Scale(1./h2CosmicsEffBins->GetBinContent(h2CosmicsEffBins->GetMaximumBin()));
       h2CosmicsEffMC->Scale(1./h2CosmicsEffMC->GetBinContent(h2CosmicsEffMC->GetMaximumBin()));
       hCosmicsVertEff2dNorm->Scale(1./(h2Cosmics->GetBinContent(h2Cosmics->GetMaximumBin())*h2Cosmics->GetNbinsX()));
-      h2Cosmics->Scale(1. / (endTime - startTime - nSpillsCosmics));
+
+      for (int ii=0; ii<h2CosmicsEff->GetNbinsX()+1; ii++) {
+	for (int jj=0; jj<h2CosmicsEff->GetNbinsY()+1; jj++) {
+	  h2CosmicsErr->SetBinContent(ii, jj, h2CosmicsEff->GetBinError(ii, jj)); 
+	}
+      }
+
       hHits->Write();
       hCoins->Write();
       hHits->Add(hCoins, -1.);
       hEff->Divide(hCoins, hHits, 1., 1., "B");
       h2CosmicsEff->Write();
+      h2CosmicsErr->Write();
       h2CosmicsEffBins->Write();
       h2CosmicsEffMC->Write();
       h2Cosmics->Write();
@@ -611,8 +638,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 		break;
 	      }
 	    } // Loop to find double hits
-	    double errOnCosmics = pow(h2CosmicsEff->GetBinError(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar), 2) + barOverallEffErr*barOverallEffErr;
-	    double errSq    = pow(weightErr(w, errOnCosmics), 2);
+
+	    double errSq    = pow(weightErr(w, barOverallEffErr, h2Cosmics->GetBinContent(h2Cosmics->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
 	    double errSqBar = pow(weightErrBar(hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2);
 	    // Calculate position of hit in global coordinates
 	    TVector3 dtofCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
@@ -626,6 +653,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	    double mcZ = mcCoords.Z();
 	    hdtof1d->Fill(tofCalc, w);
 	    hdtof1dErr->Fill(tofCalc, errSq);
+	    hdtof1dBins->Fill(tofCalc, w);
+	    hdtof1dBinsErr->Fill(tofCalc, errSq);
 	    hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), w);
 	    hMSqErr->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), errSq);
 
@@ -679,19 +708,15 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       } // Loop over TDCs
       cout<<"Finished getting signal hits"<<endl;
       cout<<"Found "<<doubleHits<<" double proton hits"<<endl;;
-      TH1D *hEffRatio = new TH1D(Form("hEffRatio%d", nBlocks), Form("Beam data efficiency / Cosmic efficiency, %d blocks; Bar, Beam / Cosmic", nBlocks), 10, 0.5, 10.5);
-      setHistAttr(hEffRatio);
-      hEffRatio->Divide(hEff, hCosmicsVertEff, 1., 1., "B");
-      hEffRatio->Write();
-      TH1D *hEffRatio2dNorm = new TH1D(Form("hEffRatio2dNorm%d", nBlocks), Form("Beam data efficiency / Cosmic efficiency, %d blocks; Bar, Beam / Cosmic", nBlocks), 10, 0.5, 10.5);
-      setHistAttr(hEffRatio2dNorm);
-      hEffRatio2dNorm->Divide(hEff, hCosmicsVertEff2dNorm, 1., 1., "B");
-      hEffRatio2dNorm->Write();
       cout<<"Finished subsample "<<sub<<endl;
+
     } // Loop over subsamples
 
     for (int bin=0; bin < hdtof1d->GetNbinsX()+1; bin++) {
       hdtof1d->SetBinError(bin, sqrt(hdtof1dErr->GetBinContent(bin)));
+    }
+    for (int bin=0; bin < hdtof1dBins->GetNbinsX()+1; bin++) {
+      hdtof1dBins->SetBinError(bin, sqrt(hdtof1dBinsErr->GetBinContent(bin)));
     }
     for (int bin=0; bin < hMSq->GetNbinsX()+1; bin++) {
       hMSq->SetBinError(bin, sqrt(hMSqErr->GetBinContent(bin)));
@@ -709,21 +734,39 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     }
 
     hdtof1d->Scale(1. / nSpillsTrue);
+    hdtof1dBins->Scale(1. / nSpillsTrue);
+    hdtof1dBins->Scale(1., "width");
     fout->cd();
-    hdtof1d->Fit(sPi, "R");
-    hdtof1d->Fit(sPro, "R");
-    hdtof1d->Fit(fBkg, "R");
-    Double_t par[7];
-    sPi->GetParameters(&par[0]);
-    sPro->GetParameters(&par[3]);
-    fBkg->GetParameters(&par[6]);
-    fSplusB->SetParameters(par);
-    hdtof1d->Fit(fSplusB, "R");
-    hdtof1d->Write();
-    sPro->Write();
-    sPi->Write();
-    fBkg->Write();
-    fSplusB->Write();
+    TF1 *fSplusB4 = new TF1(Form("signal_plus_bkg_%d", nBlocks), "gaus(0)+pol0(3)", 30, proCutHiS4);
+    if (nBlocks != 4) {
+      hdtof1dBins->Fit(sPi, "R");
+      hdtof1dBins->Fit(sPro, "R");
+      hdtof1dBins->Fit(fBkg, "R");
+      Double_t par[7];
+      sPi->GetParameters(&par[0]);
+      sPro->GetParameters(&par[3]);
+      fBkg->GetParameters(&par[6]);
+      fSplusB->SetParameters(par);
+      hdtof1dBins->Fit(fSplusB, "R");
+      sPro->Write();
+      sPi->Write();
+      fBkg->Write();
+      fSplusB->Write();
+    }
+    else {
+      hdtof1dBins->Fit(sPi, "R");
+      hdtof1dBins->Fit(fBkg, "R");
+      Double_t par[4];
+      sPi->GetParameters(&par[0]);
+      fBkg->GetParameters(&par[3]);
+      fSplusB4->SetParNames("piConst", "piMean", "piSigma", "bkg");
+      fSplusB4->SetLineColor(kRed);
+      fSplusB4->SetParameters(par);
+      hdtof1dBins->Fit(fSplusB4, "R");
+      sPi->Write();
+      fBkg->Write();
+      fSplusB4->Write();
+    }
 
     hProS4Horz->Scale(1. / nSpillsTrue);
     hProS4HorzSmear->Scale(1. / nSpillsTrue);
@@ -743,78 +786,94 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     hPiS4VertErr->Scale(1. / nSpillsTrue);
     hPiS4HorzErr->Scale(1. / nSpillsTrue);
     hMom->Scale(1. / nSpillsTrue);
-    hdtof1d->Scale(1. / nSpillsTrue);
+
     hProS4VertErr->Write();
     hProS4HorzErr->Write();
     hPiS4VertErr->Write();
     hPiS4HorzErr->Write();
     hMom->Write();
     hdtof1d->Write();
+    hdtof1dBins->Write();
 
     // Now we have the fit values, loop over again and subtract the background
     // For each bin, find the fraction of each particle type which are background and 
     // this fraction from the bin
     TF1 *fSub = new TF1("fSub", "pol0", 30, proCutHiS4);
-    fSub->SetParameter(0, fSplusB->GetParameter("bkg"));  
+    (nBlocks !=4) ? fSub->SetParameter(0, fSplusB->GetParameter("bkg")) : fSub->SetParameter(0, fSplusB4->GetParameter("bkg"));  
+
     // Background subtracted tof spectrum
-    /*
-      TH1D *hdtof1d_sub = (TH1D*)hdtof1d->Clone(Form("hdtof1d_sub_%d",nBlocks));
-      hdtof1d_sub->Add(fSub, -1.);
-      // If the bin content drops below 0, set to 0
-      for (int b = 0; b <=  hdtof1d_sub->GetNbinsX(); b++) {
-      if (hdtof1d_sub->GetBinContent(b) < 0.) {
-      hdtof1d_sub->SetBinContent(b, 0);
-      hdtof1d_sub->SetBinError(b, 0);
+    TH1D *hdtof1dBins_sub = (TH1D*)hdtof1dBins->Clone(Form("hdtof1dBins_sub%d",nBlocks));
+    hdtof1dBins_sub->Add(fSub, -1.);
+    // If the bin content drops below 0, set to 0
+    for (int b = 0; b <=  hdtof1dBins_sub->GetNbinsX(); b++) {
+      if (hdtof1dBins_sub->GetBinContent(b) < 0.) {
+	hdtof1dBins_sub->SetBinContent(b, 0);
+	hdtof1dBins_sub->SetBinError(b, 0);
       } // if (hdtof1d_sub->GetBinContent(b) < 0.)
-      } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
-    */
+    } // for (int b = 0; hdtof1d_sub->GetNbinsX(); b++)
+    
     // Integrate background function between proton and pion windows and then subtract
-    double bkgPerBin = fSplusB->GetParameter("bkg");
-    double bkgPerNs  = bkgPerBin / hdtof1d->GetBinWidth(5);
-    cout<<"Bkg per bin, per ns "<<bkgPerBin<<", "<<bkgPerNs<<endl;
-    double piBkg  = fSub->Integral(piLowS4,  piHiS4) / hdtof1d->GetBinWidth(5);
-    double proBkg = fSub->Integral(proCutLowS4, proCutHiS4) / hdtof1d->GetBinWidth(5);
-    cout<<"Pion background: "<<piBkg<<" per spill. Proton background: "<<proBkg<<" per spill"<<endl;
-    // Need to account for bin width
-    double piBkgHorz  = piBkg / hPiS4Horz->GetBinWidth(3);
-    double proBkgHorz = proBkg / hProS4Horz->GetBinWidth(3);
-    double piBkgVert  = piBkg / hPiS4Vert->GetBinWidth(3);
-    double proBkgVert = proBkg / hProS4Vert->GetBinWidth(3);
-    cout<<"Pion background vert: "<<piBkgVert<<" / spill / degree. Proton background vert "<<proBkgVert<<" / spill / degree"<<endl;
-    cout<<"Pion background horz: "<<piBkgHorz<<" / spill / degree. Proton background horz "<<proBkgHorz<<" / spill / degree"<<endl;
-      
+    double bkgPerNs = 0.;
+    double bkgErr = 0.;
+    if (nBlocks==4) {
+      bkgErr   = fSplusB4->GetParError(3);
+      bkgPerNs = fSplusB4->GetParameter("bkg");
+    }
+    else {
+      bkgErr   = fSplusB->GetParError(6);
+      bkgPerNs = fSplusB->GetParameter("bkg");
+    }
+    
+    nP  /= (double)nSpillsTrue;
+    nPi /= (double)nSpillsTrue;
+
+    cout<<"Bkg / spill / ns "<<bkgPerNs<<endl;
+    double piBkg    = (piHiS4 - piLowS4)*bkgPerNs;
+    double piBkgErr = (piHiS4 - piLowS4)*bkgErr;
+    double proBkg    = (proCutHiS4 - proCutLowS4)*bkgPerNs;
+    double proBkgErr = (proCutHiS4 - proCutLowS4)*bkgErr;
+    cout<<"Pion background: "<<piBkg<<" +- "<<piBkgErr<<" / spill. Proton background: "<<proBkg<<" +- "<<proBkgErr<<" / spill, compared to "<<nP<<" total"<<endl;
     cout<<"Spills "<<nSpills<<" ("<<nSpillsTrue<<" true)"<<endl;
 
     // Subtract background hits
-    for (int b=1; b < hProS4Horz->GetNbinsX()+1; b++) {
-      hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) * (1 - proBkgHorz/nP));
+    // Do this by just multiplying by background/integral
+    for (int b=0; b <= hProS4Horz->GetNbinsX(); b++) {
+      hProS4Horz->SetBinContent(b, hProS4Horz->GetBinContent(b) * (1 - proBkg/nP));
       if (hProS4Horz->GetBinContent(b) < 0.) {
     	hProS4Horz->SetBinContent(b, 0);
     	hProS4Horz->SetBinError(b, 0);
       }
     }
 
-    for (int b=1; b < hPiS4Horz->GetNbinsX()+1; b++) {
-      hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) * (1 - piBkgHorz/nPi));
+    for (int b=0; b <= hPiS4Horz->GetNbinsX(); b++) {
+      hPiS4Horz->SetBinContent(b, hPiS4Horz->GetBinContent(b) * (1 - piBkg/nPi));
       if (hPiS4Horz->GetBinContent(b) < 0.) {
     	hPiS4Horz->SetBinError(b, 0);
     	hPiS4Horz->SetBinContent(b, 0);
       }
     }
 
-    for (int b=1; b < 10; b++) {
-      hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) * (1 - proBkgVert/nP));
+    for (int b=0; b <= hProS4Vert->GetNbinsX(); b++) {
+      hProS4Vert->SetBinContent(b, hProS4Vert->GetBinContent(b) * (1 - proBkg/nP));
       if (hProS4Vert->GetBinContent(b) < 0.) {
     	hProS4Vert->SetBinError(b, 0);
     	hProS4Vert->SetBinContent(b, 0);
       }
     }
 
-    for (int b=1; b < 10; b++) {
-      hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) * (1 - piBkgVert/nPi));
+    for (int b=0; b<=hPiS4Vert->GetNbinsX(); b++) {
+      hPiS4Vert->SetBinContent(b, hPiS4Vert->GetBinContent(b) * (1 - piBkg/nPi));
       if (hPiS4Vert->GetBinContent(b) < 0.) {
     	hPiS4Vert->SetBinError(b, 0);
     	hPiS4Vert->SetBinContent(b, 0);
+      }
+    }
+
+    for (int b=0; b<=hMSq->GetNbinsX(); b++) {
+      hMSq->SetBinContent(b, hMSq->GetBinContent(b) * (1 - piBkg/nPi));
+      if (hMSq->GetBinContent(b) < 0.) {
+    	hMSq->SetBinError(b, 0);
+    	hMSq->SetBinContent(b, 0);
       }
     }
 
@@ -823,29 +882,17 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     hProPiRatioS4VertUnwgt->Divide(hProS4VertUnwgt, hPiS4VertUnwgt, 1., 1., "B");
     hProPiRatioS4HorzUnwgt->Divide(hProS4HorzUnwgt, hPiS4HorzUnwgt, 1., 1., "B");
 
-    // hdtof1d_sub->SetLineWidth(2);
-    hdtof1d->SetLineWidth(2);
-    hProPiRatioS4Horz->SetLineWidth(2);
-    hProPiRatioS4Vert->SetLineWidth(2);
-    hProS4Horz->SetLineWidth(2);
-    hProS4Vert->SetLineWidth(2);
-    hPiS4Horz->SetLineWidth(2);
-    hPiS4Vert->SetLineWidth(2);
-    hProPiRatioS4HorzUnwgt->SetLineWidth(2);
-    hProPiRatioS4VertUnwgt->SetLineWidth(2);
-    hProS4HorzUnwgt->SetLineWidth(2); 
-    hProS4VertUnwgt->SetLineWidth(2);
-    hPiS4HorzUnwgt->SetLineWidth(2);
-    hPiS4VertUnwgt->SetLineWidth(2);
-
     double eProS4Horz = 0;
     double ePiS4Horz  = 0;
     double intProS4Horz = hProS4Horz->IntegralAndError(1, hProS4Horz->GetNbinsX(), eProS4Horz, "width");
     double intPiS4Horz  = hPiS4Horz->IntegralAndError(1, hPiS4Horz->GetNbinsX(), ePiS4Horz, "width");
+    eProS4Horz = sqrt(eProS4Horz*eProS4Horz + proBkgErr*proBkgErr);
+    ePiS4Horz  = sqrt(ePiS4Horz*ePiS4Horz + piBkgErr*piBkgErr);
 
     if (nBlocks == 0) {
-      // hdtof1d_sub->SetLineColor(kBlack);
       hdtof1d->SetLineColor(kBlack);
+      hdtof1dBins->SetLineColor(kBlack);
+      hdtof1dBins_sub->SetLineColor(kBlack);
       hProPiRatioS4Horz->SetLineColor(kBlack);
       hProPiRatioS4Vert->SetLineColor(kBlack);
       hProS4Horz->SetLineColor(kBlack);
@@ -863,18 +910,15 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       hMSq->SetLineColor(kBlack);
       hMom->SetLineColor(kBlack);
       hMomS1S4->SetLineColor(kBlack);
-      // hCosmicsVertEff->SetLineColor(kBlack);
-      // hCosmicsVertEff2dNorm->SetLineColor(kBlack);
-      // hEffRatio->SetLineColor(kBlack);
-      // hEffRatio2dNorm->SetLineColor(kBlack);
       leg->AddEntry(hdtof1d, "0 blocks", "l");     
       legProS4Horz->AddEntry(hProS4Horz, Form("0 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("0 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
       legRatioVert->AddEntry(hProPiRatioS4Vert, "0 blocks", "l");
     }
-    else if (nBlocks == 1) {
-      // hdtof1d_sub->SetLineColor(kRed);
+    else if (nBlocks == 1) {      
       hdtof1d->SetLineColor(kRed);
+      hdtof1dBins->SetLineColor(kRed);
+      hdtof1dBins_sub->SetLineColor(kRed);
       hProPiRatioS4Horz->SetLineColor(kRed);
       hProPiRatioS4Vert->SetLineColor(kRed);
       hProS4Horz->SetLineColor(kRed);
@@ -892,18 +936,15 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       hMSq->SetLineColor(kRed);
       hMom->SetLineColor(kRed);
       hMomS1S4->SetLineColor(kRed);
-      // hCosmicsVertEff->SetLineColor(kRed);
-      // hCosmicsVertEff2dNorm->SetLineColor(kRed);
-      // hEffRatio->SetLineColor(kRed);
-      // hEffRatio2dNorm->SetLineColor(kRed);
       leg->AddEntry(hdtof1d, "1 block", "l");
       legProS4Horz->AddEntry(hProS4Horz, Form("1 block - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("1 block - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");     
       legRatioVert->AddEntry(hProPiRatioS4Vert, "1 block", "l");
     }
     else if (nBlocks == 2) {
-      // hdtof1d_sub->SetLineColor(kBlue);
       hdtof1d->SetLineColor(kBlue);
+      hdtof1dBins->SetLineColor(kBlue);
+      hdtof1dBins_sub->SetLineColor(kBlue);
       hProPiRatioS4Horz->SetLineColor(kBlue);
       hProPiRatioS4Vert->SetLineColor(kBlue);
       hProS4Horz->SetLineColor(kBlue);
@@ -921,17 +962,15 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       hMSq->SetLineColor(kBlue);
       hMom->SetLineColor(kBlue);
       hMomS1S4->SetLineColor(kBlue);
-      // hCosmicsVertEff->SetLineColor(kBlue);
-      // hEffRatio->SetLineColor(kBlue);
-      // hEffRatio2dNorm->SetLineColor(kBlue);
       leg->AddEntry(hdtof1d, "2 blocks", "l");
       legProS4Horz->AddEntry(hProS4Horz, Form("2 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("2 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
       legRatioVert->AddEntry(hProPiRatioS4Vert, "2 blocks", "l");
     }
     else if (nBlocks == 3) {
-      // hdtof1d_sub->SetLineColor(kCyan+1);
       hdtof1d->SetLineColor(kCyan+1);
+      hdtof1dBins->SetLineColor(kCyan+1);
+      hdtof1dBins_sub->SetLineColor(kCyan+1);
       hProPiRatioS4Horz->SetLineColor(kCyan+1);
       hProPiRatioS4Vert->SetLineColor(kCyan+1);
       hProS4Horz->SetLineColor(kCyan+1);
@@ -949,10 +988,6 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       hMSq->SetLineColor(kCyan+1);
       hMom->SetLineColor(kCyan+1);
       hMomS1S4->SetLineColor(kCyan+1);
-      // hCosmicsVertEff->SetLineColor(kCyan+1);
-      // hCosmicsVertEff2dNorm->SetLineColor(kCyan+1);
-      // hEffRatio->SetLineColor(kCyan+1);
-      // hEffRatio2dNorm->SetLineColor(kCyan+1);
       leg->AddEntry(hdtof1d, "3 blocks", "l");
       legProS4Horz->AddEntry(hProS4Horz, Form("3 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("3 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
@@ -960,6 +995,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     }
     else if (nBlocks == 4) {
       hdtof1d->SetLineColor(kOrange+1);
+      hdtof1dBins->SetLineColor(kOrange+1);
+      hdtof1dBins_sub->SetLineColor(kOrange+1);
       hProPiRatioS4Horz->SetLineColor(kOrange+1);
       hProPiRatioS4Vert->SetLineColor(kOrange+1);
       hProS4Horz->SetLineColor(kOrange+1);
@@ -977,10 +1014,6 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       hMSq->SetLineColor(kOrange+1);
       hMom->SetLineColor(kOrange+1);
       hMomS1S4->SetLineColor(kOrange+1);
-      // hCosmicsVertEff->SetLineColor(kOrange+1);
-      // hCosmicsVertEff2dNorm->SetLineColor(kOrange+1);
-      // hEffRatio->SetLineColor(kOrange+1);
-      // hEffRatio2dNorm->SetLineColor(kOrange+1);
       leg->AddEntry(hdtof1d, "4 blocks", "l");
       legProS4Horz->AddEntry(hProS4Horz, Form("4 blocks - %.3g #pm %.1g per spill", intProS4Horz, eProS4Horz), "l");     
       legPiS4Horz->AddEntry(hPiS4Horz, Form("4 blocks - %d #pm %d per spill", (int)intPiS4Horz, (int)ePiS4Horz), "l");
@@ -1006,9 +1039,9 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     cout<<"S4 protons per spill = "<<intProS4Horz<<" +- "<<eProS4Horz<<endl;
     cout<<"Ratio = "<<(intProS4Horz/dataS3.at(nBlocks))<<" +- "<<rerr<<endl;
 
-    // hsEffRatio->Add(hEffRatio2dNorm);
     hsDtof->Add(hdtof1d);
-    // hsBkgSub->Add(hdtof1d_sub);
+    hsDtofSub->Add(hdtof1dBins_sub);
+    hsDtofBins->Add(hdtof1dBins);
     hsProS4Vert->Add(hProS4Vert);
     hsProS4Horz->Add(hProS4Horz);
     hsProS4HorzSmear->Add(hProS4HorzSmear);
@@ -1025,9 +1058,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     hsMom->Add(hMom);
     hsMomS1S4->Add(hMomS1S4);
     hsEffComp->Add(hEffTotal);
-    // hsEffComp->Add(hCosmicsVertEff);
     hsEffComp2dNorm->Add(hEffTotal);
-    // hsEffComp2dNorm->Add(hCosmicsVertEff2dNorm);
     hsEff->Add(hEffTotal);
     hProS4Vert->Write();
     hPiS4Vert->Write();
@@ -1047,10 +1078,6 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     hMomS1S4->Write();
     h2dProMCComp->Write();
     h2dProMCCompCut->Write();
-    // hCosmicsVertEff->Write();
-    // hCosmicsVertEff2dNorm->Write();
-    // hEffRatio2dNorm->Write();
-    // hEffRatio->Write();
     hEffTotal->Write();
     hsEffComp->Write();
     hsEffComp2dNorm->Write();
@@ -1072,9 +1099,10 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
   } // for (int nBlocks = 0; nBlocks < 4; nBlocks++) 
 
   fout->cd();
+  hsDtofSub->Write();
   hsEff->Write();
   hsDtof->Write();
-  // hsBkgSub->Write();
+  hsDtofBins->Write();
   hsProS4Vert->Write();
   hsPiS4Vert->Write();
   hsProS4VertUnwgt->Write();
