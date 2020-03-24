@@ -71,6 +71,17 @@ const TVector3 D4_UR(-1.8011, -0.8797, 9.9464);
 const TVector3 D4_DR(-1.9547, -0.8827, 11.4366);
 const TVector3 D4_LC(0.0818, -0.0504, 10.8961);
 const TVector3 D4_RC(-1.4230, -0.0557, 10.7402);
+// Calculated TPC active region points
+const TVector3 TPCActiveBUL(-0.2778, -0.5614, 10.3048);
+const TVector3 TPCActiveBDL(-0.3896, -0.5614, 11.3991);
+const TVector3 TPCActiveTUL(-0.2778, 0.5386, 10.3048);
+const TVector3 TPCActiveTDL(-0.3896, 0.5386, 11.3991);
+const TVector3 TPCActiveBUR(-0.7290, -0.5614, 10.2587);
+const TVector3 TPCActiveBDR(-0.8408, -0.5614, 11.3530);
+const TVector3 TPCActiveTUR(-0.7290, 0.5386, 10.2587);
+const TVector3 TPCActiveTDR(-0.8408, 0.5386, 11.3530);
+const TVector3 TPCActiveC(-0.5593, -0.0114, 10.82885);
+
 // Unix timestamps for variable block moves
 // 0.8GeV/c, 0 blocks
 // 31/08/2018
@@ -128,6 +139,8 @@ const double barOverallEffErr = .1;
 
 // Beam paper binnings and limits
 const int nBinsS4Horz = 20;
+const int nBinsS4HorzCosmics = 2;
+const double binsCosmics[] = {0., 20., 40., 60., 80., 100., 120., 140.};
 const double binsS4HorzLow  = -6.;
 const double binsS4HorzHigh = 0.;
 const int nBinsS4Vert = 9;
@@ -136,14 +149,43 @@ const double binsS4VertHigh = 1.42;
 const int nBinsDtof = 182;
 const double binsDtofLow  = 30.;
 const double binsDtofHigh = proCutHiS4;
+// For S3 paper
+// double binsTheta[] = {-3.1, -3.,
+// 		      -2.9, -2.8, -2.7, -2.6, -2.5, -2.4, -2.3, -2.2, -2.1, -2., 
+// 		      -1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.,
+// 		      -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 
+// 		      0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 
+// 		      1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 
+// 		      2.0, 2.2, 2.4, 2.6, 2.8, 
+// 		      3.0, 3.2, 3.4, 3.6, 3.8,  
+// 		      4.0, 4.25, 4.5, 4.75, 
+// 		      5.0, 5.25, 5.8,
+// 		      6.}; 
+double binsTheta[] = {-6., -5.8, -5.25, -5.,
+		      -4.75, -4.5, -4.25, -4.0, 
+		      -3.8, -3.6, -3.4, -3.2, -3.0, 
+		      -2.8, -2.6, -2.4, -2.2, -2.0, 
+		      -1.875, -1.75, -1.625, -1.5, -1.375, -1.25, -1.125, -1.0, 
+		      -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.,
+		      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+		      1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+		      2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
+		      3., 3.1};
+int binnum = sizeof(binsTheta)/sizeof(double) - 1;
 
 const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
 vector<double> getDtofEdges() 
 {
   std::vector<double> vec;
-  for (int i=0; i<93; i++) {
+  for (int i=0; i<61; i++) {
     double edge = i * (dtofFixedWidth) + binsDtofLow;
     vec.push_back(edge);
+  }
+  for (int i=62; i<95; i++) {
+    if (i % 2 == 0) {
+      double edge = i * (dtofFixedWidth) + binsDtofLow;
+      vec.push_back(edge);
+    }
   }
   for (int i=95; i<183; i++) {
     if ((i+1) % 3==0) {
@@ -179,6 +221,14 @@ void setHistAttr(TH2D *h2)
   h2->SetOption("colz");
 }
 
+void setHistAttr(TGraph *g, const int col)
+{
+  g->SetLineColor(col);
+  g->SetMarkerColor(col);
+  g->SetMarkerStyle(8);
+  g->SetLineWidth(2);
+}
+
 // Downstream TOF global coordinates
 TVector3 GetDtofGlobalCoords(const double fakeTime0, const double fakeTime1, const int bar) 
 {
@@ -193,6 +243,15 @@ TVector3 GetDtofGlobalCoords(const double fakeTime0, const double fakeTime1, con
   }
   TVector3 vec(posX, posY, posZ);
   return vec;
+}
+
+// Upstream TOF global coordinates
+TVector3 GetUtofGlobalCoords(const double xtof, const double ytof) {
+  double posX = (xtof / 168.) * (S3_TR.X() - S3_TL.X()) + S3_TL.X();
+  double posY = (ytof / 100.) + (S3_BR.Y() + S3_BL.Y())/2.;
+  double posZ = (xtof / 168.) * (S3_TR.Z() - S3_TL.Z()) + S3_TL.Z();
+  TVector3 coords(posX, posY, posZ);  
+  return coords;
 }
 
 // Returns the local position along the bar of a hit
@@ -256,7 +315,7 @@ double massFromTime(const double time, const double mom, const double base) {
 }
 
 // Time in ns
-// Outputs momentum in GeV/c
+// Outputs momentum in MeV/c
 double momFromTime(const double mass, const double baseline, const double time)
 {
   double mom = 0.;
@@ -285,3 +344,7 @@ int getColourFromBlock(const int block)
   return col;
 }
 
+const double tpcThetaLow  = getThetaFromGlobal(TPCActiveBDR);
+const double tpcThetaHigh = getThetaFromGlobal(TPCActiveBUL);
+const double tpcPhiHigh  = getPhiFromGlobal(TPCActiveTUL);
+const double tpcPhiLow = getPhiFromGlobal(TPCActiveBUL);
