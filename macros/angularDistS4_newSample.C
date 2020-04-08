@@ -68,8 +68,9 @@ void angularDistS4_newSample(const char* saveDir,
   // S1 to S4 distance
   const double s1s4Dist = 14.0698;
   // For calculating ratios
-  const vector<double> dataS3    = {1983., 1656., 1325., 899., 136.3};
+  const vector<double> dataS3    = {1981., 1653., 1320., 896., 136.1};
   const vector<double> dataS3Err = {9., 6., 5., 6., 0.5};
+
   // For MC plots
   const double xUp = 0.44; // m
   const double xDown = -0.97; // m 
@@ -112,27 +113,14 @@ void angularDistS4_newSample(const char* saveDir,
   TLegend *legRatioVert = new TLegend(0.15, 0.5, 0.4, 0.8);
 
   TFile *fEffHists = new TFile(smearHists, "read");
-  /*
-  double binsCosmics[] = {0., 7., 14., 21., 28., 35., 42., 49.,
-			  52., 55., 58., 
-			  61., 64., 67., 
-			  70., 73., 76., 79., 
-			  82., 85., 88., 
-			  91., 98., 105., 112., 119., 126., 133., 140.};
-  */
-  double binsCosmics[] = {0., 7., 14., 21., 28., 35., 42., 49.,
-			  51., 53., 55., 57., 59.,
-			  61., 63., 65., 67., 69.,  
-			  71., 73., 75., 77., 79., 
-			  81., 83., 85., 87., 89., 
-			  91., 98., 105., 112., 119., 126., 133., 140.};
-  int binnum = sizeof(binsCosmics)/sizeof(double) - 1;
+
+  int binnumCosmics = sizeof(binsCosmics)/sizeof(double) - 1;
 
   vector<double> edgesDtofVec = getDtofEdges();
   double arr[edgesDtofVec.size()-1];
   for (int i=0; i<edgesDtofVec.size(); i++) {
     arr[i] = edgesDtofVec.at(i);
-    cout<<arr[i]<<endl;
+    // cout<<arr[i]<<endl;
   }
 
   for (int nBlocks = 0; nBlocks <= 4; nBlocks++) {
@@ -336,17 +324,17 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 
     // Loop over subsamples
     for (int sub=0; sub<startTimes.size(); sub++) {
+      TH1D *barEffs[9];
+      TF1 *barFits[9];
       startTime = startTimes.at(sub);
       endTime   = endTimes.at(sub);
       // Cosmic hists -- need to be remade for each subsample
       TH2D *h2Cosmics = new TH2D(Form("h2Cosmics%d",nBlocks), Form("Cosmic flux, %d blocks; x / cm; Bar; Rate / s^{-1}", nBlocks), nBinsS4Horz, 0, 140, 10, 0.5, 10.5);
       setHistAttr(h2Cosmics);
-      TH2D *h2CosmicsEff = new TH2D(Form("h2CosmicsEff%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Eff", nBlocks), nBinsS4Horz, 0, 140, 10, 0.5, 10.5);
+      TH2D *h2CosmicsEff = new TH2D(Form("h2CosmicsEff%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Eff", nBlocks), binnumCosmics, binsCosmics, 10, 0.5, 10.5);
       setHistAttr(h2CosmicsEff);
-      TH2D *h2CosmicsErr = new TH2D(Form("h2CosmicsErr%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Err", nBlocks), nBinsS4Horz, 0, 140, 10, 0.5, 10.5);
+      TH2D *h2CosmicsErr = new TH2D(Form("h2CosmicsErr%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Err", nBlocks), binnumCosmics, binsCosmics, 10, 0.5, 10.5);
       setHistAttr(h2CosmicsErr);
-      TH2D *h2CosmicsEffBins = new TH2D(Form("h2CosmicsEffBins%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; Bar; Eff", nBlocks), binnum, binsCosmics, 10, 0.5, 10.5);
-      setHistAttr(h2CosmicsEffBins);
       TH2D *h2CosmicsEffMC = new TH2D(Form("h2CosmicsEffMC%d", nBlocks), Form("Relative efficiency, %d blocks; x / cm; y / cm; Eff", nBlocks), nBinsS4Horz, -0.95, 0.41, 10, -0.3361, 0.4139);
       setHistAttr(h2CosmicsEffMC);
       TH1D *hCosmicsVertEff = new TH1D(Form("hCosmicsVertEff%d",nBlocks), Form("With cosmics, %d blocks; x / cm; Eff",nBlocks), 10, 0.5, 10.5);
@@ -450,6 +438,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	    double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]);
 	    double dstofHitT = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2. );
 	    if (dstofHitT - barTimeVec.at(tofCoin->bar-1) < s4DeadtimeCut && tofCoin->run==lastRun) {
+	      barTimeVec.at(tofCoin->bar-1) = dstofHitT;
 	      continue;
 	    }
 	    else if (tofCoin->run != lastRun) {
@@ -469,8 +458,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	    if (tofCalc > 70. && tofCalc < 200./* && tofCoin->bar != 10*/) {
 	      hCoins->Fill(tofCoin->bar);
 	    } // if (tofCalc > 70. && tofCalc < 200.)
-	      // If the hits are not in a spill then consider them cosmics 
-	      // and use them for angular efficiency
+	    // If the hits are not in a spill then consider them cosmics 
+	    // and use them for angular efficiency
 	    if (!tofCoin->inSpill) {
 	      if (abs(tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0]) < s4BarTime) {
 		double positionX = localDtofPosition(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
@@ -481,7 +470,6 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 		h2Cosmics->Fill(positionX, tofCoin->bar);
 		h2CosmicsEff->Fill(positionX, tofCoin->bar);
 		h2CosmicsErr->Fill(positionX, tofCoin->bar);
-		h2CosmicsEffBins->Fill(positionX, tofCoin->bar);
 		h2CosmicsEffMC->Fill(mcX, mcY);
 		hCosmicsVertEff->Fill(tofCoin->bar);
 		hCosmicsVertEff2dNorm->Fill(tofCoin->bar);
@@ -535,9 +523,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       }
       // Scale by largest bin in the 2d histogram (with appropriate area normalisation)
       hCosmicsVertEff->Scale(1./hCosmicsVertEff->GetBinContent(hCosmicsVertEff->GetMaximumBin()));
-      h2CosmicsEff->Scale(1./((endTime - startTime - nSpillsCosmics)*maxCosmics /*h2CosmicsEff->GetBinContent(h2CosmicsEff->GetMaximumBin())*/));
-      h2CosmicsEffBins->Scale(1., "width");
-      h2CosmicsEffBins->Scale(1./h2CosmicsEffBins->GetBinContent(h2CosmicsEffBins->GetMaximumBin()));
+      h2CosmicsEff->Scale(1., "width");
+      h2CosmicsEff->Scale(1./(/*(endTime - startTime - nSpillsCosmics)*maxCosmics*/ h2CosmicsEff->GetBinContent(h2CosmicsEff->GetMaximumBin())));
       h2CosmicsEffMC->Scale(1./h2CosmicsEffMC->GetBinContent(h2CosmicsEffMC->GetMaximumBin()));
       hCosmicsVertEff2dNorm->Scale(1./(h2Cosmics->GetBinContent(h2Cosmics->GetMaximumBin())*h2Cosmics->GetNbinsX()));
 
@@ -547,13 +534,38 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	}
       }
 
+      // Do fits with sigmoids for the individual bars
+      for (int bar=0; bar<9; bar++) {
+	barEffs[bar] = h2CosmicsEff->ProjectionX(Form("block%dbar%d", nBlocks, bar+1), bar+1, bar+1);
+	TF1 *f1_1 = new TF1(Form("f1_1_block%dbar%d", nBlocks, bar+1), "[0]/(1+exp(-[1]*(x-[2])))", 0., 70.);
+	f1_1->SetParameter(0, 0.8);
+	f1_1->SetParameter(1, 0.2);
+	f1_1->SetParameter(2, 20);
+	barEffs[bar]->Fit(f1_1, "q r");
+	f1_1->Write();
+	TF1 *f1_2 = new TF1(Form("f1_2_block%dbar%d", nBlocks, bar+1), "[0]/(1+exp(-[1]*(x-[2])))", 70., 140.);
+	f1_2->SetParameter(0, 0.8);
+	f1_2->SetParameter(1, -0.2);
+	f1_2->SetParameter(2, 120);
+	barEffs[bar]->Fit(f1_2, "q r");
+	f1_2->Write();
+	barFits[bar] = new TF1(Form("f1_block%dbar%d", nBlocks, bar+1), "([0]/(1+exp(-[1]*(x-[2]))))*(1/(1+exp(-[3]*(x-[4]))))", 0., 140);
+	barFits[bar]->SetParameter(0, f1_1->GetParameter(0));
+	barFits[bar]->SetParameter(1, f1_1->GetParameter(1));
+	barFits[bar]->SetParameter(2, f1_1->GetParameter(2));
+	barFits[bar]->SetParameter(3, f1_2->GetParameter(1));
+	barFits[bar]->SetParameter(4, f1_2->GetParameter(2));
+	barEffs[bar]->Fit(barFits[bar], "q r");
+	barEffs[bar]->Write();
+	barFits[bar]->Write();
+      }
+
       hHits->Write();
       hCoins->Write();
       hHits->Add(hCoins, -1.);
       hEff->Divide(hCoins, hHits, 1., 1., "B");
       h2CosmicsEff->Write();
       h2CosmicsErr->Write();
-      h2CosmicsEffBins->Write();
       h2CosmicsEffMC->Write();
       h2Cosmics->Write();
       // Now loop over the coincidence files again and calculate the angular distributions
@@ -621,7 +633,8 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	    TVector3 globalCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
 	    double mcXForSmear = globalToMCCoords(globalCoords).X();
 
-	    double w = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff); 
+	    // double w = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff); 
+	    double w = 1. / (barFits[tofCoin->bar-1]->Eval(positionXP) * barOverallEff);
 	    // Need to count if there is a double hit associated with this one
 	    int bar1 = tofCoin->bar;
 	    for (int dub = h-1; dub<=h+1; dub+=2) {
@@ -1037,7 +1050,9 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     // Print out ratio with error
     double rerr = ratioErr(intProS4Horz, eProS4Horz, dataS3.at(nBlocks), dataS3Err.at(nBlocks));
     cout<<"S4 protons per spill = "<<intProS4Horz<<" +- "<<eProS4Horz<<endl;
-    cout<<"Ratio = "<<(intProS4Horz/dataS3.at(nBlocks))<<" +- "<<rerr<<endl;
+    cout<<"Ratio data = "<<(intProS4Horz/dataS3.at(nBlocks))<<" +- "<<rerr<<endl;
+    cout<<"Ratio MC   = "<<s4s3MC.at(nBlocks)<<endl;
+    cout<<"Data / MC = "<<(intProS4Horz/dataS3.at(nBlocks))/s4s3MC.at(nBlocks)<<endl;
 
     hsDtof->Add(hdtof1d);
     hsDtofSub->Add(hdtof1dBins_sub);
