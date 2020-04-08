@@ -116,6 +116,8 @@ const char* str4Block1 = "Data_2018_8_30_b1.root";
 const char* str4Block2 = "Data_2018_8_29_b4.root";
 const char* str4Block3 = "Data_2018_8_29_b1.root";
 std::vector<const char*> str4BlockVec = {str4Block1, str4Block2, str4Block3};
+const char* dstofDir = "/nfs/scratch0/dbrailsf/data_backup/dtof_backup/";
+const char* ustofDir = "/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/";
 // Time for signal to travel down and S4
 const double s4BarTime = 18.2;
 // Maximum rate of cosmics measured for some arbitrary area -- used for normalisation
@@ -140,7 +142,8 @@ const double barOverallEffErr = .1;
 // Beam paper binnings and limits
 const int nBinsS4Horz = 20;
 const int nBinsS4HorzCosmics = 2;
-const double binsCosmics[] = {0., 20., 40., 60., 80., 100., 120., 140.};
+const double binsCosmics[] = {0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140};
+int binnumCosmics = sizeof(binsCosmics)/sizeof(double) - 1;
 const double binsS4HorzLow  = -6.;
 const double binsS4HorzHigh = 0.;
 const int nBinsS4Vert = 9;
@@ -172,6 +175,8 @@ double binsTheta[] = {-6., -5.8, -5.25, -5.,
 		      2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
 		      3., 3.1};
 int binnum = sizeof(binsTheta)/sizeof(double) - 1;
+
+const vector<double> s4s3MC = {0.0281, 0.0680, 0.0861, 0.0582,  0.0149};
 
 const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
 vector<double> getDtofEdges() 
@@ -306,6 +311,38 @@ TVector3 MCToGlobalCoords(TVector3 v)
   return vec;
 }
 
+// Get bar number from MC coordinates
+int dtofBarFromMC(const TVector3 vec) 
+{
+  int bar=0;
+  TVector3 global = MCToGlobalCoords(vec);
+
+  for (int b=0; b<10; b++) {
+    if ( global.Y() > S4BarsL.at(b).Y() - 0.1 && global.Y() < S4BarsL.at(b).Y() && b==0) {
+      bar = 1;
+      break;
+    }
+    else if ( global.Y() > S4BarsL.at(b).Y() - 0.075 && global.Y() < S4BarsL.at(b).Y() && b!=0) {
+      bar = b+1;
+      break;
+    }
+    else if ( global.Y() > S4BarsL.at(9).Y() ) {
+      bar = 11;
+      break;
+    }
+  }
+  return bar;
+}
+
+// Get bar position from MC coordinates
+double localDtofFromMC(const TVector3 vec)
+{
+  TVector3 global = MCToGlobalCoords(vec);
+  double t1Minust0 = ((global.X() - S4_TL.X())*130./(S4_TR.X()-S4_TL.X()) - 65.);
+  double pos = t1Minust0 + 70.;
+  return pos;
+}
+
 // Mass squared from the time
 // momentum and mass in GeV
 // Time is in ns
@@ -344,7 +381,14 @@ int getColourFromBlock(const int block)
   return col;
 }
 
+void makeEffHist(TH2D* h2) 
+{
+  h2->Scale(1., "width");
+  h2->Scale(1. / h2->GetBinContent(h2->GetMaximumBin()));
+}
+
 const double tpcThetaLow  = getThetaFromGlobal(TPCActiveBDR);
 const double tpcThetaHigh = getThetaFromGlobal(TPCActiveBUL);
 const double tpcPhiHigh  = getPhiFromGlobal(TPCActiveTUL);
 const double tpcPhiLow = getPhiFromGlobal(TPCActiveBUL);
+
