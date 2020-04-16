@@ -63,20 +63,20 @@ void deadtimeCorrection(const char* outfile)
       utofFiles = str4BlockVec;
     }
 
-    TTree *hitTreeD = new TTree(Form("hitTreeD%d", b), "Spill hits");
-    int dtofS1S2;
-    double spillTimeD;
-    hitTreeD->Branch("dtofS1S2", &dtofS1S2);
-    hitTreeD->Branch("spillTime", &spillTimeD);
-
-    TTree *hitTreeU = new TTree(Form("hitTreeU%d", b), "Spill hits");
-    int utofS1S2;
-    double spillTimeU;
-    hitTreeU->Branch("utofS1S2", &utofS1S2);
-    hitTreeU->Branch("spillTime", &spillTimeU);
-
     // Loop over subsamples
     for (int sub=0; sub<startTimes.size(); sub++) {
+      TTree *hitTree = new TTree(Form("hitTree%d_%d", b, sub), "Spill hits");
+      int dtofS1S2, utofS1S2;
+      int utofS1;
+      int isGood;
+      double spillTimeD, spillTimeU;
+      hitTree->Branch("spillTimeD", &spillTimeD);
+      hitTree->Branch("spillTimeU", &spillTimeU);
+      hitTree->Branch("s1s2D", &dtofS1S2);
+      hitTree->Branch("s1s2U", &utofS1S2);
+      hitTree->Branch("s1U", &utofS1);
+      hitTree->Branch("isGood", &isGood);
+
       double startTime = startTimes.at(sub);
       double endTime   = endTimes.at(sub);
 
@@ -114,6 +114,8 @@ void deadtimeCorrection(const char* outfile)
       // Now loop through dtof runs and get the hits
       for (int irun=runMin; irun<runMax+1; irun++) {
 	TFile *dbFile = new TFile(Form("/scratch0/sjones/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
+
+	// DToF files
 	TFile *rawFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun), "read");
 	RawDsTofHeader *tof = NULL;
 	TTree *tofTree = (TTree*)rawFile->Get("tofTree");
@@ -125,18 +127,37 @@ void deadtimeCorrection(const char* outfile)
 	double ustofSpillTime;
 	spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
 	spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
+
+	// UToF files
+	TFile *utofFile = new TFile(Form("%s/%s", ustofDir, utofFiles.at(sub)), "read");
+	TTree *utofTree = (TTree*)utofFile->Get("tree");
+	double tS1, tTrig;
+	utofTree->SetBranchAddress("tS1", &tS1);
+	utofTree->SetBranchAddress("tTrig", &tTrig);
+	TNamed *start = 0;
+	TNamed *end   = 0;                                                                          
+	utofFile->GetObject("start_of_run", start);
+	const char* startchar = start->GetTitle();
+	std::string startstr(startchar);
+	std::string unixstart = startstr.substr(25,10);
+	int utofFileStart = stoi(unixstart);
+	utofTree->GetEntry(utofTree->GetEntries() - 1);
+	double utofFileEnd = utofFileStart + (tS1/1e9);
+
 	int laste = 0;
+	int lastu = 0;
 	// Loop over spills
 	for (int t=0; t<spillTree->GetEntries(); t++) {
 	  spillTree->GetEntry(t);
 	  dtofS1S2 = 0;
 	  spillTimeD = globalSpillTime;
+	  spillTimeU = ustofSpillTime;
 	  if (globalSpillTime<startTime) continue;
 	  if (globalSpillTime>endTime) break;
 	  utofTimes.push_back(ustofSpillTime);
 	  dtofTimes.push_back(globalSpillTime);
 	  cout.precision(19);
-	  cout<<"Spill time = "<<spillTimeD<<endl;
+	  // cout<<"Spill time = "<<spillTimeD<<endl;
 	  // Loop over tof entries
 	  for (int e=laste; e<tofTree->GetEntries(); e++) {
 	    tofTree->GetEntry(e);
@@ -146,25 +167,88 @@ void deadtimeCorrection(const char* outfile)
 	      laste = e;
 	      break;
 	    }
-	    // laste = e;
+
 	    if (tof->channel == 13) { // Is an S1 S2 coincidence
 	      dtofS1S2++;
 	    } 
 	  } // Loop over raw tof entries
-	  fout->cd();
-	  hitTreeD->Fill();
+
+	  // if (ustofSpillTime < utofFileStart) continue;
+	  // if (ustofSpillTime > utofFileEnd) break;
+	  utofS1S2 = 0;
+	  utofS1 = 0;
+	  isGood = 0;
+	  // Now loop through UToF file and do something similar
+	  for (int e=lastu; e<utofTree->GetEntries(); e++) {
+	    utofTree->GetEntry(e);
+	    double hitTime = tS1/1e9 + utofFileStart;
+	    if (hitTime < ustofSpillTime) continue;
+	    if (hitTime > ustofSpillTime + 1.) {
+	      lastu = e;
+	      break;
+	    }
+	    utofS1++;
+	    if (tTrig != 0) utofS1S2++;
+	    if ((tTrig/1e9) + (double)utofFileStart > ustofSpillTime + 0.47
+		&& tTrig != 0) isGood = 1;
+	  } // Loop over utof tree entries
+
+	  fout->cd(); 
+	  hitTree->Fill();
 	} // Loop over spills
 	dbFile->Close();
 	delete dbFile;
 	rawFile->Close();
 	delete rawFile;
+	utofFile->Close();
+	delete utofFile;
       } // Loop over runs
 
-      // Now do a similar sort of process for the UToF
-
+      fout->cd();
+      // Now loop through the hit tree and make some TGraphs 
+      TGraphErrors *gS1S2 = new TGraphErrors();
+      gS1S2->SetTitle("Utof S1S2 vs. Dtof S1S2; DToF S1S2; DToF S1S2; UToF S1S2");
+      TGraphErrors *gS1S2Rat = new TGraphErrors();
+      gS1S2Rat->SetTitle("Utof S1S2 vs. Dtof S1S2; DToF S1S2; (UToF S1S2)/(DToF S1S2)");
+      TGraphErrors *gS1U  = new TGraphErrors();
+      gS1U->SetTitle("Utof S1 vs. Dtof S1S2; DToF S1S2; UToF S1");
+      int p=0;
+      for (int t=0; t<hitTree->GetEntries(); t++) {
+	hitTree->GetEntry(t);
+	if (isGood == 1 && utofS1S2>10) {
+	  double eUtofS1S2 = sqrt(utofS1S2);
+	  double eDtofS1S2 = sqrt(dtofS1S2);
+	  double eUtofS1   = sqrt(utofS1);
+	  double rS1S2  = (double)utofS1S2 / (double)dtofS1S2;
+	  double erS1S2 = rS1S2 * sqrt( pow(eUtofS1S2/(double)utofS1S2, 2) + pow(eDtofS1S2/(double)dtofS1S2, 2) );
+	  gS1S2->SetPoint(p, dtofS1S2, utofS1S2);
+	  gS1S2->SetPointError(p, eDtofS1S2, eUtofS1S2);
+	  gS1S2Rat->SetPoint(p, dtofS1S2, rS1S2);
+	  gS1S2Rat->SetPointError(p, eDtofS1S2, erS1S2);
+	  gS1U->SetPoint(p, dtofS1S2, utofS1);
+	  gS1U->SetPointError(p, eDtofS1S2, eUtofS1);
+	  p++;
+	}
+      }
+      TF1 *f0 = new TF1(Form("f0_%d_%d", b, sub), "pol0", 200, 2200);
+      TF1 *f1 = new TF1(Form("f1_%d_%d", b, sub), "pol1", 200, 2200);
+      TF1 *f2 = new TF1(Form("f2_%d_%d", b, sub), "pol2", 200, 2200);
+      f1->SetParameter(0, 0.5);
+      f1->SetParameter(1, -0.0003);
+      f2->SetParameter(0, 0.5);
+      f2->SetParameter(1, -0.0003);
+      f2->SetParameter(2, 1e-7);
+      gS1S2->Write(Form("gS1S2_%d_%d", b, sub));
+      gS1S2Rat->Write(Form("gS1S2Rat_%d_%d", b, sub));
+      gS1U->Write(Form("gS1U_%d_%d", b, sub));
+      gS1S2Rat->Fit(f0, "r");
+      gS1S2Rat->Fit(f1, "r");
+      gS1S2Rat->Fit(f2, "r");
+      f0->Write();
+      f1->Write();
+      f2->Write();
+    hitTree->Write();
     } // Loop over subsamples
-    fout->cd();
-    hitTreeD->Write();
   } // Loop over samples
 
   fout->Close();
