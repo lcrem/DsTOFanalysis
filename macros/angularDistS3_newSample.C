@@ -16,9 +16,6 @@ void angularDistS3_newSample(const char* outfile,
 		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 		   const char* spillDir="/scratch0/sjones/spillDB/") 
 {
-  cout<<"Theta low, high "<<tpcThetaLow<<", "<<tpcThetaHigh<<endl;
-  cout<<"Phi low, high "<<tpcPhiLow<<", "<<tpcPhiHigh<<endl;
-
   gROOT->SetBatch(kTRUE);
   // Edges of S3 in beam coordinate system
   const double s3StartX = -0.601158 + 0.026;
@@ -33,24 +30,13 @@ void angularDistS3_newSample(const char* outfile,
   // z coordinates
   const double s3BarTop    = 62.; 
   const double s3BarBottom = -60.;
-  // Define the runs to be used for varying number of blocks
-  const char* str0Block = "Data_2018_8_31_b2_800MeV_0block.root";
-  const char* str1Block = "Data_2018_9_1_b4_800MeV_1block_bend4cm.root";
-  const char* str2Block = "Data_2018_9_1_b2_800MeV_2block_bend4cm.root";
-  const char* str3Block = "Data_2018_9_1_b3_800MeV_3block_bend4cm.root";
-  // New datasets to combine for the 4 block data
-  const char* str4Block0 = "Data_2018_8_28_b5.root";
-  const char* str4Block1 = "Data_2018_8_30_b1.root";
-    //"Data_2018_9_3_b2_800MeV_4block_bend4cm.root";
-  const char* str4Block2 = "Data_2018_8_29_b4.root";
-  const char* str4Block3 = "Data_2018_8_29_b1.root";
-  std::vector<const char*> str4BlockVec = {str4Block0, str4Block1, str4Block2, str4Block3};
+
   // Deadtime corrections
   // Just use a constant ratio for the 0 block case
-  const double block0Slope    = -0.0003738;
-  const double block0SlopeErr = 0.00006863;
-  const double block0Const    = 0.2332; //0.10737;
-  const double block0ConstErr = 0.02436; //0.02222;
+  const double block0Slope    = 0.;//-0.0003738;
+  const double block0SlopeErr = 0;//0.00006863;
+  const double block0Const    = 0.0913247;//0.2332; 
+  const double block0ConstErr = 0.00102858;//0.02436;
   const double block1Slope    = -0.0002569;
   const double block1SlopeErr = 0.00001487;
   const double block1Const    =  0.3965;
@@ -64,31 +50,23 @@ void angularDistS3_newSample(const char* outfile,
   const double block3Const    = 0.4343;
   const double block3ConstErr = 0.01836;
   // 4 block data
-  const double block4Slope0    = -0.0005476;
-  const double block4Slope0Err = 1.619e-5;
-  const double block4Const0    = 0.983;
-  const double block4Const0Err = 0.02253;
-  const double block4Slope1    = -0.0003175;
-  const double block4Slope1Err = 1.173e-5;
-  const double block4Const1    = 0.6416;
-  const double block4Const1Err = 0.01587;
-  const double block4Slope2    = -0.0003664;
-  const double block4Slope2Err = 7.319e-6;
-  const double block4Const2    = 0.7991;
-  const double block4Const2Err = 0.01036;
-  const double block4Slope3    = -0.0005316;
-  const double block4Slope3Err = 1.387e-5;
-  const double block4Const3    = 1.018;
-  const double block4Const3Err = 0.01967;
+  const double block4Slope1    = -0.00030855237;
+  const double block4Slope1Err = 9.1525e-06;
+  const double block4Const1    = 0.639835;
+  const double block4Const1Err = 0.012901;
+  const double block4Slope2    = -0.00036724024;
+  const double block4Slope2Err = 5.9539e-6;
+  const double block4Const2    = 0.81216136;
+  const double block4Const2Err = 0.0087677;
+  const double block4Slope3    = -0.00031197486;
+  const double block4Slope3Err = 1.020427e-5;
+  const double block4Const3    = 0.71958558;
+  const double block4Const3Err = 0.0151212;
 
-  std::vector<double> block4SlopeVec = {block4Slope0, block4Slope1, 
-					block4Slope2, block4Slope3};
-  std::vector<double> block4SlopeErrVec = {block4Slope0Err, block4Slope1Err, 
-					   block4Slope2Err, block4Slope3Err};
-  std::vector<double> block4ConstVec = {block4Const0, block4Const1, 
-					block4Const2, block4Const3};
-  std::vector<double> block4ConstErrVec = {block4Const0Err, block4Const1Err, 
-					   block4Const2Err, block4Const3Err};
+  std::vector<double> block4SlopeVec = {block4Slope1, block4Slope2, block4Slope3};
+  std::vector<double> block4SlopeErrVec = {block4Slope1Err, block4Slope2Err, block4Slope3Err};
+  std::vector<double> block4ConstVec = {block4Const1, block4Const2, block4Const3};
+  std::vector<double> block4ConstErrVec = {block4Const1Err, block4Const2Err, block4Const3Err};
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
   // 31/08/2018
@@ -193,6 +171,10 @@ void angularDistS3_newSample(const char* outfile,
 
   double proHi = 0.;
   for (int nBlocks = 0; nBlocks < 5; nBlocks++) {
+    cout<<"=================================="<<endl;
+    cout<<nBlocks<<" blocks"<<endl;
+    cout<<"=================================="<<endl;
+
     // Tree for the S3 proton weights
     TTree *protonTree = new TTree(Form("protonTree%dBlocks", nBlocks), Form("protonTree%dBlocks", nBlocks));
     double tof, mom;
@@ -334,7 +316,6 @@ void angularDistS3_newSample(const char* outfile,
 			    "const 3", "mean 3", "sigma 3",
 			    "bkgflat");
     fSplusBExp->SetLineColor(kBlack);
-    if (nBlocks != 4) {
       // Number of protons and number of MIPs
       int nP  = 0;
       int nPi = 0;
@@ -343,362 +324,391 @@ void angularDistS3_newSample(const char* outfile,
       Int_t runMin=-1;
       Int_t runMax=-1;
 
-      double startTime = 0;
-      double endTime   = 0;
+      vector<double> startTimes;
+      vector<double> endTimes;
 
-      const char* nustof;
-      double slope;
-      double slopeErr=0.;
-      double constant;
-      double constantErr=0.;
+      vector<const char*> nustof;
+      vector<double> slope;
+      vector<double> slopeErr;
+      vector<double> constant;
+      vector<double> constantErr;
       if (nBlocks==0) {
-	nustof = str0Block;
-	startTime = start0Block;
-	endTime   = end0Block;
-	slope = block0Slope;
-	constant = block0Const;
-	slopeErr = block0SlopeErr;
-	constantErr = block0ConstErr;
+	nustof.push_back(str0Block);
+	startTimes.push_back(start0Block);
+	endTimes.push_back(end0Block);
+	slope.push_back(block0Slope);
+	constant.push_back(block0Const);
+	slopeErr.push_back(block0SlopeErr);
+	constantErr.push_back(block0ConstErr);
       }
       else if (nBlocks==1) {
-	nustof = str1Block;
-	startTime = start1Block;
-	endTime   = end1Block;
-	slope = block1Slope;
-	constant = block1Const;
-	slopeErr = block1SlopeErr;
-	constantErr = block1ConstErr;
+	nustof.push_back(str1Block);
+	startTimes.push_back(start1Block);
+	endTimes.push_back(end1Block);
+	slope.push_back(block1Slope);
+	constant.push_back(block1Const);
+	slopeErr.push_back(block1SlopeErr);
+	constantErr.push_back(block1ConstErr);
       }
       else if (nBlocks==2) {
-	nustof = str2Block;
-	startTime = start2Block;
-	endTime   = end2Block;
-	slope = block2Slope;
-	constant = block2Const;
-	slopeErr = block2SlopeErr;
-	constantErr = block2ConstErr;
+	nustof.push_back(str2Block);
+	startTimes.push_back(start2Block);
+	endTimes.push_back(end2Block);
+	slope.push_back(block2Slope);
+	constant.push_back(block2Const);
+	slopeErr.push_back(block2SlopeErr);
+	constantErr.push_back(block2ConstErr);
       }
       else if (nBlocks==3) {
-	nustof = str3Block;
-	startTime = start3Block;
-	endTime   = end3Block;
-	slope    = block3Slope;
-	constant = block3Const;
-	slopeErr = block3SlopeErr;
-	constantErr = block3ConstErr;
+	nustof.push_back(str3Block);
+	startTimes.push_back(start3Block);
+	endTimes.push_back(end3Block);
+	slope.push_back(block3Slope);
+	constant.push_back(block3Const);
+	slopeErr.push_back(block3SlopeErr);
+	constantErr.push_back(block3ConstErr);
+      }
+      else if (nBlocks==4) {
+	nustof = str4BlockVec;
+	for (int b4=0; b4<str4BlockVec.size(); b4++) {
+	  TFile *futofTmp = new TFile(Form("%s/%s",ustofDir, str4BlockVec.at(b4)), "read");
+	  TTree *treeTmp = (TTree*)futofTmp->Get("tree");
+	  double tS1Tmp;
+	  treeTmp->SetBranchAddress("tS1", &tS1Tmp);
+	  TNamed *start = 0;
+	  TNamed *end   = 0;                                                                               
+	  futofTmp->GetObject("start_of_run", start);
+	  const char* startchar = start->GetTitle();
+	  std::string startstr(startchar);
+	  std::string unixstart = startstr.substr(25,10);
+	  int startTime = stoi(unixstart);
+	  treeTmp->GetEntry(treeTmp->GetEntries() - 1);
+	  int endTime = startTime + (tS1Tmp/1e9);
+	  futofTmp->Close();
+	  delete futofTmp;
+	  startTimes.push_back(startTime);
+	  endTimes.push_back(endTime);
+	}
+	slope = block4SlopeVec;
+	constant = block4ConstVec;
+	slopeErr = block4SlopeErrVec;
+	constantErr = block4ConstErrVec;
       }
 
-      // Find dtof runs
-      for (int irun=950; irun<1400; irun++) {
-	TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
-	RawDsTofCoincidence *tofCoinTemp = NULL;
-	TTree *tree = (TTree*) fin->Get("tofCoinTree");
-	tree->SetBranchAddress("tofCoin", &tofCoinTemp);
-	tree->GetEntry(0);
-	UInt_t firstTemp = tofCoinTemp->unixTime[0];
-	tree->GetEntry(tree->GetEntries()-1);
-	UInt_t lastTemp = tofCoinTemp->unixTime[0];
+      for (int sub=0; sub<startTimes.size(); sub++) {
+
+	// Find dtof runs
+	for (int irun=950; irun<1400; irun++) {
+	  TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
+	  RawDsTofCoincidence *tofCoinTemp = NULL;
+	  TTree *tree = (TTree*) fin->Get("tofCoinTree");
+	  tree->SetBranchAddress("tofCoin", &tofCoinTemp);
+	  tree->GetEntry(0);
+	  UInt_t firstTemp = tofCoinTemp->unixTime[0];
+	  tree->GetEntry(tree->GetEntries()-1);
+	  UInt_t lastTemp = tofCoinTemp->unixTime[0];
       
-	fin->Close();
-	delete fin;
+	  fin->Close();
+	  delete fin;
       
-	if (firstTemp>endTime){
-	  break;
-	}
-      
-	if (firstTemp<startTime && lastTemp>startTime){
-	  runMin = irun;
-	}
-      
-	if (firstTemp<endTime && lastTemp>endTime){
-	  runMax = irun;
-	}   
-      } // for (int irun=950; irun<1400; irun++) 
-    
-      cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
-
-      std::vector<double> dtofTimes;
-      std::vector<int> dtofS1S2Hits;
-      std::vector<double> utofTimes;
-      std::vector<int> utofS1S2Hits;
- 
-      // Open the appropriate spill DB files and get the spill times
-      for (int irun = runMin; irun < runMax+1; irun++) {
-	TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDir, irun, irun), "read");
-	TTree *spillTree = (TTree*)dbFile->Get("spillTree");
-	double globalSpillTime;
-	double ustofSpillTime;
-	spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
-	spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
-	for (int t = 0; t < spillTree->GetEntries(); t++) {
-	  spillTree->GetEntry(t);
-	  if (globalSpillTime >= startTime && globalSpillTime <= endTime) {
-	    dtofTimes.push_back(globalSpillTime);
-	    utofTimes.push_back(ustofSpillTime);
-	  }
-	} // for (int t = 0; t < spillTree->GetEntries(); t++)
-
-	dbFile->Close();
-	delete dbFile;
-      } // for (int irun = runMin; irun < runMax+1; irun++) 
-
-      dtofS1S2Hits.resize(dtofTimes.size(), 0);
-      utofS1S2Hits.resize(dtofTimes.size(), 0);
-
-      cout<<"Finding number of dtof hits in each spill"<<endl;
-      int lastt = 0;
-      int lastrun = 0;
-      for (int s=0; s<dtofTimes.size(); s++) {
-	if (s % 100 == 0) {
-	  cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
-	}
-	// Loop over the all the files
-	for (int irun = runMin; irun < runMax+1; irun++) {
-	
-	  TFile *dtofFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun), "read");
-	  RawDsTofHeader *tof = NULL;
-	  TTree *tofTree = (TTree*)dtofFile->Get("tofTree");
-	  tofTree->SetBranchAddress("tof", &tof);
-	  tofTree->GetEntry(0);
-	  double firstTime = tof->unixTime;
-	  tofTree->GetEntry(tofTree->GetEntries()-1);
-	  double lastTime = tof->unixTime;
-	  double lastS1S2Dtof = 0.;
-	  // Spill is in this file
-	  if (firstTime <= dtofTimes[s] && lastTime >= dtofTimes[s]) {
-	    if (irun != lastrun) {
-	      lastt = 0;
-	      lastrun = irun;
-	    }
-	    // Loop over all entries and count the number of S1 S2 hits within the spill
-	    for (int t=lastt; t<tofTree->GetEntries(); t++) {
-	      tofTree->GetEntry(t);
-	      if ((tof->fakeTimeNs/1e9)+firstTime < dtofTimes[s]) continue;
-	      if ((tof->fakeTimeNs/1e9)+firstTime > dtofTimes[s]+1.) break;
-	      // Is within a spill
-	      if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
-		  (tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
-		  tof->channel == 13 && (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
-		dtofS1S2Hits[s]++;
-		lastt = t;
-		lastS1S2Dtof = tof->fakeTimeNs;
-	      } // Is within the spill
-	    } // for (int t=0; t<tofTree->GetEntries(); t++)
-	  } // if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s])
-
-	  delete tof;
-	  dtofFile->Close();
-	  delete dtofFile;
-	} // for (int irun = runMin; irun < runMax+1; irun++) 
-      } // for (int s=0; s<dtofTimes.size(); s++)
-
-      TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
-
-      double tToF[50];
-      float xToF[50];
-      float yToF[50];
-      float A1ToF[50];
-      float A2ToF[50];
-      double tTrig;
-      double tS1;
-      double tSoSd;
-      int nhit;
-      int nBar[50];
-
-      TTree *tree = (TTree*)futof->Get("tree");
-
-      tree->SetBranchAddress("xToF", xToF);
-      tree->SetBranchAddress("yToF", yToF);
-      tree->SetBranchAddress("A1ToF", A1ToF);
-      tree->SetBranchAddress("A2ToF", A2ToF);
-      tree->SetBranchAddress("nhit", &nhit);
-      tree->SetBranchAddress("tS1", &tS1);
-      tree->SetBranchAddress("tToF", tToF);
-      tree->SetBranchAddress("tTrig", &tTrig);
-      tree->SetBranchAddress("tSoSd", &tSoSd);
-      tree->SetBranchAddress("nBar", nBar);
-
-      double lastSpill = 0.; 
-
-      TNamed *start = 0;
-      TNamed *end   = 0;
-      futof->GetObject("start_of_run", start);
-      futof->GetObject("end_of_run", end);
-    
-      const char* startchar = start->GetTitle();
-      std::string startstr(startchar);
-      std::string unixstart = startstr.substr(25,10);
-      int startTimeUtof = stoi(unixstart);
-
-      int lastut = 0;
-      // Loop over the spills and perform the adjustment for each spill
-      for (int s = 0; s < utofTimes.size(); s++) {
-	if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
-	double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	double deadtimeVar = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
-	// Initial data quality loop
-	bool isGood = false;
-	for (int t=lastut; t<tree->GetEntries(); t++) {
-	  tree->GetEntry(t);
-	  if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
-	  if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
-
-	  if ((tTrig/1e9) + startTimeUtof > utofTimes[s] + 0.47) {
-	    isGood = true;
-	    nSpills++;
+	  if (firstTemp>endTimes.at(sub)){
 	    break;
 	  }
-	} // Initial data quality loop
-	// Only do this spill if it's good
-	if (isGood) {
+      
+	  if (firstTemp<startTimes.at(sub) && lastTemp>startTimes.at(sub)){
+	    runMin = irun;
+	  }
+      
+	  if (firstTemp<endTimes.at(sub) && lastTemp>endTimes.at(sub)){
+	    runMax = irun;
+	  }   
+	} // for (int irun=950; irun<1400; irun++) 
+    
+	cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
+
+	std::vector<double> dtofTimes;
+	std::vector<int> dtofS1S2Hits;
+	std::vector<double> utofTimes;
+	std::vector<int> utofS1S2Hits;
+ 
+	// Open the appropriate spill DB files and get the spill times
+	for (int irun = runMin; irun < runMax+1; irun++) {
+	  TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDir, irun, irun), "read");
+	  TTree *spillTree = (TTree*)dbFile->Get("spillTree");
+	  double globalSpillTime;
+	  double ustofSpillTime;
+	  spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
+	  spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
+	  for (int t = 0; t < spillTree->GetEntries(); t++) {
+	    spillTree->GetEntry(t);
+	    if (globalSpillTime >= startTimes.at(sub) && globalSpillTime <= endTimes.at(sub)) {
+	      dtofTimes.push_back(globalSpillTime);
+	      utofTimes.push_back(ustofSpillTime);
+	    }
+	  } // for (int t = 0; t < spillTree->GetEntries(); t++)
+
+	  dbFile->Close();
+	  delete dbFile;
+	} // for (int irun = runMin; irun < runMax+1; irun++) 
+
+	dtofS1S2Hits.resize(dtofTimes.size(), 0);
+	utofS1S2Hits.resize(dtofTimes.size(), 0);
+
+	cout<<"Finding number of dtof hits in each spill"<<endl;
+	int lastt = 0;
+	int lastrun = 0;
+	for (int s=0; s<dtofTimes.size(); s++) {
+	  if (s % 100 == 0) {
+	    cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
+	  }
+	  // Loop over the all the files
+	  for (int irun = runMin; irun < runMax+1; irun++) {
+	
+	    TFile *dtofFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun), "read");
+	    RawDsTofHeader *tof = NULL;
+	    TTree *tofTree = (TTree*)dtofFile->Get("tofTree");
+	    tofTree->SetBranchAddress("tof", &tof);
+	    tofTree->GetEntry(0);
+	    double firstTime = tof->unixTime;
+	    tofTree->GetEntry(tofTree->GetEntries()-1);
+	    double lastTime = tof->unixTime;
+	    double lastS1S2Dtof = 0.;
+	    // Spill is in this file
+	    if (firstTime <= dtofTimes[s] && lastTime >= dtofTimes[s]) {
+	      if (irun != lastrun) {
+		lastt = 0;
+		lastrun = irun;
+	      }
+	      // Loop over all entries and count the number of S1 S2 hits within the spill
+	      for (int t=lastt; t<tofTree->GetEntries(); t++) {
+		tofTree->GetEntry(t);
+		if ((tof->fakeTimeNs/1e9)+firstTime < dtofTimes[s]) continue;
+		if ((tof->fakeTimeNs/1e9)+firstTime > dtofTimes[s]+1.) break;
+		// Is within a spill
+		if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
+		    (tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
+		    tof->channel == 13 && (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
+		  dtofS1S2Hits[s]++;
+		  lastt = t;
+		  lastS1S2Dtof = tof->fakeTimeNs;
+		} // Is within the spill
+	      } // for (int t=0; t<tofTree->GetEntries(); t++)
+	    } // if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s])
+
+	    delete tof;
+	    dtofFile->Close();
+	    delete dtofFile;
+	  } // for (int irun = runMin; irun < runMax+1; irun++) 
+	} // for (int s=0; s<dtofTimes.size(); s++)
+
+	TFile *futof = new TFile(Form("%s/%s", ustofDir, nustof.at(sub)), "read");
+
+	double tToF[50];
+	float xToF[50];
+	float yToF[50];
+	float A1ToF[50];
+	float A2ToF[50];
+	double tTrig;
+	double tS1;
+	double tSoSd;
+	int nhit;
+	int nBar[50];
+
+	TTree *tree = (TTree*)futof->Get("tree");
+
+	tree->SetBranchAddress("xToF", xToF);
+	tree->SetBranchAddress("yToF", yToF);
+	tree->SetBranchAddress("A1ToF", A1ToF);
+	tree->SetBranchAddress("A2ToF", A2ToF);
+	tree->SetBranchAddress("nhit", &nhit);
+	tree->SetBranchAddress("tS1", &tS1);
+	tree->SetBranchAddress("tToF", tToF);
+	tree->SetBranchAddress("tTrig", &tTrig);
+	tree->SetBranchAddress("tSoSd", &tSoSd);
+	tree->SetBranchAddress("nBar", nBar);
+
+	double lastSpill = 0.; 
+
+	TNamed *start = 0;
+	TNamed *end   = 0;
+	futof->GetObject("start_of_run", start);
+	futof->GetObject("end_of_run", end);
+    
+	const char* startchar = start->GetTitle();
+	std::string startstr(startchar);
+	std::string unixstart = startstr.substr(25,10);
+	int startTimeUtof = stoi(unixstart);
+
+	int lastut = 0;
+	// Loop over the spills and perform the adjustment for each spill
+	for (int s = 0; s < utofTimes.size(); s++) {
+	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
+	  double deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
+	  double deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
+	  // Initial data quality loop
+	  bool isGood = false;
 	  for (int t=lastut; t<tree->GetEntries(); t++) {
 	    tree->GetEntry(t);
 	    if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
 	    if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
-	    
-	    for (int nh=0; nh<nhit; nh++) {
-	      // Checks if the next S3 hit is in a neighbouring bar
-	      // Only want to count one of them if it is
-	      // Check from this hit onwards to see if there are any double hit candidates
-	      bool isDouble = false;
-	      if (nh < nhit-1) {
-		for (int nh2=nh+1; nh2<nhit; nh2++) {
-		  // Timing cut and checks if in the neighbouring bar
-		  if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
-		      (nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
-		    isDouble = true;
-		    break;
-		  }
-		} // for (int nh2=nh; nh2<nhit; nh2++)
-	      } // if (nh < nh-1)
-	      // If it's not a double hit then go ahead
-	      if (!isDouble) {
-		double tofCalc = tToF[nh] - tS1;
-		// Calculate x, y z positions relative to S1
-		TVector3 utofCoords = GetUtofGlobalCoords(xToF[nh], yToF[nh]);
-		double positionX = (xToF[nh]/168)*(s3EndX - s3StartX) + s3StartX;
-		double positionY = (xToF[nh]/168.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
-		double positionWcX = (xToF[nh]/168)*(s3EndWcX - s3StartWcX) + s3StartWcX;
-		double positionWcY = (xToF[nh]/168.)*(s3EndWcY - s3StartWcY) + s3StartWcY; 
-		double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
-		double angleTheta = getThetaFromGlobal(utofCoords);
-		double anglePhi   = getPhiFromGlobal(utofCoords);
-		double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
-		double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
-		double travelledDist = TMath::Sqrt(pow(positionX,2)+pow(positionY,2)+pow(positionZ,2));
-		// All triggers
-		hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeVar;
-		h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
-		h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
-		h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
-		h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
-		if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
-		// Separate protons and MIPs using timing and amplitude cuts
-		// Is a MIP 
-		if ( tofCalc > piLow && tofCalc < piHi ) {
-		  nPi++;
-		  hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
-		  thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		  hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		  h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		  h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		  if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
-		  lastut = t;
-		} // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
-		// Is a proton
-		else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		  // Variables for the proton tree
-		  tof = tofCalc;
-		  mom = momFromTime(0.938, 10.9, tofCalc);
-		  x = utofCoords.X() + 0.491;
-		  y = utofCoords.Y() + 0.0114;
-		  z = utofCoords.Z() - 10.829;
-		  isS2 = 0;
-		  weight = 1. / deadtimeWeight;
-		  error = TMath::Sqrt(deadtimeVar);
-		  if (tTrig != 0) isS2 = 1;
-		  spill = nSpills;
-		  protonTree->Fill();
 
-		  nP++;
-		  hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
-		  hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		  phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
-		  thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		  if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
-		  hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		  h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		  h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		  // Remove deuteron peak in 0 block data
-		  if (nBlocks != 0) {
-		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
-		    // Only protons passing through TPC active area
-		    if (angleTheta < tpcThetaHigh && angleTheta > tpcThetaLow &&
-			anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
-		      hMomTpc->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		      hKE->Fill(keFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
-		    }
-		  }
-		  else {
-		    double mom = momFromTime(0.938, 10.9, tofCalc)/1000.;
-		    if (mom > 0.45) {
-		      hMomS1->Fill(mom, 1./deadtimeWeight);
-		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
-		      // Only protons passing through TPC active area
-		      if (angleTheta > tpcThetaLow && angleTheta < tpcThetaHigh &&
-			  anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
-			hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc)/1000., 1./deadtimeWeight);
-			hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
-			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
-		      }
-		    }
-		  }
-		  lastut = t;
-		  if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
-		  else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[nh]);
-		  else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
+	    if ((tTrig/1e9) + startTimeUtof > utofTimes[s] + 0.47) {
+	      isGood = true;
+	      nSpills++;
+	      break;
+	    }
+	  } // Initial data quality loop
+	  // Only do this spill if it's good
+	  if (isGood) {
+	    for (int t=lastut; t<tree->GetEntries(); t++) {
+	      tree->GetEntry(t);
+	      if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
+	      if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
 	    
-		} // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		//	}
-		// S1 & S2 trigger only
-		if (tTrig !=0) {
-		  hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+	      for (int nh=0; nh<nhit; nh++) {
+		// Checks if the next S3 hit is in a neighbouring bar
+		// Only want to count one of them if it is
+		// Check from this hit onwards to see if there are any double hit candidates
+		bool isDouble = false;
+		if (nh < nhit-1) {
+		  for (int nh2=nh+1; nh2<nhit; nh2++) {
+		    // Timing cut and checks if in the neighbouring bar
+		    if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
+			(nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
+		      isDouble = true;
+		      break;
+		    }
+		  } // for (int nh2=nh; nh2<nhit; nh2++)
+		} // if (nh < nh-1)
+		// If it's not a double hit then go ahead
+		if (!isDouble) {
+		  double tofCalc = tToF[nh] - tS1;
+		  // Calculate x, y z positions relative to S1
+		  TVector3 utofCoords = GetUtofGlobalCoords(xToF[nh], yToF[nh]);
+		  double positionX = (xToF[nh]/168)*(s3EndX - s3StartX) + s3StartX;
+		  double positionY = (xToF[nh]/168.)*(s3s1EndY - s3s1StartY) + s3s1StartY;
+		  double positionWcX = (xToF[nh]/168)*(s3EndWcX - s3StartWcX) + s3StartWcX;
+		  double positionWcY = (xToF[nh]/168.)*(s3EndWcY - s3StartWcY) + s3StartWcY; 
+		  double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
+		  double angleTheta = getThetaFromGlobal(utofCoords);
+		  double anglePhi   = getPhiFromGlobal(utofCoords);
+		  double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
+		  double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
+		  double travelledDist = TMath::Sqrt(pow(positionX,2)+pow(positionY,2)+pow(positionZ,2));
+		  // All triggers
+		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
+		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
+		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeVar;
+		  h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
+		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
+		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
+		  h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
+		  if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
 		  // Separate protons and MIPs using timing and amplitude cuts
-		  // Is a MIP
+		  // Is a MIP 
 		  if ( tofCalc > piLow && tofCalc < piHi ) {
 		    nPi++;
-		    hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
+		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
+		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
+		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
+		    if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
+		    lastut = t;
 		  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		  // Is a proton
 		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		    nP++;
-		    hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
-		    hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		    // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		    // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
-		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		} // S1 + S2 trigger
-	      }
-	    } // Loop over nhits
-	  } // for (int t=0; t<tree->GetEntries(); t++)
-	} // if (isGood)
-      } 
+		    // Variables for the proton tree
+		    tof = tofCalc;
+		    mom = momFromTime(0.938, 10.9, tofCalc);
+		    x = utofCoords.X() + 0.491;
+		    y = utofCoords.Y() + 0.0114;
+		    z = utofCoords.Z() - 10.829;
+		    isS2 = 0;
+		    weight = 1. / deadtimeWeight;
+		    error = TMath::Sqrt(deadtimeVar);
+		    if (tTrig != 0) isS2 = 1;
+		    spill = nSpills;
+		    protonTree->Fill();
 
-      cout<<"Utof spills "<<nSpills<<" vs. "<<utofTimes.size()<<" in spill DB"<<endl;
-      fout->cd();
+		    nP++;
+		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
+		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
+		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
+		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
+		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
+		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
+		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
+		    // Remove deuteron peak in 0 block data
+		    if (nBlocks != 0) {
+		      hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
+		      // Only protons passing through TPC active area
+		      if (angleTheta < tpcThetaHigh && angleTheta > tpcThetaLow &&
+			  anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
+			hMomTpc->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+			hKE->Fill(keFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
+			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
+		      }
+		    }
+		    else {
+		      double mom = momFromTime(0.938, 10.9, tofCalc)/1000.;
+		      if (mom > 0.45) {
+			hMomS1->Fill(mom, 1./deadtimeWeight);
+			momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
+			// Only protons passing through TPC active area
+			if (angleTheta > tpcThetaLow && angleTheta < tpcThetaHigh &&
+			    anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
+			  hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc)/1000., 1./deadtimeWeight);
+			  hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
+			  momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
+			  keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
+			}
+		      }
+		    }
+		    lastut = t;
+		    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 1 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.525) hMom2D_2blkQ->Fill(xToF[0], nBar[nh]);
+		    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
+	    
+		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
+		  //	}
+		  // S1 & S2 trigger only
+		  if (tTrig !=0) {
+		    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		    // Separate protons and MIPs using timing and amplitude cuts
+		    // Is a MIP
+		    if ( tofCalc > piLow && tofCalc < piHi ) {
+		      nPi++;
+		      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
+		      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
+		    // Is a proton
+		    else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		      nP++;
+		      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
+		      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
+		      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+		      // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
+		      // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
+		    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
+		  } // S1 + S2 trigger
+		}
+	      } // Loop over nhits
+	    } // for (int t=0; t<tree->GetEntries(); t++)
+	  } // if (isGood)
+	}
+
+	cout<<"Utof spills "<<nSpills<<" vs. "<<utofTimes.size()<<" in spill DB"<<endl;
+	fout->cd();
+      } // Loop over subsamples
 
       // Sort the errors
       for (int bin = 0; bin < hThetaS1pi->GetNbinsX()+1; bin++) {
@@ -760,7 +770,7 @@ void angularDistS3_newSample(const char* outfile,
       hThetaS1S2pi->Scale(1, "width");
       hThetaS1S2pro->Scale(1, "width");
       /*
-      for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
+	for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
 	double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
 	hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
 	hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
@@ -768,7 +778,7 @@ void angularDistS3_newSample(const char* outfile,
 	hThetaS1proNoS2->SetBinContent(i, hThetaS1proNoS2->GetBinContent(i) / binWidth);
 	hThetaS1S2pi->SetBinContent(i, hThetaS1S2pi->GetBinContent(i) / binWidth);
 	hThetaS1S2pro->SetBinContent(i, hThetaS1S2pro->GetBinContent(i) / binWidth);
-      }
+	}
       */
 
       hMomS1S2->Scale(1. / (double)nSpills);
@@ -1091,573 +1101,12 @@ void angularDistS3_newSample(const char* outfile,
       h2dTofThetaWC->Write();
       h2dTofPhiS1->Write();
       h2dTofPhiWC->Write();
-
-    } // if (nBlocks != 4)
-    else {
-      // Loop through 4 block data
-      for (int j=0; j<str4BlockVec.size(); j++) {
-	int nSpillsTmp = 0;
-	std::cout<<"Analysing 4 block sample "<<j+1<<" of "<<str4BlockVec.size()<<std::endl;
-	TH1D *tofTmp = new TH1D(Form("tofTmp%s", str4BlockVec.at(j)), Form("S3 ToF %s", str4BlockVec.at(j)), 250, 25, 125);
-	TH1D *hThetaS1piTmp = new TH1D(Form("hThetaS1piTmp%s", str4BlockVec.at(j)), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
-	TH1D *hThetaS1proTmp = new TH1D(Form("hThetaS1proTmp%s", str4BlockVec.at(j)), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
-	TH1D *hThetaS1ratioTmp = new TH1D(Form("hThetaS1ratioTmp%s", str4BlockVec.at(j)), Form("Angular distribution of proton:MIP ratio in S3 (S1 trigger only), %d blocks; #theta / degrees; Ratio", nBlocks), binnum, binsTheta);
-	// Number of protons and number of MIPs
-	int nP  = 0;
-	int nPi = 0;
-
-	// Find the correct dstof files
-	Int_t runMin=-1;
-	Int_t runMax=-1;
-
-	double startTime = 0;
-	double endTime   = 0;
-
-	const char* nustof;
-	double slope;
-	double constant;
-	double slopeErr = 0.;
-	double constantErr = 0.;
-
-	nustof = str4BlockVec.at(j);
-	slope    = block4SlopeVec.at(j);
-	constant = block4ConstVec.at(j);
-	slopeErr    = block4SlopeErrVec.at(j);
-	constantErr = block4ConstErrVec.at(j);
-
-	TFile *futof = new TFile(Form("%s/%s",ustofDir,nustof), "read");
-	double tToF[50];
-	float xToF[50];
-	float yToF[50];
-	float A1ToF[50];
-	float A2ToF[50];
-	double tTrig;
-	double tS1;
-	double tSoSd;
-	int nhit;
-	int nBar[50];
-	TTree *tree = (TTree*)futof->Get("tree");
-	tree->SetBranchAddress("xToF", xToF);
-	tree->SetBranchAddress("yToF", yToF);
-	tree->SetBranchAddress("A1ToF", A1ToF);
-	tree->SetBranchAddress("A2ToF", A2ToF);
-	tree->SetBranchAddress("nhit", &nhit);
-	tree->SetBranchAddress("tS1", &tS1);
-	tree->SetBranchAddress("tToF", tToF);
-	tree->SetBranchAddress("tTrig", &tTrig);
-	tree->SetBranchAddress("tSoSd", &tSoSd);
-	tree->SetBranchAddress("nBar", nBar);
-	TNamed *start = 0;
-	TNamed *end   = 0;
-	futof->GetObject("start_of_run", start);
-	futof->GetObject("end_of_run", end);
-	const char* startchar = start->GetTitle();
-	std::string startstr(startchar);
-	std::string unixstart = startstr.substr(25,10);
-	int startTimeUtof = stoi(unixstart);
-	const char* endchar = end->GetTitle();
-	std::string endstr(endchar);
-	std::string unixend = endstr.substr(23,10);
-	int endTimeUtof = stoi(unixend);
-
-	startTime = startTimeUtof;
-	endTime = endTimeUtof;
-
-	// Find dtof runs
-	for (int irun=950; irun<1400; irun++) {
-	  TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
-	  RawDsTofCoincidence *tofCoinTemp = NULL;
-	  TTree *tree = (TTree*) fin->Get("tofCoinTree");
-	  tree->SetBranchAddress("tofCoin", &tofCoinTemp);
-	  tree->GetEntry(0);
-	  UInt_t firstTemp = tofCoinTemp->unixTime[0];
-	  tree->GetEntry(tree->GetEntries()-1);
-	  UInt_t lastTemp = tofCoinTemp->unixTime[0];
+            
       
-	  fin->Close();
-	  delete fin;
-      
-	  if (firstTemp>endTime){
-	    break;
-	  }
-      
-	  if (firstTemp<startTime && lastTemp>startTime){
-	    runMin = irun;
-	  }
-      
-	  if (firstTemp<endTime && lastTemp>endTime){
-	    runMax = irun;
-	  }   
-	} // for (int irun=950; irun<1400; irun++) 
-    
-	cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
-
-	std::vector<double> dtofTimes;
-	std::vector<int> dtofS1S2Hits;
-	std::vector<double> utofTimes;
-	std::vector<int> utofS1S2Hits;
-
-	// Open the appropriate spill DB files and get the spill times
-	for (int irun = runMin; irun < runMax+1; irun++) {
-	  TFile *dbFile = new TFile(Form("%s/spillDB_run%d_run%d.root", spillDir, irun, irun), "read");
-	  TTree *spillTree = (TTree*)dbFile->Get("spillTree");
-	  double globalSpillTime;
-	  double ustofSpillTime;
-	  spillTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
-	  spillTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
-	  for (int t = 0; t < spillTree->GetEntries(); t++) {
-	    spillTree->GetEntry(t);
-	    if (globalSpillTime >= startTime && globalSpillTime <= endTime) {
-	      dtofTimes.push_back(globalSpillTime);
-	      utofTimes.push_back(ustofSpillTime);
-	    }
-	  } // for (int t = 0; t < spillTree->GetEntries(); t++)
-
-	  dbFile->Close();
-	  delete dbFile;
-	} // for (int irun = runMin; irun < runMax+1; irun++) 
-
-	dtofS1S2Hits.resize(dtofTimes.size(), 0);
-	utofS1S2Hits.resize(dtofTimes.size(), 0);
-
-	cout<<"Finding number of dtof hits in each spill"<<endl;
-	int lastt = 0;
-	int lastrun = 0;
-	for (int s=0; s<dtofTimes.size(); s++) {
-	  if (s % 100 == 0) {
-	    cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
-	  }
-	  // Loop over the all the files
-	  for (int irun = runMin; irun < runMax+1; irun++) {
-	
-	    TFile *dtofFile = new TFile(Form("%srun%d/DsTOFtreeRun%d_tdc1.root", dstofDir, irun, irun), "read");
-	    RawDsTofHeader *tof = NULL;
-	    TTree *tofTree = (TTree*)dtofFile->Get("tofTree");
-	    tofTree->SetBranchAddress("tof", &tof);
-	    tofTree->GetEntry(0);
-	    double firstTime = tof->unixTime;
-	    tofTree->GetEntry(tofTree->GetEntries()-1);
-	    double lastTime = tof->unixTime;
-	    double lastS1S2Dtof = 0.;
-	    // Spill is in this file
-	    if (firstTime <= dtofTimes[s] && lastTime >= dtofTimes[s]) {
-	      if (irun != lastrun) {
-		lastt = 0;
-		lastrun = irun;
-	      }
-	      // Loop over all entries and count the number of S1 S2 hits within the spill
-	      for (int t=lastt; t<tofTree->GetEntries(); t++) {
-		tofTree->GetEntry(t);
-		if ((tof->fakeTimeNs/1e9)+firstTime < dtofTimes[s]) continue;
-		if ((tof->fakeTimeNs/1e9)+firstTime > dtofTimes[s]+1.) break;
-		// Is within a spill
-		if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
-		    (tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
-		    tof->channel == 13 && (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
-		  dtofS1S2Hits[s]++;
-		  lastt = t;
-		  lastS1S2Dtof = tof->fakeTimeNs;
-		} // Is within the spill
-	      } // for (int t=0; t<tofTree->GetEntries(); t++)
-	    } // if (firstTime <= dtofTimes[s] && lastTime >=  dtofTimes[s])
-
-	    delete tof;
-	    dtofFile->Close();
-	    delete dtofFile;
-	  } // for (int irun = runMin; irun < runMax+1; irun++) 
-	} // for (int s=0; s<dtofTimes.size(); s++)
-	double lastSpill = 0.; 
-	int lastut = 0;
-       	// Loop over the spills and perform the adjustment for each spill
-	for (int s = 0; s < utofTimes.size(); s++) {
-	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
-	  double deadtimeWeight = dtofS1S2Hits[s] * slope + constant;
-	  double deadtimeVar = dtVar(slope, slopeErr, dtofS1S2Hits[s], constant, constantErr);
-	  // Do initial loop to check data quality
-	  bool isGood = false;
-	  for (int t=lastut; t<tree->GetEntries(); t++) {
-	    tree->GetEntry(t);
-	    if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
-	    if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
-	    // Quality for the 
-	    if ((tTrig/1e9) + startTimeUtof > utofTimes[s] + 0.47) {
-	      isGood = true;
-	      nSpillsTmp++;
-	      break;
-	    }
-	  } // Initial loop to check data quality
-	  if (isGood) {
-	    for (int t=lastut; t<tree->GetEntries(); t++) {
-	      tree->GetEntry(t);
-	      if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
-	      if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
-	      // Count number of spills
-	      // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) {
-	      // lastSpill = tSoSd;
-	      // } // if (tSoSd != lastSpill && tSoSd -lastSpill > 1e9) 
-	      for (int nh=0; nh < nhit; nh++) {
-		// Checks if the next S3 hit is in a neighbouring bar
-		// Only want to count one of them if it is
-		// Check from this hit onwards to see if there are any double hit candidates
-		bool isDouble = false;
-		if (nh < nhit-1) {
-		  for (int nh2=nh+1; nh2<nhit; nh2++) {
-		    // Timing cut and checks if in the neighbouring bar
-		    if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
-			(nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
-		      isDouble = true;
-		      break;
-		    }
-		  } // for (int nh2=nh; nh2<nhit; nh2++)
-		} // if (nh < nh-1)
-		// If it's not a double hit then go ahead
-		if (!isDouble) {
-		  double tofCalc = tToF[nh] - tS1;
-		  // Calculate x, y z positions relative to S1
-		  TVector3 utofCoords = GetUtofGlobalCoords(xToF[nh], yToF[nh]);
-		  double positionX = (xToF[nh]/168.)*(s3EndX - s3StartX) + s3StartX;;
-		  double positionY = (xToF[nh]/168.)*(s3s1EndY - s3s1StartY) + s3s1StartY; 
-		  double positionZ = (yToF[nh] + s3BarBottom + 2.75) / 100.;
-		  double angleTheta = getThetaFromGlobal(utofCoords);
-		  double anglePhi   = getPhiFromGlobal(utofCoords);
-		  double positionWcX = (xToF[nh]/168)*(s3EndWcX - s3StartWcX) + s3StartWcX;
-		  double positionWcY = (xToF[nh]/168.)*(s3EndWcY - s3StartWcY) + s3StartWcY;
-		  double angleWcTheta = TMath::ATan(positionWcX / positionWcY) * (180./TMath::Pi());
-		  double angleWcPhi   = TMath::ATan(positionZ / positionWcY) * (180./TMath::Pi());
-		  double travelledDist = TMath::Sqrt(pow(positionX,2)+pow(positionY,2)+pow(positionZ,2));
-		  // All triggers
-		  hAllXY->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		  hutof1dS1->Fill(tofCalc, 1./deadtimeWeight);
-		  utof1dS1Err.at(hutof1dS1->GetXaxis()->FindBin(tofCalc)) += deadtimeVar;
-		  h2dTofThetaS1->Fill(tofCalc, angleTheta, 1./deadtimeWeight);
-		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
-		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
-		  h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
-		  if (tTrig==0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
-		  tofTmp->Fill(tofCalc, 1./deadtimeWeight);
-		  // Separate protons and MIPs using timing and amplitude cuts
-		  // Is a MIP
-		  if ( tofCalc > piLow && tofCalc < piHi ) {
-		    nPi++;
-		    hThetaS1pi->Fill(angleTheta, 1./deadtimeWeight);
-		    if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
-		    hThetaS1piTmp->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
-		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		    lastut = t;
-		  } // if ( tofCalc > piLow && tofCalc < piHi )
-		  // Is a proton
-		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		    // Variables for the proton tree
-		    tof = tofCalc;
-		    mom = momFromTime(0.938, 10.9, tofCalc);
-		    x = utofCoords.X() + 0.491;
-		    y = utofCoords.Y() + 0.0114;
-		    z = utofCoords.Z() - 10.829;
-		    isS2 = 0;
-		    weight = 1. / deadtimeWeight;
-		    error = TMath::Sqrt(deadtimeVar);
-		    if (tTrig != 0) isS2 = 1;
-		    spill = nSpills;
-		    protonTree->Fill();
-
-		    nP++;
-		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
-		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
-		    hThetaS1proTmp->Fill(angleTheta, 1./deadtimeWeight);
-		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
-		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
-		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
-		    hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		    momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
-		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
-		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		    // Only protons passing through TPC active area
-		    if (angleTheta > tpcThetaLow && angleTheta < tpcThetaHigh &&
-			anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
-		      hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc)/1000., 1./deadtimeWeight);
-		      hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
-		      momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
-		      keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
-		    }
-		    lastut = t;
-		    if (nBlocks == 0 && momFromTime(0.938, 10.8, tofCalc) > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 0 && momFromTime(0.938, 10.8, tofCalc) < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 1 && momFromTime(0.938, 10.8, tofCalc) > 0.570) hMom2D_1blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 1 && momFromTime(0.938, 10.8, tofCalc) < 0.570) hMom2D_1blkS->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 2 && momFromTime(0.938, 10.8, tofCalc) > 0.525) hMom2D_2blkQ->Fill(xToF[nh], nBar[nh]);
-		    else if (nBlocks == 2 && momFromTime(0.938, 10.8, tofCalc) < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
-	    
-		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		  //	}
-		  // S1 & S2 trigger only
-		  if (tTrig !=0) {
-		    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
-		    // Separate protons and MIPs using timing and amplitude cuts
-		    // Is a MIP
-		    if ( tofCalc > piLow && tofCalc < piHi ) {
-		      nPi++;
-		      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
-		      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
-		    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
-		    // Is a proton
-		    else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		      nP++;
-		      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
-		      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
-		      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		      // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		      // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
-		    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		  } // S1 + S2 trigger
-		} // if (!isDouble)
-	      } // Loop over nhits
-	    } // for (int t=lastut; t<tree->GetEntries(); t++)
-	  } // if (isGood)
-	}
-	nSpills += nSpillsTmp;
-	fout->cd();
-	for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
-	  double binWidth = (hThetaS1piTmp->GetXaxis()->GetBinUpEdge(i) - hThetaS1piTmp->GetXaxis()->GetBinLowEdge(i));
-	  hThetaS1piTmp->SetBinContent(i, hThetaS1piTmp->GetBinContent(i) / binWidth);
-	  hThetaS1proTmp->SetBinContent(i, hThetaS1proTmp->GetBinContent(i) / binWidth);
-	}
-	tofTmp->Scale(1. / (double)nSpillsTmp);
-	hThetaS1proTmp->Scale(1. / (double)nSpillsTmp);
-	hThetaS1piTmp->Scale(1. / (double)nSpillsTmp);
-	hThetaS1ratioTmp->Divide(hThetaS1proTmp, hThetaS1piTmp, 1., 1., "B");
-	tofTmp->Write();
-	hThetaS1proTmp->Write();
-	hThetaS1piTmp->Write();
-	hThetaS1ratioTmp->Write();
-	cout<<nSpillsTmp<<" good utof spills out of "<<utofTimes.size()<<endl;
-      } // for (int j=0; j<str4BlockVec.size(); j++)
 
       fout->cd();
-
-      // Sort the errors
-      for (int bin = 0; bin < hThetaS1pi->GetNbinsX(); bin++) {
-	hThetaS1pi->SetBinError(bin, TMath::Sqrt(thetaS1piErr.at(bin)));
-	hThetaS1pro->SetBinError(bin, TMath::Sqrt(thetaS1proErr.at(bin)));
-      }
-      for (int bin = 0; bin < hPhiS1pi->GetNbinsX(); bin++) {
-	hPhiS1pi->SetBinError(bin, TMath::Sqrt(phiS1piErr.at(bin)));
-	hPhiS1pro->SetBinError(bin, TMath::Sqrt(phiS1proErr.at(bin)));
-      }
-      for (int bin = 0; bin < hutof1dS1->GetNbinsX(); bin++) {
-	hutof1dS1->SetBinError(bin, TMath::Sqrt(utof1dS1Err.at(bin)));
-      }
-      for (int bin = 0; bin < hMomS1->GetNbinsX(); bin++) {
-	hMomS1->SetBinError(bin, TMath::Sqrt(momS1Err.at(bin)));
-      }
-      for (int bin = 0; bin < hMomTpc->GetNbinsX(); bin++) {
-	hMomTpc->SetBinError(bin, TMath::Sqrt(momTpcErr.at(bin)));
-      }
-      for (int bin = 0; bin < hKE->GetNbinsX(); bin++) {
-	hKE->SetBinError(bin, TMath::Sqrt(keErr.at(bin)));
-      }
-
-      hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
-      hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
-      hThetaS1ratio->Divide(hThetaS1pro, hThetaS1pi, 1., 1., "B");
-      hThetaS1ratioNoS2->Divide(hThetaS1proNoS2, hThetaS1piNoS2, 1., 1., "B");
-      hPhiS1ratio->Divide(hPhiS1pro, hPhiS1pi, 1., 1., "B");
-      hThetaS1S2ratio->Write();
-      hPhiS1S2ratio->Write();
-      hThetaS1ratio->Write();
-      hThetaS1ratioNoS2->Write();
-      hPhiS1ratio->Write();
-    
-      hThetaS1S2pro->SetLineColor(kOrange+1);
-      hThetaS1S2pi->SetLineColor(kOrange+1);
-      hPhiS1S2pro->SetLineColor(kOrange+1);
-      hPhiS1S2pi->SetLineColor(kOrange+1);
-      hPhiS1S2ratio->SetLineColor(kOrange+1);
-      hThetaS1S2ratio->SetLineColor(kOrange+1);
-
-      hThetaS1pro->SetLineColor(kOrange+1);
-      hThetaS1pi->SetLineColor(kOrange+1);
-      hThetaS1proNoS2->SetLineColor(kOrange+1);
-      hThetaS1piNoS2->SetLineColor(kOrange+1);
-      hPhiS1pro->SetLineColor(kOrange+1);
-      hPhiS1pi->SetLineColor(kOrange+1);
-      hPhiS1ratio->SetLineColor(kOrange+1);
-      hThetaS1ratio->SetLineColor(kOrange+1);
-      hThetaS1ratioNoS2->SetLineColor(kOrange+1);
-
-      hMomS1S2->SetLineColor(kOrange+1);
-      hMomS1->SetLineColor(kOrange+1);
-      hMomTpc->SetLineColor(kOrange+1);
-      hKE->SetLineColor(kOrange+1);
-
-      hutof1dS1S2->SetLineColor(kOrange+1);
-      hutof1dS1->SetLineColor(kOrange+1);
-      hutof1dS1NoS2->SetLineColor(kOrange+1);
-
-      hPhiS1S2pro->Scale(1. / (double)nSpills);
-      hPhiS1S2pi->Scale(1. / (double)nSpills);
-      hThetaS1S2pro->Scale(1. / (double)nSpills);
-      hThetaS1S2pi->Scale(1. / (double)nSpills);
-
-      hPhiS1pro->Scale(1. / (double)nSpills);
-      hPhiS1pi->Scale(1. / (double)nSpills);
-      hThetaS1pro->Scale(1. / (double)nSpills);
-      hThetaS1pi->Scale(1. / (double)nSpills);
-      hThetaS1proNoS2->Scale(1. / (double)nSpills);
-      hThetaS1piNoS2->Scale(1. / (double)nSpills);
-
-      h2dTofThetaS1->Scale(1. / (double)nSpills);
-      h2dTofThetaWC->Scale(1. / (double)nSpills);
-      h2dTofPhiS1->Scale(1. / (double)nSpills);
-      h2dTofPhiWC->Scale(1. / (double)nSpills);
-      // Scale to bin width
-      hPhiS1pro->Scale(1., "width");
-      hPhiS1pi->Scale(1., "width");
-      hPhiS1S2pro->Scale(1., "width");
-      hPhiS1S2pi->Scale(1., "width");
-      hThetaS1pi->Scale(1., "width");
-      hThetaS1pro->Scale(1., "width");
-      hThetaS1piNoS2->Scale(1., "width");
-      hThetaS1proNoS2->Scale(1., "width");
-      hThetaS1S2pi->Scale(1., "width");
-      hThetaS1S2pro->Scale(1., "width");
-
-      hMomS1S2->Scale(1. / (double)nSpills);
-      hMomS1->Scale(1. / (double)nSpills);
-      hMomTpc->Scale(1. / (double)nSpills);
-      hKE->Scale(1. / (double)nSpills);
-
-      hutof1dS1S2->Scale(1. / (double)nSpills);
-      hutof1dS1->Scale(1. / (double)nSpills);
-      hutof1dS1NoS2->Scale(1. / (double)nSpills);
-
-      double ePro = 0.;
-      double ePi  = 0.;
-      double eKE  = 0.;
-      double eTpc = 0.;
-      double iPro = hThetaS1pro->IntegralAndError(1, hThetaS1pro->GetNbinsX(), ePro, "width");
-      double iPi  = hThetaS1pi->IntegralAndError(1, hThetaS1pi->GetNbinsX(), ePi, "width");
-      double iKE  = hKE->IntegralAndError(1, hKE->GetNbinsX(), eKE);
-      double iTpc = hMomTpc->IntegralAndError(1, hMomTpc->GetNbinsX(), iTpc);
-      cout<<iPi<<" +- "<<ePi<<endl;
-      cout<<iPro<<" +- "<<ePro<<endl;
-      cout<<iKE<<" +- "<<eKE<<endl;
-
-      legThetaS1pro->AddEntry(hThetaS1pro, 
-			      Form("4 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
-      legThetaS1pi->AddEntry(hThetaS1pi, 
-			     Form("4 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
-      legKE->AddEntry(hKE, Form("4 blocks - %.4g #pm %.2g per spill", iKE, eKE), "le"); 
-      legTpc->AddEntry(hMomTpc, Form("4 blocks - %.3g #pm %.2g per spill", iTpc, eTpc), "le");
-      leg->AddEntry(hThetaS1S2pro, "4 blocks", "le");
-      legTheta->AddEntry(hThetaS1ratio, "4 blocks", "le");
-      legTof->AddEntry(hutof1dS1, "4 blocks", "le");
-      legPhiRatio->AddEntry(hPhiS1ratio, "4 blocks", "le");
-
-      hutof1dS1->Fit(sPi, "R");
-      hutof1dS1->Fit(sPro1, "R");
-      hutof1dS1->Fit(fBkgExp, "R");
-      hutof1dS1->Fit(fBkgFlat, "R");
-      Double_t parExp[8];
-      sPi->GetParameters(&parExp[0]);
-      sPro1->GetParameters(&parExp[3]);
-      fBkgExp->GetParameters(&parExp[6]);
-      fSplusBExp->SetParameters(parExp);
-      hutof1dS1->Fit(fSplusBExp, "R");
-      hutof1dS1->Draw("hist");
-      fSplusBExp->Draw("same");
-      fSplusBExp->Write();    
-
-      Double_t parFlat[10];
-      sPi->GetParameters(&parFlat[0]);
-      sPro1->GetParameters(&parFlat[3]);
-      sPro2->GetParameters(&parFlat[6]);
-      fBkgFlat->GetParameters(&parFlat[9]);
-      fSplusBFlat->SetParameters(parFlat);
-      hutof1dS1->Fit(fSplusBFlat, "R");
-      fSplusBFlat->Write();
-
-      hprotonXY->Scale(1. / (double)nSpills);
-      hpionXY->Scale(1. / (double)nSpills);
-      hAllXY->Scale(1. / (double)nSpills);
-      hprotonXY->Write();
-      hpionXY->Write();
-      hAllXY->Write();
-
-      hThetaS1S2pro->Write();
-      hThetaS1S2pi->Write();
-      hPhiS1S2pro->Write();
-      hPhiS1S2pi->Write();
-      hThetaS1pro->Write();
-      hThetaS1pi->Write();
-      hThetaS1proNoS2->Write();
-      hThetaS1piNoS2->Write();
-      hPhiS1pro->Write();
-      hPhiS1pi->Write();
-
-      hMomS1S2->Write();
-      hMomS1->Write();
-      hMomTpc->Write();
-      hKE->Write();
-
-      hutof1dS1S2->Write();
-      hutof1dS1->Write();
-      hutof1dS1NoS2->Write();
-
-      hsThetaS1S2pro->Add(hThetaS1S2pro);
-      hsThetaS1S2pi->Add(hThetaS1S2pi);
-      hsPhiS1S2pro->Add(hPhiS1S2pro);
-      hsPhiS1S2pi->Add(hPhiS1S2pi);
-      hsThetaS1S2ratio->Add(hThetaS1S2ratio);
-      hsPhiS1S2ratio->Add(hPhiS1S2ratio);
-
-      hsThetaS1pro->Add(hThetaS1pro);
-      hsThetaS1pi->Add(hThetaS1pi);
-      hsThetaS1proNoS2->Add(hThetaS1proNoS2);
-      hsThetaS1piNoS2->Add(hThetaS1piNoS2);
-      hsPhiS1pro->Add(hPhiS1pro);
-      hsPhiS1pi->Add(hPhiS1pi);
-      hsThetaS1ratio->Add(hThetaS1ratio);
-      hsPhiS1ratio->Add(hPhiS1ratio);
-
-      hsutof1dS1S2->Add(hutof1dS1S2);
-      hsutof1dS1->Add(hutof1dS1);
-      hsutof1dS1NoS2->Add(hutof1dS1NoS2);
-
-      hsMomS1S2->Add(hMomS1S2);
-      hsMomS1->Add(hMomS1);
-      hsMomTpc->Add(hMomTpc);
-      hsKE->Add(hKE);
-
-      h2dAngPiS1->Scale(1. / (double)nSpills);
-      h2dAngProS1->Scale(1. / (double)nSpills);
-      h2dAngPiWC->Scale(1. / (double)nSpills);
-      h2dAngProWC->Scale(1. / (double)nSpills);
-      h2dAngRatioWC->Divide(h2dAngProWC, h2dAngPiWC, 1., 1.);
-      h2dAngRatioS1->Divide(h2dAngProS1, h2dAngPiS1, 1., 1.);
-      h2dAngPiS1->Write();
-      h2dAngProS1->Write();
-      h2dAngPiWC->Write();
-      h2dAngProWC->Write();
-      h2dAngRatioWC->Write();
-      h2dAngRatioS1->Write();
-
-      h2dTofThetaS1->Write();
-      h2dTofThetaWC->Write();
-      h2dTofPhiS1->Write();
-      h2dTofPhiWC->Write();
-
-      cout<<"Completed this dataset"<<endl;
-    } // 4 block data
-    fout->cd();
-    protonTree->Write();
+      protonTree->Write();
   } // for (int nBlocks = 0; nBlocks <= 4; nBlocks++) 
-
   fout->cd();
   leg->Write("leg");
 
