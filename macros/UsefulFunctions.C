@@ -142,8 +142,9 @@ const double barOverallEffErr = .1;
 // Beam paper binnings and limits
 const int nBinsS4Horz = 20;
 const int nBinsS4HorzCosmics = 2;
-const double binsCosmics[] = {0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140};
-int binnumCosmics = sizeof(binsCosmics)/sizeof(double) - 1;
+const double binsCosmics[] = {0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 
+			      77, 84, 91, 98, 105, 112, 119, 126, 133, 140};
+const int binnumCosmics = sizeof(binsCosmics)/sizeof(double) - 1;
 const double binsS4HorzLow  = -6.;
 const double binsS4HorzHigh = 0.;
 const int nBinsS4Vert = 9;
@@ -170,10 +171,10 @@ double binsTheta[] = {-6., -5.8, -5.25, -5.,
 		      -2.8, -2.6, -2.4, -2.2, -2.0, 
 		      -1.875, -1.75, -1.625, -1.5, -1.375, -1.25, -1.125, -1.0, 
 		      -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.,
-		      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-		      1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
-		      2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
-		      3., 3.1};
+		      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 
+		      1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2., 
+		      2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3., 
+		      3.1};
 int binnum = sizeof(binsTheta)/sizeof(double) - 1;
 
 const vector<double> s4s3MC = {0.0281, 0.0680, 0.0861, 0.0582,  0.0149};
