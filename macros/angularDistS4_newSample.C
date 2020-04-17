@@ -36,9 +36,7 @@ double ratioErr(const double num, const double numErr, const double denom, const
 }
 
 // Main macro
-void angularDistS4_newSample(const char* saveDir, 
-			     const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
-			     const char* ustofDir="/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/",
+void angularDistS4_newSample(const char* saveDir,			     
 			     const char* spillDBDir="/scratch0/sjones/spillDB/", 
 			     const char* smearHists="/scratch0/sjones/plots/fitGaussToCosmics/newSigmoids.root") 
 { 
@@ -68,7 +66,7 @@ void angularDistS4_newSample(const char* saveDir,
   // S1 to S4 distance
   const double s1s4Dist = 14.0698;
   // For calculating ratios
-  const vector<double> dataS3    = {1981., 1653., 1320., 896., 136.1};
+  const vector<double> dataS3    = {2227., 1653., 1320., 896., 136.1};
   const vector<double> dataS3Err = {9., 6., 5., 6., 0.5};
 
   // For MC plots
@@ -129,6 +127,7 @@ void angularDistS4_newSample(const char* saveDir,
     cout<<"=========================================="<<endl;
     vector<double> startTimes;
     vector<double> endTimes;
+    vector<const char*> utofFiles;
     startTimes.clear();
     endTimes.clear();
     fout->cd();
@@ -261,20 +260,19 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     TF1 *fBkg = new TF1(Form("fBkg%d", nBlocks),"pol0", 30, proCutHiS4);
     sPro->SetLineColor(kGreen+2);
     sPi->SetLineColor(kRed);
-    /*
-      TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, proCutHiS4);
-      fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
-      "const 2", "mean 2", "sigma 2",
-      "bkgconst", "bkgdecay");
-      fSplusBExp->SetLineColor(kBlack);
-    */
+    
+    // TF1 *fSplusBExp = new TF1(Form("signal_plus_bkg_exp_%d", nBlocks), "gaus(0)+gaus(3)+expo(6)", 30, proCutHiS4);
+    // fSplusBExp->SetParNames("const 1", "mean 1", "sigma 1",
+    // "const 2", "mean 2", "sigma 2",
+    // "bkgconst", "bkgdecay");
+    // fSplusBExp->SetLineColor(kBlack);
+    
     TF1 *fSplusB = new TF1(Form("signal_plus_bkg_%d", nBlocks), "gaus(0)+gaus(3)+pol0(6)", 30, proCutHiS4);
     fSplusB->SetParNames("piConst", "piMean", "piSigma",
 			 "proConst", "proMean", "proSigma",
 			 "bkg");
     fSplusB->SetLineColor(kRed);
     // For spill counting normalisation
-    int nSpills = 0;
     int nSpillsTrue = 0;
     double lastSpill = 0.;
 
@@ -287,18 +285,22 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     if (nBlocks == 0) {
       startTimes.push_back(start0Block);
       endTimes.push_back(end0Block);
+      utofFiles.push_back(str0Block);
     }
     else if (nBlocks == 1) {
       startTimes.push_back(start1Block);
       endTimes.push_back(end1Block);
+      utofFiles.push_back(str1Block);
     }
     else if (nBlocks == 2) {
       startTimes.push_back(start2Block);
       endTimes.push_back(end2Block);
+      utofFiles.push_back(str2Block);
     }
     else if (nBlocks == 3) {
       startTimes.push_back(start3Block);
       endTimes.push_back(end3Block);
+      utofFiles.push_back(str3Block);
     }
     else if (nBlocks == 4) {
       for (int b4=0; b4<str4BlockVec.size(); b4++) {
@@ -320,6 +322,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
 	startTimes.push_back(startTime);
 	endTimes.push_back(endTime);
       }
+      utofFiles = str4BlockVec;
     }
 
     // Loop over subsamples
@@ -568,156 +571,192 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
       h2CosmicsErr->Write();
       h2CosmicsEffMC->Write();
       h2Cosmics->Write();
+
       // Now loop over the coincidence files again and calculate the angular distributions
       cout<<"Getting signal hits"<<endl;
       for (int itdc=0; itdc<2; itdc++) {
 	unsigned int lastRun = 0;
-	// First of all tchain the relevant files together
-	TChain *tofCoinChain = new TChain("tofCoinTree");
+
 	for (int irun=runMin; irun<runMax+1; irun++){
-	  tofCoinChain->Add(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1));
-	} // for (int irun=runMin; irun<runMax+1; irun++)
-	cout<<"Got TChain successfully"<<endl;
-	RawDsTofCoincidence *tofCoin = NULL;
-	tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
-	cout<<"Branch address set successfully"<<endl;
-	int lasth = 0;
-	// Use the spills recorded in the spill DB
-	for (int h=0; h<tofCoinChain->GetEntries(); h++) {
-	  tofCoinChain->GetEntry(h);
-	
-	  if (tofCoin->unixTime[0]<startTime) continue;
-	  if (tofCoin->unixTime[0]>endTime) break;
-	  if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) {
-	    lastSpill = tofCoin->lastDelayedBeamSignal;
-	    nSpills++;
-	    int nTrueHits = 0;
-	    for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) {
-	      tofCoinChain->GetEntry(sp);
-	      if (tofCoin->unixTime[0]<startTime) continue;
-	      if (tofCoin->unixTime[0]>endTime) break;
-	      if (tofCoin->fakeTimeNs[0] > lastSpill + 3e9) break;
+	  TFile *tofCoinFile = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc%d.root", dstofDir, irun, irun, itdc+1), "read");
+	  TTree *tofCoinChain = (TTree*)tofCoinFile->Get("tofCoinTree");
+	  RawDsTofCoincidence *tofCoin = NULL;
+	  tofCoinChain->SetBranchAddress("tofCoin", &tofCoin);
+	  tofCoinChain->GetEntry(0);
+	  double fileStart = tofCoin->unixTime[0];
 
-	      if ((tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) < 200. &&
-		  (tofCoin->fakeTimeNs[0] - tofCoin->usTofSignal) > 70. &&
-		  (tofCoin->fakeTimeNs[0] - lastSpill) < 1e9 &&
-		  (tofCoin->fakeTimeNs[0] - lastSpill) > 0.) {
-		nTrueHits++;
-		if (nTrueHits > 25) {
-		  nSpillsTrue++;
-		  break;
-		}
-	      }
-	    } // for (int sp=h; sp<tofCoinChain->GetEntries(); sp++) 
-	  } // if (tofCoin->lastDelayedBeamSignal != lastSpill && itdc == 0) 
-	  tofCoinChain->GetEntry(h);
-	  // Need to calculate total signal hits here
-	  // Weight these by the efficiency of calculated above
-	  double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]);
-	  double dstofHitT = dtofHitTime(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
+	  TFile *dbFile = new TFile(Form("/scratch0/sjones/spillDB/spillDB_run%d_run%d.root", irun, irun), "read");
+	  TTree *dbTree = (TTree*)dbFile->Get("spillTree");
+	  double ustofSpillTime, globalSpillTime;
+	  dbTree->SetBranchAddress("ustofSpillTime", &ustofSpillTime);
+	  dbTree->SetBranchAddress("globalSpillTime", &globalSpillTime);
 
-	  // Make bar go dead after hit
-	  if (dstofHitT - barTimeVec.at(tofCoin->bar-1) < s4DeadtimeCut && tofCoin->run==lastRun) {
-	    continue;
-	  }
-	  else if (tofCoin->run != lastRun) {
-	    barTimeVec.clear();
-	    barTimeVec.resize(10, 0.);
-	    lastRun = tofCoin->run;
-	  }
-	  barTimeVec.at(tofCoin->bar-1) = dstofHitT;
+	  // Get the relevant UToF file
+	  TFile *utofFile = new TFile(Form("%s/%s", ustofDir, utofFiles.at(sub)), "read");
+	  TTree *utofTree = (TTree*)utofFile->Get("tree");
+	  double tS1, tTrig;
+	  utofTree->SetBranchAddress("tS1", &tS1);
+	  utofTree->SetBranchAddress("tTrig", &tTrig);
+	  TNamed *start = 0;
+	  utofFile->GetObject("start_of_run", start);
+	  const char* startchar = start->GetTitle();
+	  std::string startstr(startchar);
+	  std::string unixstart = startstr.substr(25,10);
+	  int utofFileStart = stoi(unixstart);
 
-	  double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
-	  if (tofCalc < proCutHiS4 && tofCalc > 30. && tofCoin->bar != 10 && deltat < s4BarTime) {
-	    double positionXP = localDtofPosition(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
-	    TVector3 globalCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
-	    double mcXForSmear = globalToMCCoords(globalCoords).X();
+	  int lastutof = 0;
+	  // Loop over the spills
+	  for (int db=0; db<dbTree->GetEntries(); db++) {
+	    dbTree->GetEntry(db);
+	    if (globalSpillTime < startTime) continue;
+	    if (globalSpillTime > endTime) break;
 
-	    // double w = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff); 
-	    double w = 1. / (barFits[tofCoin->bar-1]->Eval(positionXP) * barOverallEff);
-	    // Need to count if there is a double hit associated with this one
-	    int bar1 = tofCoin->bar;
-	    for (int dub = h-1; dub<=h+1; dub+=2) {
-	      tofCoinChain->GetEntry(dub);
-	      double dstofHitT2 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2.);
-	      int bar2 = tofCoin->bar;
-	      if (dstofHitT2 - dstofHitT < 2. && dstofHitT2 > dstofHitT && abs(bar1-bar2) % 2 == 1) {
-		h2DoubleFirst->Fill(positionXP, bar1);
-		double positionXP2 = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(70./s4BarTime) + 70.));
-		h2DoubleSecond->Fill(positionXP2, bar2);
-		doubleHits++;
-		// If there is a double hit we should halve the weight for this event
-		w /= 2;
+	    // Flags for if a spill is good
+	    bool lateHit = false;
+	    bool enoughHits = false;
+	    int ns1s2 = 0;
+	    // Loop through utof entries to do checking if spill is good
+	    for (int utof = lastutof; utof<utofTree->GetEntries(); utof++) {
+	      utofTree->GetEntry(utof);
+	      double utofGlobalTime = (double)utofFileStart + tS1/1e9;
+	      if (utofGlobalTime > ustofSpillTime + 1.) {
+		lastutof = utof;
 		break;
 	      }
-	    } // Loop to find double hits
+	      if (utofGlobalTime < ustofSpillTime) continue;
 
-	    double errSq    = pow(weightErr(w, barOverallEffErr, h2Cosmics->GetBinContent(h2Cosmics->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
-	    double errSqBar = pow(weightErrBar(hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2);
-	    // Calculate position of hit in global coordinates
-	    TVector3 dtofCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
-	    // Calculate the angles relative to the nominal beamline
-	    double angleTheta = getThetaFromGlobal(dtofCoords);
-	    double anglePhi   = getPhiFromGlobal(dtofCoords);
-	    // Apply offsets to get these in same frame as MC
-	    TVector3 mcCoords = globalToMCCoords(dtofCoords);
-	    double mcX = mcCoords.X();
-	    double mcY = mcCoords.Y();
-	    double mcZ = mcCoords.Z();
-	    hdtof1d->Fill(tofCalc, w);
-	    hdtof1dErr->Fill(tofCalc, errSq);
-	    hdtof1dBins->Fill(tofCalc, w);
-	    hdtof1dBinsErr->Fill(tofCalc, errSq);
-	    hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), w);
-	    hMSqErr->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), errSq);
+	      if (utofGlobalTime > ustofSpillTime && utofGlobalTime < ustofSpillTime + 1. && 
+		  tTrig !=0) ns1s2++;
+	      if (utofGlobalTime > ustofSpillTime && 
+		  utofGlobalTime < ustofSpillTime + 1. &&tTrig !=0 && 
+		  tTrig/1e9 + (double)utofFileStart > ustofSpillTime + 0.47) lateHit = true;
+	      if (ns1s2 > 10) enoughHits = true;
+	    } // Loop through utof entries
 
-	    if (tofCalc < piHiS4 & tofCalc > piLowS4) { 
-	      nPi += w;
-	      hPiS4Horz->Fill(angleTheta, w);
-	      hPiS4HorzErr->Fill(angleTheta, errSq);
-	      hPiS4Vert->Fill(anglePhi, w);
-	      hPiS4VertErr->Fill(anglePhi, errSq);
-	      h2dAngPiS1->Fill(angleTheta, anglePhi, w);
+	    // Loop over the bar coincidences if the spill passes the cut
+	    if (enoughHits && lateHit) {
+	      if (itdc == 0) nSpillsTrue++; // Spill counting
+	      for (int h=0; h<tofCoinChain->GetEntries(); h++) {
+		tofCoinChain->GetEntry(h);	
+		// Need to calculate total signal hits here
+		// Weight these by the efficiency of calculated above
+		double deltat = TMath::Abs(tofCoin->fakeTimeNs[0]-tofCoin->fakeTimeNs[1]);
+		double dstofHitT = dtofHitTime(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
+		double globalHitTime = fileStart + dstofHitT/1e9;
 
-	      hPiS4HorzUnwgt->Fill(angleTheta);
-	      hPiS4VertUnwgt->Fill(anglePhi);
-	      h2dAngPiS1Unwgt->Fill(angleTheta, anglePhi);
-	    } // if (tofCalc < piHiS4 & tofCalc > piLowS4)
-	    else if (tofCalc < proCutHiS4 & tofCalc > proCutLowS4) {
-	      tof = tofCalc;
-	      mom = momFromTime(0.938, s2s4Dist, tofCalc);
-	      weight = w;
-	      error = sqrt(errSq);
-	      theta = angleTheta;
-	      phi = anglePhi;
-	      mcx = mcX;
-	      mcy = mcY;
-	      mcz = mcZ;
-	      spill = nSpillsTrue;
-	      protonTree->Fill();
+		// Hits must be in this spill
+		if (globalHitTime < globalSpillTime) continue;
+		if (globalHitTime > globalSpillTime + 1.) break;
 
-	      nP += w;
-	      hProS4Horz->Fill(angleTheta, w);
-	      hProS4HorzErr->Fill(angleTheta, errSq);
-	      hProS4Vert->Fill(anglePhi, w);
-	      hProS4VertErr->Fill(anglePhi, errSq);
-	      hProS4HorzUnwgt->Fill(angleTheta);
-	      hProS4VertUnwgt->Fill(anglePhi);
-	      h2dAngProS1->Fill(angleTheta, anglePhi, w);
-	      h2dAngProS1Unwgt->Fill(angleTheta, anglePhi);
-	      hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), w);
-	      hMomErr->Fill(momFromTime(0.938, s2s4Dist, tofCalc), errSq);
-	      hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), w);
-	      h2dProMCComp->Fill(mcX, mcY, w);
-	      if (positionXP > 10. && positionXP < 130.) {
-		h2dProMCCompCut->Fill(mcX, mcY, w);
-	      }
+		// Make bar go dead after hit
+		if (dstofHitT - barTimeVec.at(tofCoin->bar-1) < s4DeadtimeCut && tofCoin->run==lastRun) {
+		  continue;
+		}
+		else if (tofCoin->run != lastRun) {
+		  barTimeVec.clear();
+		  barTimeVec.resize(10, 0.);
+		  lastRun = tofCoin->run;
+		}
+		barTimeVec.at(tofCoin->bar-1) = dstofHitT;
+
+		double tofCalc = dstofHitT - tofCoin->usTofSignal - dstofShift;
+		if (tofCalc < proCutHiS4 && tofCalc > 30. && tofCoin->bar != 10 && deltat < s4BarTime) {
+		  double positionXP = localDtofPosition(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]);
+		  TVector3 globalCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
+		  double mcXForSmear = globalToMCCoords(globalCoords).X();
+
+		  // double w = 1. / (h2CosmicsEff->GetBinContent(h2CosmicsEff->GetXaxis()->FindBin(positionXP), tofCoin->bar)*barOverallEff); 
+		  double w = 1. / (barFits[tofCoin->bar-1]->Eval(positionXP) * barOverallEff);
+		  // Need to count if there is a double hit associated with this one
+		  int bar1 = tofCoin->bar;
+		  for (int dub = h-1; dub<=h+1; dub+=2) {
+		    tofCoinChain->GetEntry(dub);
+		    double dstofHitT2 = min(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1]) - (s4BarTime/2. - TMath::Abs(deltat) / 2.);
+		    int bar2 = tofCoin->bar;
+		    if (dstofHitT2 - dstofHitT < 2. && dstofHitT2 > dstofHitT && abs(bar1-bar2) % 2 == 1) {
+		      h2DoubleFirst->Fill(positionXP, bar1);
+		      double positionXP2 = (((tofCoin->fakeTimeNs[1] - tofCoin->fakeTimeNs[0])*(70./s4BarTime) + 70.));
+		      h2DoubleSecond->Fill(positionXP2, bar2);
+		      doubleHits++;
+		      // If there is a double hit we should halve the weight for this event
+		      w /= 2;
+		      break;
+		    }
+		  } // Loop to find double hits
+
+		  double errSq    = pow(weightErr(w, barOverallEffErr, h2Cosmics->GetBinContent(h2Cosmics->GetXaxis()->FindBin(positionXP), tofCoin->bar)), 2);
+		  double errSqBar = pow(weightErrBar(hEff->GetBinContent(tofCoin->bar), hEff->GetBinError(tofCoin->bar)), 2);
+		  // Calculate position of hit in global coordinates
+		  TVector3 dtofCoords = GetDtofGlobalCoords(tofCoin->fakeTimeNs[0], tofCoin->fakeTimeNs[1], tofCoin->bar);
+		  // Calculate the angles relative to the nominal beamline
+		  double angleTheta = getThetaFromGlobal(dtofCoords);
+		  double anglePhi   = getPhiFromGlobal(dtofCoords);
+		  // Apply offsets to get these in same frame as MC
+		  TVector3 mcCoords = globalToMCCoords(dtofCoords);
+		  double mcX = mcCoords.X();
+		  double mcY = mcCoords.Y();
+		  double mcZ = mcCoords.Z();
+		  hdtof1d->Fill(tofCalc, w);
+		  hdtof1dErr->Fill(tofCalc, errSq);
+		  hdtof1dBins->Fill(tofCalc, w);
+		  hdtof1dBinsErr->Fill(tofCalc, errSq);
+		  hMSq->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), w);
+		  hMSqErr->Fill(massFromTime(tofCalc, 0.8, s2s4Dist), errSq);
+
+		  if (tofCalc < piHiS4 & tofCalc > piLowS4) { 
+		    nPi += w;
+		    hPiS4Horz->Fill(angleTheta, w);
+		    hPiS4HorzErr->Fill(angleTheta, errSq);
+		    hPiS4Vert->Fill(anglePhi, w);
+		    hPiS4VertErr->Fill(anglePhi, errSq);
+		    h2dAngPiS1->Fill(angleTheta, anglePhi, w);
+
+		    hPiS4HorzUnwgt->Fill(angleTheta);
+		    hPiS4VertUnwgt->Fill(anglePhi);
+		    h2dAngPiS1Unwgt->Fill(angleTheta, anglePhi);
+		  } // if (tofCalc < piHiS4 & tofCalc > piLowS4)
+		  else if (tofCalc < proCutHiS4 & tofCalc > proCutLowS4) {
+		    tof = tofCalc;
+		    mom = momFromTime(0.938, s2s4Dist, tofCalc);
+		    weight = w;
+		    error = sqrt(errSq);
+		    theta = angleTheta;
+		    phi = anglePhi;
+		    mcx = mcX;
+		    mcy = mcY;
+		    mcz = mcZ;
+		    spill = nSpillsTrue;
+		    protonTree->Fill();
+
+		    nP += w;
+		    hProS4Horz->Fill(angleTheta, w);
+		    hProS4HorzErr->Fill(angleTheta, errSq);
+		    hProS4Vert->Fill(anglePhi, w);
+		    hProS4VertErr->Fill(anglePhi, errSq);
+		    hProS4HorzUnwgt->Fill(angleTheta);
+		    hProS4VertUnwgt->Fill(anglePhi);
+		    h2dAngProS1->Fill(angleTheta, anglePhi, w);
+		    h2dAngProS1Unwgt->Fill(angleTheta, anglePhi);
+		    hMom->Fill(momFromTime(0.938, s2s4Dist, tofCalc), w);
+		    hMomErr->Fill(momFromTime(0.938, s2s4Dist, tofCalc), errSq);
+		    hMomS1S4->Fill(momFromTime(0.938, s1s4Dist, tofCalc+4.7), w);
+		    h2dProMCComp->Fill(mcX, mcY, w);
+		    if (positionXP > 10. && positionXP < 130.) {
+		      h2dProMCCompCut->Fill(mcX, mcY, w);
+		    }
 	      
-	    } // else if (tofCalc < proHi & tofCalc > proLow) 
-	  } // if (tofCalc < 160. && tofCalc > 30.) 
-	} // for (int h=0; h<tofCoinChain->GetEntries(); h++)
-	delete tofCoin;
-	delete tofCoinChain;
+		  } // else if (tofCalc < proHi & tofCalc > proLow) 
+		} // Is a proton
+	      } // for (int h=0; h<tofCoinChain->GetEntries(); h++)
+	    }
+	  } // Loop over spills
+	  tofCoinFile->Close();
+	  delete tofCoinFile;
+	  dbFile->Close();
+	  delete dbFile;
+	  utofFile->Close();
+	  delete utofFile;
+	} // Loop over runs
       } // Loop over TDCs
       cout<<"Finished getting signal hits"<<endl;
       cout<<"Found "<<doubleHits<<" double proton hits"<<endl;;
@@ -846,7 +885,7 @@ TH1D *hPiS4HorzErr = new TH1D(Form("hPiS4HorzErr%d",nBlocks), Form("Horizontal a
     double proBkg    = (proCutHiS4 - proCutLowS4)*bkgPerNs;
     double proBkgErr = (proCutHiS4 - proCutLowS4)*bkgErr;
     cout<<"Pion background: "<<piBkg<<" +- "<<piBkgErr<<" / spill. Proton background: "<<proBkg<<" +- "<<proBkgErr<<" / spill, compared to "<<nP<<" total"<<endl;
-    cout<<"Spills "<<nSpills<<" ("<<nSpillsTrue<<" true)"<<endl;
+    cout<<"Spills "<<nSpillsTrue<<endl;
 
     // Subtract background hits
     // Do this by just multiplying by background/integral

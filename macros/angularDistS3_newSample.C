@@ -208,16 +208,16 @@ void angularDistS3_newSample(const char* outfile,
     thetaS1proErr.resize(hThetaS1pro->GetNbinsX()+2, 0);
 
     TH1D *hThetaS1proNoS2 = new TH1D(Form("hThetaS1proNoS2_%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
-    hThetaS1proNoS2->Sumw2();
+    setHistAttr(hThetaS1proNoS2);
     TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
-    hThetaS1S2pro->Sumw2();
+    setHistAttr(hThetaS1S2pro);
     TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.22, 3.35);
     setHistAttr(hPhiS1pro);
     vector<double> phiS1proErr;
     phiS1proErr.resize(hPhiS1pro->GetNbinsX()+2, 0);
 
     TH1D *hPhiS1S2pro = new TH1D(Form("hPhiS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.22, 3.35);
-    hPhiS1S2pro->Sumw2();
+    setHistAttr(hPhiS1S2pro);
 
     TH1D *hThetaS1pi   = new TH1D(Form("hThetaS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     setHistAttr(hThetaS1pi);
@@ -225,16 +225,16 @@ void angularDistS3_newSample(const char* outfile,
     thetaS1piErr.resize(hThetaS1pi->GetNbinsX()+2, 0);
 
     TH1D *hThetaS1piNoS2 = new TH1D(Form("hThetaS1piNoS2_%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
-    hThetaS1piNoS2->Sumw2();
+    setHistAttr(hThetaS1piNoS2);
     TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
-    hThetaS1S2pi->Sumw2();
+    setHistAttr(hThetaS1S2pi);
     TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.22, 3.35);
     setHistAttr(hPhiS1pi);
     vector<double> phiS1piErr;
     phiS1piErr.resize(hPhiS1pi->GetNbinsX()+2, 0);
 
     TH1D *hPhiS1S2pi = new TH1D(Form("hPhiS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #phi / degrees; Events / spill", nBlocks), 22, -3.22, 3.35);
-    hPhiS1S2pi->Sumw2();
+    setHistAttr(hPhiS1S2pi);
 
     TH1D *hThetaS1ratio = new TH1D(Form("hThetaS1ratio%d", nBlocks), Form("S1 #cap S3 angular distribution of proton/MIP ratio, %d blocks; #phi / degrees; Protons/MIPs", nBlocks), binnum, binsTheta);
     setHistAttr(hThetaS1ratio);
@@ -251,9 +251,9 @@ void angularDistS3_newSample(const char* outfile,
     utof1dS1Err.resize(hutof1dS1->GetNbinsX()+2, 0);
 
     TH1D *hutof1dS1NoS2 = new TH1D(Form("hutof1dS1NoS2_%d",nBlocks), Form("Time of flight, %d blocks (S1 trigger only); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
-    hutof1dS1NoS2->Sumw2();
+    setHistAttr(hutof1dS1NoS2);
     TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
-    hutof1dS1S2->Sumw2();
+    setHistAttr(hutof1dS1S2);
 
     TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 120, 0.3, 0.9);
     setHistAttr(hMomS1S2);
@@ -396,7 +396,6 @@ void angularDistS3_newSample(const char* outfile,
       }
 
       for (int sub=0; sub<startTimes.size(); sub++) {
-
 	// Find dtof runs
 	for (int irun=950; irun<1400; irun++) {
 	  TFile *fin = new TFile(Form("%srun%d/DsTOFcoincidenceRun%d_tdc1.root", dstofDir, irun, irun), "read");
@@ -545,21 +544,25 @@ void angularDistS3_newSample(const char* outfile,
 	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
 	  double deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
 	  double deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
+
 	  // Initial data quality loop
 	  bool isGood = false;
+	  bool enoughHits = false;
+	  int ns1s2 = 0;
 	  for (int t=lastut; t<tree->GetEntries(); t++) {
 	    tree->GetEntry(t);
-	    if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
-	    if ((tS1/1e9) + startTimeUtof > utofTimes[s] + 1.) break;
+	    double utofGlobalTime = (tS1/1e9) + (double)startTimeUtof;
+	    if (utofGlobalTime < utofTimes[s]) continue;
+	    if (utofGlobalTime > utofTimes[s] + 1.) break;
 
-	    if ((tTrig/1e9) + startTimeUtof > utofTimes[s] + 0.47) {
-	      isGood = true;
-	      nSpills++;
-	      break;
-	    }
+	    if (utofGlobalTime > utofTimes[s] && utofGlobalTime < utofTimes[s] + 1. &&
+		tTrig != 0) ns1s2++;
+	    if ((tTrig/1e9) + (double)startTimeUtof > utofTimes[s] + 0.47) isGood = true;
+	    if (ns1s2 > 10) enoughHits = true;
 	  } // Initial data quality loop
 	  // Only do this spill if it's good
-	  if (isGood) {
+	  if (enoughHits && isGood) {
+	    nSpills++;
 	    for (int t=lastut; t<tree->GetEntries(); t++) {
 	      tree->GetEntry(t);
 	      if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
@@ -731,15 +734,6 @@ void angularDistS3_newSample(const char* outfile,
       for (int bin = 0; bin < hKE->GetNbinsX()+1; bin++) {
 	hKE->SetBinError(bin, TMath::Sqrt(keErr.at(bin)));
       }
-
-      hThetaS1pi->Sumw2();
-      hThetaS1pro->Sumw2();
-      hPhiS1pi->Sumw2();
-      hPhiS1pro->Sumw2();
-      hutof1dS1->Sumw2();
-      hMomS1->Sumw2();
-      hMomTpc->Sumw2();
-      hKE->Sumw2();
 
       hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
       hPhiS1S2ratio->Divide(hPhiS1S2pro, hPhiS1S2pi, 1., 1., "B");
@@ -981,7 +975,7 @@ void angularDistS3_newSample(const char* outfile,
 	hutof1dS1S2->SetLineColor(kOrange+1);
 	hutof1dS1->SetLineColor(kOrange+1);
 	legThetaS1pro->AddEntry(hThetaS1pro, 
-				Form("4 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
+				Form("4 blocks - %.3g #pm %.2g per spill", iPro, ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
 			       Form("4 blocks - %d #pm %d per spill", (int)iPi, (int)ePi), "le"); 
 	legKE->AddEntry(hKE, Form("4 blocks - %.2g #pm %.1g per spill", iKE, eKE), "le"); 
@@ -1101,8 +1095,6 @@ void angularDistS3_newSample(const char* outfile,
       h2dTofThetaWC->Write();
       h2dTofPhiS1->Write();
       h2dTofPhiWC->Write();
-            
-      
 
       fout->cd();
       protonTree->Write();
