@@ -33,10 +33,10 @@ void angularDistS3_newSample(const char* outfile,
 
   // Deadtime corrections
   // Just use a constant ratio for the 0 block case
-  const double block0Slope    = 0.;//-0.0003738;
-  const double block0SlopeErr = 0;//0.00006863;
-  const double block0Const    = 0.0913247;//0.2332; 
-  const double block0ConstErr = 0.00102858;//0.02436;
+  const double block0Slope    = /*0.;*/-0.00037602;
+  const double block0SlopeErr = /*0;*/5.04972e-5;
+  const double block0Const    = /*0.0913247;*/0.2394; 
+  const double block0ConstErr = /*0.00102858;*/0.01989655;
   const double block1Slope    = -0.0002569;
   const double block1SlopeErr = 0.00001487;
   const double block1Const    =  0.3965;
@@ -211,6 +211,8 @@ void angularDistS3_newSample(const char* outfile,
     setHistAttr(hThetaS1proNoS2);
     TH1D *hThetaS1S2pro = new TH1D(Form("hThetaS1S2pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     setHistAttr(hThetaS1S2pro);
+    TH1D *hThetaS1S2proErr = new TH1D(Form("hThetaS1S2proErr%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
+    setHistAttr(hThetaS1S2proErr);
     TH1D *hPhiS1pro   = new TH1D(Form("hPhiS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.22, 3.35);
     setHistAttr(hPhiS1pro);
     vector<double> phiS1proErr;
@@ -228,6 +230,8 @@ void angularDistS3_newSample(const char* outfile,
     setHistAttr(hThetaS1piNoS2);
     TH1D *hThetaS1S2pi = new TH1D(Form("hThetaS1S2pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
     setHistAttr(hThetaS1S2pi);
+    TH1D *hThetaS1S2piErr = new TH1D(Form("hThetaS1S2piErr%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 & S2 triggers), %d blocks; #theta / degrees; Events / spill", nBlocks), binnum, binsTheta);
+    setHistAttr(hThetaS1S2piErr);
     TH1D *hPhiS1pi   = new TH1D(Form("hPhiS1pi%d", nBlocks), Form("Angular distribution of pion hits in S3 (S1 trigger only), %d blocks; #phi / degrees; Events / spill / degree", nBlocks), 22, -3.22, 3.35);
     setHistAttr(hPhiS1pi);
     vector<double> phiS1piErr;
@@ -486,7 +490,7 @@ void angularDistS3_newSample(const char* outfile,
 		// Is within a spill
 		if ((tof->fakeTimeNs/1e9)+firstTime >= dtofTimes[s] &&
 		    (tof->fakeTimeNs/1e9)+firstTime <= dtofTimes[s]+1. && 
-		    tof->channel == 13 && (tof->fakeTimeNs - lastS1S2Dtof) > 500.) {
+		    tof->channel == 13 /*&& (tof->fakeTimeNs - lastS1S2Dtof) > 500.*/) {
 		  dtofS1S2Hits[s]++;
 		  lastt = t;
 		  lastS1S2Dtof = tof->fakeTimeNs;
@@ -607,6 +611,7 @@ void angularDistS3_newSample(const char* outfile,
 		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
 		  h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
 		  if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
+		  if (tTrig != 0) hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
 		  // Separate protons and MIPs using timing and amplitude cuts
 		  // Is a MIP 
 		  if ( tofCalc > piLow && tofCalc < piHi ) {
@@ -618,17 +623,27 @@ void angularDistS3_newSample(const char* outfile,
 		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
-		    if (tTrig==0) hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
+		    // S2 trigger condition samples
+		    if (tTrig == 0) { 
+		      hThetaS1piNoS2->Fill(angleTheta, 1./deadtimeWeight);
+		    }
+		    else {
+		      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
+		      hThetaS1S2piErr->Fill(angleTheta, deadtimeVar);
+		      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
+		    }
 		    lastut = t;
 		  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		  // Is a proton
 		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		    nP++;
 		    // Variables for the proton tree
 		    tof = tofCalc;
 		    mom = momFromTime(0.938, 10.9, tofCalc);
-		    x = utofCoords.X() + 0.491;
-		    y = utofCoords.Y() + 0.0114;
-		    z = utofCoords.Z() - 10.829;
+		    TVector3 mcCoords = globalToMCCoords(utofCoords);
+		    x = mcCoords.X();
+		    y = mcCoords.Y();
+		    z = mcCoords.Y();
 		    isS2 = 0;
 		    weight = 1. / deadtimeWeight;
 		    error = TMath::Sqrt(deadtimeVar);
@@ -636,15 +651,23 @@ void angularDistS3_newSample(const char* outfile,
 		    spill = nSpills;
 		    protonTree->Fill();
 
-		    nP++;
 		    hThetaS1pro->Fill(angleTheta, 1./deadtimeWeight);
 		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
 		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
 		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		    if (tTrig==0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
 		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
+
+		    // S2 trigger condition samples
+		    if (tTrig == 0) hThetaS1proNoS2->Fill(angleTheta, 1./deadtimeWeight);
+		    else {
+		      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
+		      hThetaS1S2proErr->Fill(angleTheta, deadtimeVar);
+		      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
+		      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+		    }
+
 		    // Remove deuteron peak in 0 block data
 		    if (nBlocks != 0) {
 		      hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
@@ -657,7 +680,7 @@ void angularDistS3_newSample(const char* outfile,
 			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
 			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
 		      }
-		    }
+		    } // Is not 0 block sample
 		    else {
 		      double mom = momFromTime(0.938, 10.9, tofCalc)/1000.;
 		      if (mom > 0.45) {
@@ -672,7 +695,7 @@ void angularDistS3_newSample(const char* outfile,
 			  keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
 			}
 		      }
-		    }
+		    } // Is 0 block sample
 		    lastut = t;
 		    if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. > 0.595) hMom2D_0blkQ->Fill(xToF[nh], nBar[nh]);
 		    else if (nBlocks == 0 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.595) hMom2D_0blkS->Fill(xToF[nh], nBar[nh]);
@@ -682,28 +705,7 @@ void angularDistS3_newSample(const char* outfile,
 		    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
 	    
 		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		  //	}
-		  // S1 & S2 trigger only
-		  if (tTrig !=0) {
-		    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
-		    // Separate protons and MIPs using timing and amplitude cuts
-		    // Is a MIP
-		    if ( tofCalc > piLow && tofCalc < piHi ) {
-		      nPi++;
-		      hThetaS1S2pi->Fill(angleTheta, 1./deadtimeWeight);
-		      hPhiS1S2pi->Fill(anglePhi, 1./deadtimeWeight);
-		    } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
-		    // Is a proton
-		    else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
-		      nP++;
-		      hThetaS1S2pro->Fill(angleTheta, 1./deadtimeWeight);
-		      hPhiS1S2pro->Fill(anglePhi, 1./deadtimeWeight);
-		      hMomS1S2->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-		      // hMomZS12->Fill(momFromTime(0.938, 10.9, tofCalc), nBar[nh]);
-		      // hMomYS12->Fill(momFromTime(0.938, 10.9, tofCalc), xToF[nh]);
-		    } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		  } // S1 + S2 trigger
-		}
+		} // Is not a double hit
 	      } // Loop over nhits
 	    } // for (int t=0; t<tree->GetEntries(); t++)
 	  } // if (isGood)
@@ -717,6 +719,8 @@ void angularDistS3_newSample(const char* outfile,
       for (int bin = 0; bin < hThetaS1pi->GetNbinsX()+1; bin++) {
 	hThetaS1pi->SetBinError(bin, TMath::Sqrt(thetaS1piErr.at(bin)));
 	hThetaS1pro->SetBinError(bin, TMath::Sqrt(thetaS1proErr.at(bin)));
+	hThetaS1S2pro->SetBinError(bin, sqrt(hThetaS1S2pro->GetBinContent(bin)));
+	hThetaS1S2pi->SetBinError(bin, sqrt(hThetaS1S2pi->GetBinContent(bin)));
       }
       for (int bin = 0; bin < hPhiS1pi->GetNbinsX()+1; bin++) {
 	hPhiS1pi->SetBinError(bin, TMath::Sqrt(phiS1piErr.at(bin)));
@@ -763,17 +767,6 @@ void angularDistS3_newSample(const char* outfile,
       hThetaS1proNoS2->Scale(1, "width");
       hThetaS1S2pi->Scale(1, "width");
       hThetaS1S2pro->Scale(1, "width");
-      /*
-	for (int i=1; i < hThetaS1pi->GetNbinsX(); i++) {
-	double binWidth = (hThetaS1pi->GetXaxis()->GetBinUpEdge(i) - hThetaS1pi->GetXaxis()->GetBinLowEdge(i));
-	hThetaS1pi->SetBinContent(i, hThetaS1pi->GetBinContent(i) / binWidth);
-	hThetaS1pro->SetBinContent(i, hThetaS1pro->GetBinContent(i) / binWidth);
-	hThetaS1piNoS2->SetBinContent(i, hThetaS1piNoS2->GetBinContent(i) / binWidth);
-	hThetaS1proNoS2->SetBinContent(i, hThetaS1proNoS2->GetBinContent(i) / binWidth);
-	hThetaS1S2pi->SetBinContent(i, hThetaS1S2pi->GetBinContent(i) / binWidth);
-	hThetaS1S2pro->SetBinContent(i, hThetaS1S2pro->GetBinContent(i) / binWidth);
-	}
-      */
 
       hMomS1S2->Scale(1. / (double)nSpills);
       hMomS1->Scale(1. / (double)nSpills);
