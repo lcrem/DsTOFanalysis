@@ -31,42 +31,6 @@ void angularDistS3_newSample(const char* outfile,
   const double s3BarTop    = 62.; 
   const double s3BarBottom = -60.;
 
-  // Deadtime corrections
-  // Just use a constant ratio for the 0 block case
-  const double block0Slope    = /*0.;*/-0.00037602;
-  const double block0SlopeErr = /*0;*/5.04972e-5;
-  const double block0Const    = /*0.0913247;*/0.2394; 
-  const double block0ConstErr = /*0.00102858;*/0.01989655;
-  const double block1Slope    = -0.0002569;
-  const double block1SlopeErr = 0.00001487;
-  const double block1Const    =  0.3965;
-  const double block1ConstErr = 0.0146;
-  const double block2Slope    = -0.0001739;
-  const double block2SlopeErr = 6.511e-6;
-  const double block2Const    =  0.419;
-  const double block2ConstErr = 0.009931;
-  const double block3Slope    = -0.0001498;
-  const double block3SlopeErr = 1.038e-5;
-  const double block3Const    = 0.4343;
-  const double block3ConstErr = 0.01836;
-  // 4 block data
-  const double block4Slope1    = -0.00030855237;
-  const double block4Slope1Err = 9.1525e-06;
-  const double block4Const1    = 0.639835;
-  const double block4Const1Err = 0.012901;
-  const double block4Slope2    = -0.00036724024;
-  const double block4Slope2Err = 5.9539e-6;
-  const double block4Const2    = 0.81216136;
-  const double block4Const2Err = 0.0087677;
-  const double block4Slope3    = -0.00031197486;
-  const double block4Slope3Err = 1.020427e-5;
-  const double block4Const3    = 0.71958558;
-  const double block4Const3Err = 0.0151212;
-
-  std::vector<double> block4SlopeVec = {block4Slope1, block4Slope2, block4Slope3};
-  std::vector<double> block4SlopeErrVec = {block4Slope1Err, block4Slope2Err, block4Slope3Err};
-  std::vector<double> block4ConstVec = {block4Const1, block4Const2, block4Const3};
-  std::vector<double> block4ConstErrVec = {block4Const1Err, block4Const2Err, block4Const3Err};
   // Unix timestamps for variable block moves
   // 0.8GeV/c, 0 blocks
   // 31/08/2018
@@ -336,6 +300,10 @@ void angularDistS3_newSample(const char* outfile,
       vector<double> slopeErr;
       vector<double> constant;
       vector<double> constantErr;
+      vector<double> slopeS1;
+      vector<double> slopeErrS1;
+      vector<double> constantS1;
+      vector<double> constantErrS1;
       if (nBlocks==0) {
 	nustof.push_back(str0Block);
 	startTimes.push_back(start0Block);
@@ -344,6 +312,10 @@ void angularDistS3_newSample(const char* outfile,
 	constant.push_back(block0Const);
 	slopeErr.push_back(block0SlopeErr);
 	constantErr.push_back(block0ConstErr);
+	slopeS1.push_back(block0SlopeS1);
+	constantS1.push_back(block0ConstS1);
+	slopeErrS1.push_back(block0SlopeErrS1);
+	constantErrS1.push_back(block0ConstErrS1);
       }
       else if (nBlocks==1) {
 	nustof.push_back(str1Block);
@@ -353,6 +325,10 @@ void angularDistS3_newSample(const char* outfile,
 	constant.push_back(block1Const);
 	slopeErr.push_back(block1SlopeErr);
 	constantErr.push_back(block1ConstErr);
+	slopeS1.push_back(block1SlopeS1);
+	constantS1.push_back(block1ConstS1);
+	slopeErrS1.push_back(block1SlopeErrS1);
+	constantErrS1.push_back(block1ConstErrS1);
       }
       else if (nBlocks==2) {
 	nustof.push_back(str2Block);
@@ -362,6 +338,10 @@ void angularDistS3_newSample(const char* outfile,
 	constant.push_back(block2Const);
 	slopeErr.push_back(block2SlopeErr);
 	constantErr.push_back(block2ConstErr);
+	slopeS1.push_back(block2SlopeS1);
+	constantS1.push_back(block2ConstS1);
+	slopeErrS1.push_back(block2SlopeErrS1);
+	constantErrS1.push_back(block2ConstErrS1);
       }
       else if (nBlocks==3) {
 	nustof.push_back(str3Block);
@@ -371,6 +351,10 @@ void angularDistS3_newSample(const char* outfile,
 	constant.push_back(block3Const);
 	slopeErr.push_back(block3SlopeErr);
 	constantErr.push_back(block3ConstErr);
+	slopeS1.push_back(block3SlopeS1);
+	constantS1.push_back(block3ConstS1);
+	slopeErrS1.push_back(block3SlopeErrS1);
+	constantErrS1.push_back(block3ConstErrS1);
       }
       else if (nBlocks==4) {
 	nustof = str4BlockVec;
@@ -393,10 +377,14 @@ void angularDistS3_newSample(const char* outfile,
 	  startTimes.push_back(startTime);
 	  endTimes.push_back(endTime);
 	}
-	slope = block4SlopeVec;
-	constant = block4ConstVec;
-	slopeErr = block4SlopeErrVec;
-	constantErr = block4ConstErrVec;
+	slope         = block4SlopeVec;
+	constant      = block4ConstVec;
+	slopeErr      = block4SlopeErrVec;
+	constantErr   = block4ConstErrVec;
+	slopeS1       = block4SlopeS1Vec;
+	constantS1    = block4ConstS1Vec;
+	slopeErrS1    = block4SlopeErrS1Vec;
+	constantErrS1 = block4ConstErrS1Vec;
       }
 
       for (int sub=0; sub<startTimes.size(); sub++) {
@@ -546,9 +534,6 @@ void angularDistS3_newSample(const char* outfile,
 	// Loop over the spills and perform the adjustment for each spill
 	for (int s = 0; s < utofTimes.size(); s++) {
 	  if (s % 100 == 0) cout<<"Getting hits from spill "<<s<<" of "<<utofTimes.size()<<endl;
-	  double deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
-	  double deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
-
 	  // Initial data quality loop
 	  bool isGood = false;
 	  bool enoughHits = false;
@@ -567,6 +552,9 @@ void angularDistS3_newSample(const char* outfile,
 	  // Only do this spill if it's good
 	  if (enoughHits && isGood) {
 	    nSpills++;
+	    double deadtimeWeight = 1; 
+	    double deadtimeVar = 1; 
+
 	    for (int t=lastut; t<tree->GetEntries(); t++) {
 	      tree->GetEntry(t);
 	      if ((tS1/1e9) + startTimeUtof < utofTimes[s]) continue;
@@ -589,6 +577,15 @@ void angularDistS3_newSample(const char* outfile,
 		} // if (nh < nh-1)
 		// If it's not a double hit then go ahead
 		if (!isDouble) {
+		  if (tTrig != 0) {
+		    deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
+		    deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
+		  }
+		  else {
+		    deadtimeWeight = dtofS1S2Hits[s] * slopeS1.at(sub) + constantS1.at(sub);
+		    deadtimeVar = dtVar(slopeS1.at(sub), slopeErrS1.at(sub), dtofS1S2Hits[s], constantS1.at(sub), constantErrS1.at(sub));
+		  }
+
 		  double tofCalc = tToF[nh] - tS1;
 		  // Calculate x, y z positions relative to S1
 		  TVector3 utofCoords = GetUtofGlobalCoords(xToF[nh], yToF[nh]);

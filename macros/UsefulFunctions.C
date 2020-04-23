@@ -153,6 +153,8 @@ const double binsS4VertHigh = 1.42;
 const int nBinsDtof = 182;
 const double binsDtofLow  = 30.;
 const double binsDtofHigh = proCutHiS4;
+const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
+
 // For S3 paper
 // double binsTheta[] = {-3.1, -3.,
 // 		      -2.9, -2.8, -2.7, -2.6, -2.5, -2.4, -2.3, -2.2, -2.1, -2., 
@@ -179,7 +181,83 @@ int binnum = sizeof(binsTheta)/sizeof(double) - 1;
 
 const vector<double> s4s3MC = {0.0281, 0.0680, 0.0861, 0.0582,  0.0149};
 
-const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
+// Deadtime corrections
+// These are the ones used for the S1S2 hits
+// Just use a constant ratio for the 0 block case
+const double block0Slope    = /*0.;*/-0.00037602;
+const double block0SlopeErr = /*0;*/5.04972e-5;
+const double block0Const    = /*0.0913247;*/0.2394; 
+const double block0ConstErr = /*0.00102858;*/0.01989655;
+const double block1Slope    = -0.0002569;
+const double block1SlopeErr = 0.00001487;
+const double block1Const    =  0.3965;
+const double block1ConstErr = 0.0146;
+const double block2Slope    = -0.0001739;
+const double block2SlopeErr = 6.511e-6;
+const double block2Const    =  0.419;
+const double block2ConstErr = 0.009931;
+const double block3Slope    = -0.0001498;
+const double block3SlopeErr = 1.038e-5;
+const double block3Const    = 0.4343;
+const double block3ConstErr = 0.01836;
+// 4 block data
+const double block4Slope1    = -0.00030855237;
+const double block4Slope1Err = 9.1525e-06;
+const double block4Const1    = 0.639835;
+const double block4Const1Err = 0.012901;
+const double block4Slope2    = -0.00036724024;
+const double block4Slope2Err = 5.9539e-6;
+const double block4Const2    = 0.81216136;
+const double block4Const2Err = 0.0087677;
+const double block4Slope3    = -0.00031197486;
+const double block4Slope3Err = 1.020427e-5;
+const double block4Const3    = 0.71958558;
+const double block4Const3Err = 0.0151212;
+std::vector<double> block4SlopeVec    = {block4Slope1, block4Slope2, block4Slope3};
+std::vector<double> block4SlopeErrVec = {block4Slope1Err, block4Slope2Err, block4Slope3Err};
+std::vector<double> block4ConstVec    = {block4Const1, block4Const2, block4Const3};
+std::vector<double> block4ConstErrVec = {block4Const1Err, block4Const2Err, block4Const3Err};
+
+// Deadtime corrections for S1 hits
+// 0 block
+const double block0SlopeS1     = 7.783e-5;
+const double block0SlopeErrS1  = 1.419e-5;
+const double block0ConstS1     = 0.0001268;
+const double block0ConstErrS1  = 0.005448;
+// 1 block
+const double block1SlopeS1     = 5.949e-6;
+const double block1SlopeErrS1  = 5.013e-6;
+const double block1ConstS1     = 0.08174;
+const double block1ConstErrS1  = 0.005121;
+// 2 block
+const double block2SlopeS1     = -1.887e-6;
+const double block2SlopeErrS1  = 3.69e-6;
+const double block2ConstS1     = 0.1529;
+const double block2ConstErrS1  = 0.00577;
+// 3 block
+const double block3SlopeS1     = 6.578e-6;
+const double block3SlopeErrS1  = 7.04e-6;
+const double block3ConstS1     = 0.185;
+const double block3ConstErrS1  = 0.01287;
+// 4 block
+const double block4SlopeS11    = 1.195e-5;
+const double block4SlopeErrS11 = 6.553e-6;
+const double block4ConstS11    = 0.2036;
+const double block4ConstErrS11 = 0.009115;
+const double block4SlopeS12    = 1.31e-5; 
+const double block4SlopeErrS12 = 3.117e-6;
+const double block4ConstS12    = 0.2061;
+const double block4ConstErrS12 = 0.004548;
+const double block4SlopeS13    = 1.363e-5;
+const double block4SlopeErrS13 = 5.827e-6;
+const double block4ConstS13    = 0.2053;
+const double block4ConstErrS13 = 0.008546;
+std::vector<double> block4SlopeS1Vec    = {block4SlopeS11, block4SlopeS12, block4SlopeS13};
+std::vector<double> block4SlopeErrS1Vec = {block4SlopeErrS11, block4SlopeErrS12, block4SlopeErrS13};
+std::vector<double> block4ConstS1Vec    = {block4ConstS11, block4ConstS12, block4ConstS13};
+std::vector<double> block4ConstErrS1Vec = {block4ConstErrS11, block4ConstErrS12, block4ConstErrS13};
+
+/// Functions
 vector<double> getDtofEdges() 
 {
   std::vector<double> vec;
@@ -202,7 +280,6 @@ vector<double> getDtofEdges()
   return vec;
 }
 
-/// Functions
 // Histogram styles
 void setHistAttr(TH1D *h) 
 {
