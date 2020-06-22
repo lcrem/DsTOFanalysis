@@ -19,6 +19,8 @@ const TVector3 S3_TL(0.6012, 0.6244, 9.0724);
 const TVector3 S3_TR(-1.0725, 0.6220, 8.9171);
 const TVector3 S3_BL(0.5917, -0.5993, 9.0562);
 const TVector3 S3_BR(-1.0809, -0.6012, 8.8973);
+const TVector3 S3_C = (S3_TL + S3_TR + S3_BL + S3_BR)*0.25;
+
 // S4 frame
 const TVector3 D5_UTL(-0.1227, 0.7751, 12.248);
 const TVector3 D5_UBL(-0.1194, -0.8390, 12.2258);
@@ -115,7 +117,7 @@ const char* str4Block0 = "Data_2018_8_28_b5.root";
 const char* str4Block1 = "Data_2018_8_30_b1.root";
 const char* str4Block2 = "Data_2018_8_29_b4.root";
 const char* str4Block3 = "Data_2018_8_29_b1.root";
-std::vector<const char*> str4BlockVec = {str4Block1, str4Block2, str4Block3};
+std::vector<const char*> str4BlockVec = {/*str4Block0, */str4Block1, str4Block2, str4Block3};
 const char* dstofDir = "/nfs/scratch0/dbrailsf/data_backup/dtof_backup/";
 const char* ustofDir = "/nfs/scratch0/dbrailsf/data_backup/utof_backup_firsthitpinnedtounixtime/Data_root_v3_wo_walk_corr/";
 // Time for signal to travel down and S4
@@ -123,13 +125,31 @@ const double s4BarTime = 18.2;
 // Maximum rate of cosmics measured for some arbitrary area -- used for normalisation
 const double maxCosmics = 1.627; // Hz
 
+// S3 amplitude cut for protons
+// Apply to A1ToF and A2ToF
+// AK's standard cut
+const double ACut = 0.25;
+// SJ's bar by bar amplitude cut (by eye)
+// For A1 
+const std::vector<double> A1CutVec = {0.25, 0.25, 0.25, 0.2, 0.25, 
+				      0.25, 0.225, 0.25, 0.275, 0.275, 
+				      0.3, 0.2, 0.2, 0.225, 0.25, 
+				      0.225, 0.225, 0.3, 0.25, 0.225,
+				      0.3, 0.25};
+// For A2
+const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.1, 0.25, 
+				      0.225, 0.14, 0.225, 0.225, 0.225, 
+				      0.21, 0.25, 0.225, 0.19, 0.19, 
+				      0.225, 0.21, 0.225, 0.25, 0.21, 
+				      0.275, 0.25};
+
 // S4 fitting regions and timing cuts
 // Timing cuts
 const double piLowS4  = 36.;
 const double piHiS4   = 51.;
 // Cuts for selecting the protons
 const double proCutLowS4 = 62.;
-const double proCutHiS4  = 285.;
+const double proCutHiS4  = 125.;
 // Fit regions for protons
 const vector<double> proFitLowS4 = {62., 62., 69., 75., 75.};
 const vector<double> proFitHiS4  = {86., 94., 100., 105., 285.};
@@ -153,7 +173,7 @@ const double binsS4VertHigh = 1.42;
 const int nBinsDtof = 182;
 const double binsDtofLow  = 30.;
 const double binsDtofHigh = proCutHiS4;
-const double dtofFixedWidth = (binsDtofHigh-binsDtofLow)/nBinsDtof;
+const double dtofFixedWidth = 1.4;
 
 // For S3 paper
 // double binsTheta[] = {-3.1, -3.,
@@ -184,10 +204,10 @@ const vector<double> s4s3MC = {0.0281, 0.0680, 0.0861, 0.0582,  0.0149};
 // Deadtime corrections
 // These are the ones used for the S1S2 hits
 // Just use a constant ratio for the 0 block case
-const double block0Slope    = /*0.;*/-0.00037602;
-const double block0SlopeErr = /*0;*/5.04972e-5;
-const double block0Const    = /*0.0913247;*/0.2394; 
-const double block0ConstErr = /*0.00102858;*/0.01989655;
+const double block0Slope    = 0.;/*-0.00037602;*/
+const double block0SlopeErr = 0;/*5.04972e-5;*/
+const double block0Const    = 0.0913247;/*0.2394;*/
+const double block0ConstErr = 0.00102858;/*0.01989655;*/
 const double block1Slope    = -0.0002569;
 const double block1SlopeErr = 0.00001487;
 const double block1Const    =  0.3965;
@@ -201,6 +221,10 @@ const double block3SlopeErr = 1.038e-5;
 const double block3Const    = 0.4343;
 const double block3ConstErr = 0.01836;
 // 4 block data
+const double block4Slope0    = -0.00054221873;
+const double block4Slope0Err = 1.371236-05;
+const double block4Const0    = 1.0005352;
+const double block4Const0Err = 0.019797654;
 const double block4Slope1    = -0.00030855237;
 const double block4Slope1Err = 9.1525e-06;
 const double block4Const1    = 0.639835;
@@ -213,10 +237,10 @@ const double block4Slope3    = -0.00031197486;
 const double block4Slope3Err = 1.020427e-5;
 const double block4Const3    = 0.71958558;
 const double block4Const3Err = 0.0151212;
-std::vector<double> block4SlopeVec    = {block4Slope1, block4Slope2, block4Slope3};
-std::vector<double> block4SlopeErrVec = {block4Slope1Err, block4Slope2Err, block4Slope3Err};
-std::vector<double> block4ConstVec    = {block4Const1, block4Const2, block4Const3};
-std::vector<double> block4ConstErrVec = {block4Const1Err, block4Const2Err, block4Const3Err};
+std::vector<double> block4SlopeVec    = {/*block4Slope0, */block4Slope1, block4Slope2, block4Slope3};
+std::vector<double> block4SlopeErrVec = {/*block4Slope0Err, */block4Slope1Err, block4Slope2Err, block4Slope3Err};
+std::vector<double> block4ConstVec    = {/*block4Const0, */block4Const1, block4Const2, block4Const3};
+std::vector<double> block4ConstErrVec = {/*block4Const0Err, */block4Const1Err, block4Const2Err, block4Const3Err};
 
 // Deadtime corrections for S1 hits
 // 0 block
@@ -240,6 +264,10 @@ const double block3SlopeErrS1  = 7.04e-6;
 const double block3ConstS1     = 0.185;
 const double block3ConstErrS1  = 0.01287;
 // 4 block
+const double block4SlopeS10    = -6.4762466e-6;
+const double block4SlopeErrS10 = 6.1196825e-6;
+const double block4ConstS10    = 0.22989897;
+const double block4ConstErrS10 = 0.0087381546;
 const double block4SlopeS11    = 1.195e-5;
 const double block4SlopeErrS11 = 6.553e-6;
 const double block4ConstS11    = 0.2036;
@@ -252,10 +280,14 @@ const double block4SlopeS13    = 1.363e-5;
 const double block4SlopeErrS13 = 5.827e-6;
 const double block4ConstS13    = 0.2053;
 const double block4ConstErrS13 = 0.008546;
-std::vector<double> block4SlopeS1Vec    = {block4SlopeS11, block4SlopeS12, block4SlopeS13};
-std::vector<double> block4SlopeErrS1Vec = {block4SlopeErrS11, block4SlopeErrS12, block4SlopeErrS13};
-std::vector<double> block4ConstS1Vec    = {block4ConstS11, block4ConstS12, block4ConstS13};
-std::vector<double> block4ConstErrS1Vec = {block4ConstErrS11, block4ConstErrS12, block4ConstErrS13};
+std::vector<double> block4SlopeS1Vec    = {/*block4SlopeS10, */block4SlopeS11, 
+					   block4SlopeS12, block4SlopeS13};
+std::vector<double> block4SlopeErrS1Vec = {/*block4SlopeErrS10, */block4SlopeErrS11, 
+					   block4SlopeErrS12, block4SlopeErrS13};
+std::vector<double> block4ConstS1Vec    = {/*block4ConstS10, */block4ConstS11, 
+					   block4ConstS12, block4ConstS13};
+std::vector<double> block4ConstErrS1Vec = {/*block4ConstErrS10, */block4ConstErrS11, 
+					   block4ConstErrS12, block4ConstErrS13};
 
 /// Functions
 vector<double> getDtofEdges() 
@@ -272,13 +304,25 @@ vector<double> getDtofEdges()
     }
   }
   for (int i=95; i<183; i++) {
-    if ((i+1) % 3==0) {
+    if ((i+1) % 4==0) {
       double edge = i * (dtofFixedWidth) + binsDtofLow;
       vec.push_back(edge);
     }
   }
   return vec;
 }
+
+double dtofEdges[] = {30.0, 31.4, 32.8, 34.2, 35.6, 37.0, 38.4, 39.8, 41.2, 42.6,
+		      44.0, 45.4, 46.8, 48.2, 49.6, 51.0, 52.4, 53.8, 55.2, 56.6,
+		      58.0, 59.4, 60.8, 62.2, 63.6, 65.0, 66.4, 67.8, 69.2, 70.6,
+		      72.0, 73.4, 74.8, 76.2, 77.6, 79.0, 80.4, 81.8, 83.2, 84.6,
+		      86.0, 87.4, 88.8, 90.2, 91.6, 93.0, 94.4, 95.8, 97.2, 98.6,
+		      100.0, 102.8, 105.6, 108.4, 111.2, 
+		      114.0, 119.6, 125.2};//, 130.8, 136.4, 142, 147.6, 153.2, 158.8, 164.4, 
+		      // 170.0, 175.6, 181.2, 186.8, 192.4, 198, 203.6, 209.2, 214.8, 220.4,
+		      // 226.0, 231.6, 237.2, 242.8, 248.4, 254, 259.6, 265.2, 270.8, 276.4,
+		      // 282, 285};
+int binsDtofVar = sizeof(dtofEdges)/sizeof(double) - 1;
 
 // Histogram styles
 void setHistAttr(TH1D *h) 
@@ -433,16 +477,31 @@ double massFromTime(const double time, const double mom, const double base) {
 // Outputs momentum in MeV/c
 double momFromTime(const double mass, const double baseline, const double time)
 {
-  double mom = 0.;
-  mom = mass * 1000. * (baseline/(time*1e-9))*(1/TMath::Sqrt((pow(3e8*1e-9*time,2) - pow(baseline,2))/pow(time*1e-9,2)));
+  double mom = mass * 1000. * (baseline/(time*1e-9))*(1/TMath::Sqrt((pow(3e8*1e-9*time,2) - pow(baseline,2))/pow(time*1e-9,2)));
   return mom;
 }
+// The same but take a start and end point
+double momFromTime(const double mass, const TVector3 start, const TVector3 end, const double time)
+{
+  const TVector3 dist = end - start;
+  const double baseline = dist.Mag();
+  double mom = momFromTime(mass, baseline, time);
+  return mom;
+}
+
 // Time in ns
-// Output K.E. in GeV
+// Output K.E. in MeV
 double keFromTime(const double mass, const double baseline, const double time)
 {
   double mom = momFromTime(mass, baseline, time);
-  double ke = TMath::Sqrt( pow(mom, 2) + pow(mass, 2) ) - mass;
+  double ke = 1000. * (TMath::Sqrt( pow(mom/1000., 2) + pow(mass, 2) ) - mass);
+  return ke;
+}
+// The same but take a start and end point
+double keFromTime(const double mass, const TVector3 start, const TVector3 end, const double time)
+{
+  double mom = momFromTime(mass, start, end, time);
+  double ke = 1000. * (TMath::Sqrt( pow(mom/1000., 2) + pow(mass, 2) ) - mass);
   return ke;
 }
 
