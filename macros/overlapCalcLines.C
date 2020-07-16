@@ -6,11 +6,11 @@ double atanErr(const double opp, const double adj, const double inerr) {
   return err;
 }
 
-void overlapCalcLines(const char* outDir) {
+void overlapCalcLines(const char* outfile) {
 
   gSystem->Load("libPhysics.so");
 
-  TFile *fout = new TFile(Form("%s/overlapCalcLines.root", outDir), "recreate");
+  TFile *fout = new TFile(Form("%s", outfile), "recreate");
   
   // Wire chamber points
   TVector3 WC_ULB(-2.0563, 0.1632, -0.0801);
@@ -98,6 +98,8 @@ void overlapCalcLines(const char* outDir) {
   TVector3 TPCActiveTopUR(10.2587, -0.7290, 0.5386);
   TVector3 TPCActiveTopDR(11.3530, -0.8408, 0.5386);
   TVector3 TPCActiveC(10.82885, -0.5593, -0.0114);
+  TVector3 TPCActiveC1(10.80585, -0.7849, -0.0114);
+  TVector3 TPCActiveC2(10.85195, -0.3337, -0.0114);
   // Vectors for vessel used in simulation
   TVector3 vesselC(10.83543, -0.49096, -0.0114);
   TVector3 vesselTopLeft(10.89599, 0.13863, 0.6886);
@@ -306,19 +308,19 @@ void overlapCalcLines(const char* outDir) {
   std::cout<<"\n";
   // Now do the same thing but using S1 as the origin
   std::cout<<"Now with S1 as the origin ("<<vs1_C.X()<<", "<<vs1_C.Y()<<", "<<vs1_C.Z()<<")"<<std::endl;
-  TMultiGraph *mg_AngS1 = new TMultiGraph("mg_AngS1", "Positions of objects in beamline (S1 origin); #theta / degrees; #phi / degrees");
+  TMultiGraph *mg_AngS1 = new TMultiGraph("mg_AngS1", "Positions of objects in beamline (S1 origin); #theta [degrees]; #phi [degrees]");
   TGraph *grs2_AngS1 = new TGraph();
   grs2_AngS1->SetTitle("S2");
   grs2_AngS1->SetLineColor(kOrange);
   grs2_AngS1->SetLineWidth(2);
   for (int i=0; i<s2Vec.size(); i++) {
     grs2_AngS1->SetPoint(grs2_AngS1->GetN(),
-			 TMath::ATan2((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2((s2Vec.at(i).Y()-vs1_C.Y()), s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
 			 TMath::ATan2(s2Vec.at(i).Z()-vs1_C.Z(), s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi());
     std::cout<<"S2 theta, phi "<<TMath::ATan2((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Y()-vs1_C.Y())*-1, s2Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s2Vec.at(i).Z()-vs1_C.Z(), s2Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s2Vec.at(i).Z()-vs1_C.Z())*-1, s2Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
   grs2_AngS1->SetPoint(grs2_AngS1->GetN(),
-		       TMath::ATan2((s2Vec.at(0).Y()-vs1_C.Y())*-1, s2Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
+		       TMath::ATan2((s2Vec.at(0).Y()-vs1_C.Y()), s2Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s2Vec.at(0).Z()-vs1_C.Z(), s2Vec.at(0).X()-vs1_C.X())*180./TMath::Pi());
   mg_AngS1->Add(grs2_AngS1);
   std::cout<<"\n";
@@ -329,12 +331,12 @@ void overlapCalcLines(const char* outDir) {
   grs3_AngS1->SetLineWidth(2);
   for (int i=0; i<s3Vec.size(); i++) {
     grs3_AngS1->SetPoint(grs3_AngS1->GetN(),
-			 TMath::ATan2((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2((s3Vec.at(i).Y()-vs1_C.Y()), s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
 			 TMath::ATan2(s3Vec.at(i).Z()-vs1_C.Z(), s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi());
     std::cout<<"S3 theta, phi "<<TMath::ATan2((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Y()-vs1_C.Y())*-1, s3Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s3Vec.at(i).Z()-vs1_C.Z(), s3Vec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s3Vec.at(i).Z()-vs1_C.Z())*-1, s3Vec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
   grs3_AngS1->SetPoint(grs3_AngS1->GetN(),
-		       TMath::ATan2((s3Vec.at(0).Y()-vs1_C.Y())*-1, s3Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
+		       TMath::ATan2((s3Vec.at(0).Y()-vs1_C.Y()), s3Vec.at(0).X()-vs1_C.X())*180./TMath::Pi(),
 		       TMath::ATan2(s3Vec.at(0).Z()-vs1_C.Z(), s3Vec.at(0).X()-vs1_C.X())*180./TMath::Pi());
   mg_AngS1->Add(grs3_AngS1);
   std::cout<<"\n";
@@ -345,11 +347,11 @@ void overlapCalcLines(const char* outDir) {
   grs4_AngS1->SetLineWidth(2);
   for (int i=0; i<s4ActiveVec.size(); i++) {
     grs4_AngS1->SetPoint(grs4_AngS1->GetN(),
-			 TMath::ATan2((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
+			 TMath::ATan2((s4ActiveVec.at(i).Y()-vs1_C.Y()), s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi(),
 			 TMath::ATan2(s4ActiveVec.at(i).Z()-vs1_C.Z(), s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
     std::cout<<"S4 theta, phi "<<TMath::ATan2((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Y()-vs1_C.Y())*-1, s4ActiveVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(s4ActiveVec.at(i).Z()-vs1_C.Z(), s4ActiveVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((s4ActiveVec.at(i).Z()-vs1_C.Z())*-1, s4ActiveVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grs4_AngS1->SetPoint(grs4_AngS1->GetN(), TMath::ATan2((s4ActiveVec.at(0).Y()-vs1_C.Y())*-1, s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(s4ActiveVec.at(0).Z()-vs1_C.Z(), s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  grs4_AngS1->SetPoint(grs4_AngS1->GetN(), TMath::ATan2((s4ActiveVec.at(0).Y()-vs1_C.Y()), s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(s4ActiveVec.at(0).Z()-vs1_C.Z(), s4ActiveVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
   mg_AngS1->Add(grs4_AngS1);
   std::cout<<"\n";
 
@@ -359,11 +361,11 @@ void overlapCalcLines(const char* outDir) {
   grtpcUs_AngS1->SetLineStyle(7);
   grtpcUs_AngS1->SetLineWidth(2);
   for (int i=0; i<tpcUsVec.size(); i++) {
-    grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(i).Z()-vs1_C.Z(), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(i).Y()-vs1_C.Y()), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(i).Z()-vs1_C.Z(), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
     std::cout<<"TPC US theta, phi "<<TMath::ATan2((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Y()-vs1_C.Y())*-1, tpcUsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcUsVec.at(i).Z()-vs1_C.Z(), tpcUsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcUsVec.at(i).Z()-vs1_C.Z())*-1, tpcUsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(0).Y()-vs1_C.Y())*-1, tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(0).Z()-vs1_C.Z(), tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
-  mg_AngS1->Add(grtpcUs_AngS1);
+  grtpcUs_AngS1->SetPoint(grtpcUs_AngS1->GetN(), TMath::ATan2((tpcUsVec.at(0).Y()-vs1_C.Y()), tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcUsVec.at(0).Z()-vs1_C.Z(), tpcUsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  // mg_AngS1->Add(grtpcUs_AngS1);
   std::cout<<"\n";
   
   TGraph *grtpcDs_AngS1 = new TGraph();
@@ -371,31 +373,69 @@ void overlapCalcLines(const char* outDir) {
   grtpcDs_AngS1->SetLineColor(kMagenta+1);
   grtpcDs_AngS1->SetLineWidth(2);
   for (int i=0; i<tpcDsVec.size(); i++) {
-    grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(i).Z()-vs1_C.Z(), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(i).Y()-vs1_C.Y()), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(i).Z()-vs1_C.Z(), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
     std::cout<<"TPC DS theta, phi "<<TMath::ATan2((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Y()-vs1_C.Y())*-1, tpcDsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<", "<<TMath::ATan2(tpcDsVec.at(i).Z()-vs1_C.Z(), tpcDsVec.at(i).X()-vs1_C.X())*180./TMath::Pi()<<" +/- "<<atanErr((tpcDsVec.at(i).Z()-vs1_C.Z())*-1, tpcDsVec.at(i).X()-vs1_C.X(), 0.00071)*180./TMath::Pi()<<std::endl;
   }
-  grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-vs1_C.Y())*-1, tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-vs1_C.Z(), tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
-  mg_AngS1->Add(grtpcDs_AngS1);  
+  grtpcDs_AngS1->SetPoint(grtpcDs_AngS1->GetN(), TMath::ATan2((tpcDsVec.at(0).Y()-vs1_C.Y()), tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(tpcDsVec.at(0).Z()-vs1_C.Z(), tpcDsVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  // mg_AngS1->Add(grtpcDs_AngS1);  
 
   TGraph *grvessel_AngS1 = new TGraph();
   grvessel_AngS1->SetTitle("Vessel");
   grvessel_AngS1->SetLineColor(kGreen+2);
   grvessel_AngS1->SetLineWidth(2);
   for (int i=0; i<vesselVec.size(); i++) {
-    grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(i).Y()-vs1_C.Y())*-1, vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(i).Z()-vs1_C.Z(), vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(i).Y()-vs1_C.Y()), vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(i).Z()-vs1_C.Z(), vesselVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
   }
-  grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(0).Y()-vs1_C.Y())*-1, vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-vs1_C.Z(), vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
-  mg_AngS1->Add(grvessel_AngS1); 
+  grvessel_AngS1->SetPoint(grvessel_AngS1->GetN(), TMath::ATan2((vesselVec.at(0).Y()-vs1_C.Y()), vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(vesselVec.at(0).Z()-vs1_C.Z(), vesselVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  //mg_AngS1->Add(grvessel_AngS1); 
 
   TGraph *grcamera_AngS1 = new TGraph();
   grcamera_AngS1->SetTitle("Cameras");
   grcamera_AngS1->SetLineColor(kRed);
   grcamera_AngS1->SetLineWidth(2);
   for (int i=0; i<cameraVec.size(); i++) {
-    grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(i).Y()-vs1_C.Y())*-1, cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(i).Z()-vs1_C.Z(), cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
+    grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(i).Y()-vs1_C.Y()), cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(i).Z()-vs1_C.Z(), cameraVec.at(i).X()-vs1_C.X())*180./TMath::Pi());
   }
-  grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(0).Y()-vs1_C.Y())*-1, cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(0).Z()-vs1_C.Z(), cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
-  mg_AngS1->Add(grcamera_AngS1); 
+  grcamera_AngS1->SetPoint(grcamera_AngS1->GetN(), TMath::ATan2((cameraVec.at(0).Y()-vs1_C.Y()), cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi(), TMath::ATan2(cameraVec.at(0).Z()-vs1_C.Z(), cameraVec.at(0).X()-vs1_C.X())*180./TMath::Pi());
+  //mg_AngS1->Add(grcamera_AngS1); 
+
+  const double diam = 1.11;
+  double changePerX = -0.1118/diam;
+  double changePerZ = 1.0943/diam;
+  TGraph *grTPC1 = new TGraph();
+  TGraph *grTPC2 = new TGraph();
+  grTPC1->SetLineWidth(2);
+  grTPC1->SetLineColor(kMagenta+1);
+  grTPC2->SetLineWidth(2);
+  grTPC2->SetLineColor(kMagenta+1);
+  grTPC1->SetTitle("TPC");
+  grTPC2->SetTitle("TPC");
+  for (int i=0; i<=100; i++) {
+    double ang = 2. * (double)i/100. * TMath::Pi();
+    double x1 = diam/2 * TMath::Sin(ang);
+    double y1 = diam/2 * TMath::Cos(ang);
+    double x2 = diam/2 * TMath::Sin(ang-TMath::Pi());
+    double y2 = diam/2 * TMath::Cos(ang-TMath::Pi());
+    TVector3 vec1(TPCActiveC1.X()+x1*changePerZ, TPCActiveC1.Y()+x1*changePerX, TPCActiveC1.Z()+y1);
+    TVector3 vec2(TPCActiveC2.X()+x2*changePerZ, TPCActiveC2.Y()+x2*changePerX, TPCActiveC2.Z()+y2);
+    grTPC1->SetPoint(i,
+		     TMath::ATan2(vec1.Y()-vs1_C.Y(), vec1.X()-vs1_C.X())*180/TMath::Pi(),
+		     TMath::ATan2(vec1.Z()-vs1_C.Z(), vec1.X()-vs1_C.X())*180/TMath::Pi());
+    grTPC2->SetPoint(i,
+		     TMath::ATan2(vec2.Y()-vs1_C.Y(), vec2.X()-vs1_C.X())*180/TMath::Pi(),
+		     TMath::ATan2(vec2.Z()-vs1_C.Z(), vec2.X()-vs1_C.X())*180/TMath::Pi());
+  }
+  TVector3 vec1(TPCActiveC1.X(), TPCActiveC1.Y(), TPCActiveC1.Z()-diam/2);
+  TVector3 vec2(TPCActiveC2.X(), TPCActiveC2.Y(), TPCActiveC2.Z()+diam/2);
+  grTPC1->SetPoint(grTPC1->GetN(),
+		   TMath::ATan2(vec2.Y()-vs1_C.Y(), vec2.X()-vs1_C.X())*180/TMath::Pi(),
+		   TMath::ATan2(vec2.Z()-vs1_C.Z(), vec2.X()-vs1_C.X())*180/TMath::Pi());
+  grTPC2->SetPoint(grTPC2->GetN(),
+  		   TMath::ATan2(vec1.Y()-vs1_C.Y(), vec1.X()-vs1_C.X())*180/TMath::Pi(),
+  		   TMath::ATan2(vec1.Z()-vs1_C.Z(), vec1.X()-vs1_C.X())*180/TMath::Pi());
+  
+  mg_AngS1->Add(grTPC1);
+  mg_AngS1->Add(grTPC2);
   
   TCanvas *c1 = new TCanvas("c1", "c1");
   //  c1->SetGridx();
