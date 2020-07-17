@@ -16,6 +16,38 @@ void angularDistS3_newSample(const char* outfile,
 		   const char* dstofDir="/nfs/scratch0/dbrailsf/data_backup/dtof_backup/",
 		   const char* spillDir="/scratch0/sjones/spillDB/") 
 {
+  // Geometric factors between S1 and S2 as measured in UToF
+  const double geomFactor0 = 0.03;
+  const double geomFactor1 = 0.0878;
+  const double geomFactor2 = 0.15;
+  const double geomFactor3 = 0.197;
+  const double geomFactor4_0 = 0.2207;
+  const double geomFactor4_1 = 0.2202;
+  const double geomFactor4_2 = 0.2252;
+  const double geomFactor4_3 = 0.2253;
+  const vector<double> geomFactor4 = {geomFactor4_1, geomFactor4_2, geomFactor4_3};
+  // Relationship between measured geometric factor and nS1S2 hits defined here
+  // Constant
+  const double p0Geom0 = 4.12767e-3;
+  const double p0Geom1 = 4.71079e-2;
+  const double p0Geom2 = 0.102946;
+  const double p0Geom3 = 0.147197;
+  const double p0Geom4_0 = 0.191132;
+  const double p0Geom4_1 = 0.160728;
+  const double p0Geom4_2 = 0.174421;
+  const double p0Geom4_3 = 0.159751;
+  const vector<double> p0Geom4 = {p0Geom4_1, p0Geom4_2, p0Geom4_3};
+  // Slope
+  const double p1Geom0 = 7.17951e-4;
+  const double p1Geom1 = 2.80060e-4;
+  const double p1Geom2 = 1.96401e-4;
+  const double p1Geom3 = 1.64438e-4;
+  const double p1Geom4_0 = 9.05516e-5;
+  const double p1Geom4_1 = 2.03620e-4;
+  const double p1Geom4_2 = 1.25660e-4;
+  const double p1Geom4_3 = 1.70675e-4;
+  const vector<double> p1Geom4 = {p1Geom4_1, p1Geom4_2, p1Geom4_3};
+
   gROOT->SetBatch(kTRUE);
   // Edges of S3 in beam coordinate system
   const double s3StartX = -0.601158 + 0.026;
@@ -31,28 +63,6 @@ void angularDistS3_newSample(const char* outfile,
   const double s3BarTop    = 62.; 
   const double s3BarBottom = -60.;
 
-  // Unix timestamps for variable block moves
-  // 0.8GeV/c, 0 blocks
-  // 31/08/2018
-  const double start0Block = 1535713289;
-  const double end0Block   = 1535716132;
-  // 0.8GeV/c, 1 block
-  // 01/09/2018
-  const double start1Block = 1535796057;
-  const double end1Block   = 1535799112;
-  // 0.8GeV/c, 2 blocks
-  // 01/09/2018
-  const double start2Block = 1535789157;
-  const double end2Block   = 1535792026;
-  // 0.8GeV/c, 3 block
-  // 01/09/2018
-  const double start3Block = 1535792404;
-  const double end3Block   = 1535795300;
-  // const double end3Block   = 1535798437;
-  // 0.8GeV/c, 4 block
-  // 4 moderator blocks with -4cm bend
-  const double start4Block = 1535836129;
-  const double end4Block   = 1535879634;
   // Time of flight cuts for S1 to S3
   // Particles travelling at c should cross the distance in between about 36.9ns
   // and 35.6ns
@@ -63,23 +73,9 @@ void angularDistS3_newSample(const char* outfile,
   const double proHi0     = 80.;
   const double piLow = 35.75;
   const double piHi  = 37.75;
-  // S3 amplitude cut for protons
-  // Apply to A1ToF and A2ToF
-  // AK's standard cut
-  const double ACut = 0.25;
-  // SJ's bar by bar amplitude cut (by eye)
-  // For A1 
-  const std::vector<double> A1CutVec = {0.25, 0.25, 0.275, 0.2, 0.25, 0.25, 0.225, 0.25, 0.3, 
-					0.3, 0.3,
-					0.2, 0.2, 0.25, 0.25, 0.25, 0.25, 0.3, 0.25, 
-					0.225, 0.3, 0.3};
-  // For A2
-  const std::vector<double> A2CutVec = {0.3, 0.275, 0.25, 0.125, 0.25, 
-					0.25, 0.15, 0.225, 0.25, 0.25, 0.225,
-					0.25, 0.25, 0.2, 0.2, 0.225, 
-					0.225, 0.25, 0.25, 0.225, 0.3, 0.25};
+
   // Time cut for hits interacting in neighbouring S3 bars
-  const double twoBarCut = 0.5; // ns
+  const double twoBarCut = 0.1; // ns
 
   // Fit boxes for protons
   const vector<double> proFitLow1 = {54., 56., 60., 65., 80.};
@@ -109,6 +105,7 @@ void angularDistS3_newSample(const char* outfile,
   THStack *hsMomS1 = new THStack("hsMomS1", "Proton momentum measured in S3; Proton momentum [GeV/c]; Events / spill");
   THStack *hsMomTpc = new THStack("hsMomTpc", "Proton momentum measured in S3 for particles passing through TPC; Proton momentum [GeV/c]; Events / spill");
   THStack *hsKE = new THStack("hsKE", "Proton kinetic energy measured for protons crossing the TPC; Proton kinetic energy / MeV; Events / spill");
+  THStack *hsKEAll = new THStack("hsKEAll", "Proton kinetic energy measured for protons; Proton kinetic energy / MeV; Events / spill");
   THStack *hsutof1dS1S2 = new THStack("hsutof1dS1S2", "Time of flight as measured in S3 (S1 & S2 trigger); Time of flight / ns; Events / spill");
   THStack *hsutof1dS1   = new THStack("hsutof1dS1", "Time of flight as measured in S3; Time of flight / ns; Events / spill");
   THStack *hsutof1dS1NoS2   = new THStack("hsutof1dS1NoS2", "Time of flight as measured in S3 (no S2 trigger); Time of flight / ns; Events / spill");
@@ -166,6 +163,11 @@ void angularDistS3_newSample(const char* outfile,
     vector<double> keErr;
     keErr.resize(hKE->GetNbinsX()+2, 0);
 
+    TH1D *hKEAll = new TH1D(Form("hKEAll_%d", nBlocks), Form("%d blocks; Proton kinetic energy / MeV; Events", nBlocks), 100, 40., 350.);
+    setHistAttr(hKEAll);
+    vector<double> keAllErr;
+    keAllErr.resize(hKEAll->GetNbinsX()+2, 0);
+
     TH1D *hThetaS1pro   = new TH1D(Form("hThetaS1pro%d", nBlocks), Form("Angular distribution of proton hits in S3 (S1 trigger only), %d blocks; #theta / degrees; Events / spill / degree", nBlocks), binnum, binsTheta);
     setHistAttr(hThetaS1pro);
     vector<double> thetaS1proErr;
@@ -222,6 +224,8 @@ void angularDistS3_newSample(const char* outfile,
     setHistAttr(hutof1dS1NoS2);
     TH1D *hutof1dS1S2 = new TH1D(Form("hutof1dS1S2_%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S1 / ns; Events / spill", nBlocks), 250, 25, 125);
     setHistAttr(hutof1dS1S2);
+    TH1D *hS2Tof = new TH1D(Form("hS2Tof%d",nBlocks), Form("Time of flight, %d blocks (S1 & S2 trigger); S3 - S2 / ns; Events / spill", nBlocks), 250, 25, 125);
+    setHistAttr(hS2Tof);
 
     TH1D *hMomS1S2 = new TH1D(Form("hMomS1S2_%d",nBlocks), Form("Proton momentum measured in S3, %d blocks; Proton momentum [GeV/c]; Events / spill", nBlocks), 120, 0.3, 0.9);
     setHistAttr(hMomS1S2);
@@ -236,9 +240,16 @@ void angularDistS3_newSample(const char* outfile,
     momTpcErr.resize(hMomTpc->GetNbinsX()+2, 0);
 
     // XY distributions in S3
-    TH2D *hprotonXY = new TH2D(Form("hprotonXY%d", nBlocks), Form("S3 spatial distribution of proton hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 105, 0., 168., 22, 0., 120.);
+    TH2D *hprotonXY = new TH2D(Form("hprotonXY%d", nBlocks), Form("S3 spatial distribution of proton hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, 0., 168., 22, 0., 120.);
+    setHistAttr(hprotonXY);
+    hprotonXY->GetXaxis()->SetAxisColor(kRed);
+    hprotonXY->GetYaxis()->SetAxisColor(kRed);
     TH2D *hpionXY   = new TH2D(Form("hpionXY%d", nBlocks), Form("S3 spatial distribution of MIP hits, %d blocks; x / cm; y / cm; Events / spill", nBlocks), 100, 0., 168., 22, 0., 120.);
+    setHistAttr(hpionXY);
+    hpionXY->GetXaxis()->SetAxisColor(kRed);
+    hpionXY->GetYaxis()->SetAxisColor(kRed);
     TH2D *hAllXY    = new TH2D(Form("hAllXY%d", nBlocks), Form("S3 spatial distribution of all hits, %d blocks; #theta / degrees; #phi / degrees; Events / spill", nBlocks), 100, -3.8, 6.2, 22, -3.22, 3.35);
+    setHistAttr(hAllXY);
 
     // 2D angular distributions
     // S1 origin
@@ -264,6 +275,11 @@ void angularDistS3_newSample(const char* outfile,
     setHistAttr(h2dAngProWC);
     setHistAttr(h2dAngPiWC);
     setHistAttr(h2dAngRatioWC);
+
+    TH1D *hMSq = new TH1D(Form("hMSq%d", nBlocks), Form("%d blocks; m^{2} / GeV^{2} c^{-4}; Events / spill", nBlocks), 300, -0.3, 4.5);
+    setHistAttr(hMSq);
+    TH1D *hMSqZoom = new TH1D(Form("hMSqZoom%d", nBlocks), Form("%d blocks; m^{2} / GeV^{2} c^{-4}; Events / spill", nBlocks), 140, -0.02, 0.05);
+    setHistAttr(hMSqZoom);
 
     // Define signal and background functions to be fitted
     TF1 *sPro1 = new TF1(Form("sPro1_%d", nBlocks), "gaus", proFitLow1[nBlocks],proFitHi1[nBlocks]);
@@ -304,6 +320,11 @@ void angularDistS3_newSample(const char* outfile,
       vector<double> slopeErrS1;
       vector<double> constantS1;
       vector<double> constantErrS1;
+
+      vector<double> geomFactor;
+      vector<double> p0GeomFactor;
+      vector<double> p1GeomFactor;
+
       if (nBlocks==0) {
 	nustof.push_back(str0Block);
 	startTimes.push_back(start0Block);
@@ -316,6 +337,10 @@ void angularDistS3_newSample(const char* outfile,
 	constantS1.push_back(block0ConstS1);
 	slopeErrS1.push_back(block0SlopeErrS1);
 	constantErrS1.push_back(block0ConstErrS1);
+
+	geomFactor.push_back(geomFactor0);
+	p0GeomFactor.push_back(p0Geom0);
+	p1GeomFactor.push_back(p1Geom0);
       }
       else if (nBlocks==1) {
 	nustof.push_back(str1Block);
@@ -329,6 +354,10 @@ void angularDistS3_newSample(const char* outfile,
 	constantS1.push_back(block1ConstS1);
 	slopeErrS1.push_back(block1SlopeErrS1);
 	constantErrS1.push_back(block1ConstErrS1);
+
+	geomFactor.push_back(geomFactor1);
+	p0GeomFactor.push_back(p0Geom1);
+	p1GeomFactor.push_back(p1Geom1);
       }
       else if (nBlocks==2) {
 	nustof.push_back(str2Block);
@@ -342,6 +371,10 @@ void angularDistS3_newSample(const char* outfile,
 	constantS1.push_back(block2ConstS1);
 	slopeErrS1.push_back(block2SlopeErrS1);
 	constantErrS1.push_back(block2ConstErrS1);
+
+	geomFactor.push_back(geomFactor2);
+	p0GeomFactor.push_back(p0Geom2);
+	p1GeomFactor.push_back(p1Geom2);
       }
       else if (nBlocks==3) {
 	nustof.push_back(str3Block);
@@ -355,6 +388,10 @@ void angularDistS3_newSample(const char* outfile,
 	constantS1.push_back(block3ConstS1);
 	slopeErrS1.push_back(block3SlopeErrS1);
 	constantErrS1.push_back(block3ConstErrS1);
+
+	geomFactor.push_back(geomFactor3);
+	p0GeomFactor.push_back(p0Geom3);
+	p1GeomFactor.push_back(p1Geom3);
       }
       else if (nBlocks==4) {
 	nustof = str4BlockVec;
@@ -385,6 +422,10 @@ void angularDistS3_newSample(const char* outfile,
 	constantS1    = block4ConstS1Vec;
 	slopeErrS1    = block4SlopeErrS1Vec;
 	constantErrS1 = block4ConstErrS1Vec;
+
+	geomFactor = geomFactor4;
+	p0GeomFactor = p0Geom4;
+	p1GeomFactor = p1Geom4;
       }
 
       for (int sub=0; sub<startTimes.size(); sub++) {
@@ -418,9 +459,10 @@ void angularDistS3_newSample(const char* outfile,
 	cout << "Min and max dtof runs are " << runMin << " " << runMax << endl;
 
 	std::vector<double> dtofTimes;
-	std::vector<int> dtofS1S2Hits;
+	std::vector<double> dtofS1S2Hits;
 	std::vector<double> utofTimes;
-	std::vector<int> utofS1S2Hits;
+	std::vector<double> utofS1S2Hits;
+	std::vector<double> utofS1S2HitsWeight;
  
 	// Open the appropriate spill DB files and get the spill times
 	for (int irun = runMin; irun < runMax+1; irun++) {
@@ -444,14 +486,12 @@ void angularDistS3_newSample(const char* outfile,
 
 	dtofS1S2Hits.resize(dtofTimes.size(), 0);
 	utofS1S2Hits.resize(dtofTimes.size(), 0);
+	utofS1S2HitsWeight.resize(dtofTimes.size(), 0);
 
 	cout<<"Finding number of dtof hits in each spill"<<endl;
 	int lastt = 0;
 	int lastrun = 0;
 	for (int s=0; s<dtofTimes.size(); s++) {
-	  if (s % 100 == 0) {
-	    cout<<"Spill "<<s<<" of "<<dtofTimes.size()<<endl;
-	  }
 	  // Loop over the all the files
 	  for (int irun = runMin; irun < runMax+1; irun++) {
 	
@@ -504,6 +544,7 @@ void angularDistS3_newSample(const char* outfile,
 	double tSoSd;
 	int nhit;
 	int nBar[50];
+	float M2[50];
 
 	TTree *tree = (TTree*)futof->Get("tree");
 
@@ -517,6 +558,7 @@ void angularDistS3_newSample(const char* outfile,
 	tree->SetBranchAddress("tTrig", &tTrig);
 	tree->SetBranchAddress("tSoSd", &tSoSd);
 	tree->SetBranchAddress("nBar", nBar);
+	tree->SetBranchAddress("M2", M2);
 
 	double lastSpill = 0.; 
 
@@ -565,26 +607,33 @@ void angularDistS3_newSample(const char* outfile,
 		// Only want to count one of them if it is
 		// Check from this hit onwards to see if there are any double hit candidates
 		bool isDouble = false;
-		if (nh < nhit-1) {
-		  for (int nh2=nh+1; nh2<nhit; nh2++) {
-		    // Timing cut and checks if in the neighbouring bar
-		    if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
-			(nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1)) {
-		      isDouble = true;
-		      break;
-		    }
-		  } // for (int nh2=nh; nh2<nhit; nh2++)
-		} // if (nh < nh-1)
+		for (int nh2=0; nh2<nhit; nh2++) {
+		  // Timing cut and checks if in the neighbouring bar
+		  if (abs(tToF[nh] - tToF[nh2]) < twoBarCut && 
+		      (nBar[nh] == nBar[nh2]-1 || nBar[nh] == nBar[nh2]+1) && nh != nh2) {
+		    isDouble = true;
+		    break;
+		  }
+		} // for (int nh2=nh; nh2<nhit; nh2++)
+
 		// If it's not a double hit then go ahead
-		if (!isDouble) {
+		// if (!isDouble) {
+		  // if (tTrig != 0) {
+		  deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
+		  deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
+
+		  double s1GeomFactor = (ns1s2 * p1GeomFactor.at(sub) + p0GeomFactor.at(sub)) / geomFactor.at(sub);
+		  //if (isDouble) deadtimeWeight *= 2;
+
 		  if (tTrig != 0) {
-		    deadtimeWeight = dtofS1S2Hits[s] * slope.at(sub) + constant.at(sub);
-		    deadtimeVar = dtVar(slope.at(sub), slopeErr.at(sub), dtofS1S2Hits[s], constant.at(sub), constantErr.at(sub));
+		    utofS1S2Hits[s]++;
+		    utofS1S2HitsWeight[s] += 1./deadtimeWeight;
 		  }
-		  else {
-		    deadtimeWeight = dtofS1S2Hits[s] * slopeS1.at(sub) + constantS1.at(sub);
-		    deadtimeVar = dtVar(slopeS1.at(sub), slopeErrS1.at(sub), dtofS1S2Hits[s], constantS1.at(sub), constantErrS1.at(sub));
-		  }
+		  // else {
+		  // deadtimeWeight *= s1GeomFactor;
+		  // deadtimeWeight = dtofS1S2Hits[s] * slopeS1.at(sub) + constantS1.at(sub);
+		  // deadtimeVar = dtVar(slopeS1.at(sub), slopeErrS1.at(sub), dtofS1S2Hits[s], constantS1.at(sub), constantErrS1.at(sub));
+		  // }
 
 		  double tofCalc = tToF[nh] - tS1;
 		  // Calculate x, y z positions relative to S1
@@ -607,8 +656,13 @@ void angularDistS3_newSample(const char* outfile,
 		  h2dTofPhiS1->Fill(tofCalc, anglePhi, 1./deadtimeWeight);
 		  h2dTofThetaWC->Fill(tofCalc, angleWcTheta, 1./deadtimeWeight);
 		  h2dTofPhiWC->Fill(tofCalc, angleWcPhi, 1./deadtimeWeight);
+		  hMSq->Fill(M2[nh], 1./deadtimeWeight);
+		  hMSqZoom->Fill(M2[nh], 1./deadtimeWeight);
 		  if (tTrig == 0) hutof1dS1NoS2->Fill(tofCalc, 1./deadtimeWeight);
-		  if (tTrig != 0) hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		  if (tTrig != 0) {
+		    hutof1dS1S2->Fill(tofCalc, 1./deadtimeWeight);
+		    hS2Tof->Fill(tToF[nh] - tTrig + 28.13, 1./deadtimeWeight);
+		  }
 		  // Separate protons and MIPs using timing and amplitude cuts
 		  // Is a MIP 
 		  if ( tofCalc > piLow && tofCalc < piHi ) {
@@ -617,7 +671,7 @@ void angularDistS3_newSample(const char* outfile,
 		    hPhiS1pi->Fill(anglePhi, 1./deadtimeWeight);
 		    phiS1piErr.at(hPhiS1pi->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
 		    thetaS1piErr.at(hThetaS1pi->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		    hpionXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    hpionXY->Fill(170-xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngPiS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngPiWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 		    // S2 trigger condition samples
@@ -632,7 +686,7 @@ void angularDistS3_newSample(const char* outfile,
 		    lastut = t;
 		  } // if ( tofCalc > (tLight - (piLow+piHi)/2.) + piLow && tofCalc < (tLight - (piLow+piHi)/2.) + piHi )
 		  // Is a proton
-		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]] && A2ToF[nh] > A2CutVec[nBar[nh]]) {
+		  else if ( tofCalc > proLow && tofCalc < proHi && A1ToF[nh] > A1CutVec[nBar[nh]]-0.025 && A2ToF[nh] > A2CutVec[nBar[nh]]-0.025) {
 		    nP++;
 		    // Variables for the proton tree
 		    tof = tofCalc;
@@ -652,7 +706,7 @@ void angularDistS3_newSample(const char* outfile,
 		    hPhiS1pro->Fill(anglePhi, 1./deadtimeWeight);
 		    phiS1proErr.at(hPhiS1pro->GetXaxis()->FindBin(anglePhi)) += deadtimeVar;
 		    thetaS1proErr.at(hThetaS1pro->GetXaxis()->FindBin(angleTheta)) += deadtimeVar;
-		    hprotonXY->Fill(xToF[nh], yToF[nh], 1./deadtimeWeight);
+		    hprotonXY->Fill(170-xToF[nh], yToF[nh], 1./deadtimeWeight);
 		    h2dAngProS1->Fill(angleTheta, anglePhi, 1./deadtimeWeight);
 		    h2dAngProWC->Fill(angleWcTheta, angleWcPhi, 1./deadtimeWeight);
 
@@ -669,13 +723,15 @@ void angularDistS3_newSample(const char* outfile,
 		    if (nBlocks != 0) {
 		      hMomS1->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
 		      momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
+		      hKEAll->Fill(keFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+		      keAllErr.at(hKEAll->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 		      // Only protons passing through TPC active area
 		      if (angleTheta < tpcThetaHigh && angleTheta > tpcThetaLow &&
 			  anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
 			hMomTpc->Fill(momFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
-			hKE->Fill(keFromTime(0.938, 10.9, tofCalc)/1000., 1./deadtimeWeight);
+			hKE->Fill(keFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
 			momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
-			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
+			keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 		      }
 		    } // Is not 0 block sample
 		    else {
@@ -683,13 +739,15 @@ void angularDistS3_newSample(const char* outfile,
 		      if (mom > 0.45) {
 			hMomS1->Fill(mom, 1./deadtimeWeight);
 			momS1Err.at(hMomS1->GetXaxis()->FindBin(momFromTime(0.938, 10.9, tofCalc)/1000.)) += deadtimeVar;
+			hKEAll->Fill(keFromTime(0.938, 10.9, tofCalc), 1./deadtimeWeight);
+			keAllErr.at(hKEAll->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 			// Only protons passing through TPC active area
 			if (angleTheta > tpcThetaLow && angleTheta < tpcThetaHigh &&
 			    anglePhi > tpcPhiLow && anglePhi < tpcPhiHigh) {
 			  hMomTpc->Fill(momFromTime(0.938, 10.8, tofCalc)/1000., 1./deadtimeWeight);
-			  hKE->Fill(keFromTime(0.938, 10.8, tofCalc)*1000., 1./deadtimeWeight);
+			  hKE->Fill(keFromTime(0.938, 10.8, tofCalc), 1./deadtimeWeight);
 			  momTpcErr.at(hMomTpc->GetXaxis()->FindBin(momFromTime(0.938, 10.8, tofCalc)/1000.)) += deadtimeVar;
-			  keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc)*1000.)) += deadtimeVar;
+			  keErr.at(hKE->GetXaxis()->FindBin(keFromTime(0.938, 10.8, tofCalc))) += deadtimeVar;
 			}
 		      }
 		    } // Is 0 block sample
@@ -702,10 +760,11 @@ void angularDistS3_newSample(const char* outfile,
 		    else if (nBlocks == 2 && momFromTime(0.938, 10.9, tofCalc)/1000. < 0.525) hMom2D_2blkS->Fill(xToF[nh], nBar[nh]);
 	    
 		  } // else if ( tofCalc > (tLight - (piLow+piHi)/2.) + proLow && tofCalc < (tLight - (piLow+piHi)/2.) + proHi )
-		} // Is not a double hit
+		  //} // Is not a double hit
 	      } // Loop over nhits
 	    } // for (int t=0; t<tree->GetEntries(); t++)
 	  } // if (isGood)
+	  // cout<<"Dtof = "<<dtofS1S2Hits[s]<<", Utof = "<<utofS1S2Hits[s]<<", Utof weighted = "<<utofS1S2HitsWeight[s]<<endl;
 	}
 
 	cout<<"Utof spills "<<nSpills<<" vs. "<<utofTimes.size()<<" in spill DB"<<endl;
@@ -734,6 +793,7 @@ void angularDistS3_newSample(const char* outfile,
       }
       for (int bin = 0; bin < hKE->GetNbinsX()+1; bin++) {
 	hKE->SetBinError(bin, TMath::Sqrt(keErr.at(bin)));
+	hKEAll->SetBinError(bin, TMath::Sqrt(keAllErr.at(bin)));
       }
 
       hThetaS1S2ratio->Divide(hThetaS1S2pro, hThetaS1S2pi, 1., 1., "B");
@@ -757,6 +817,8 @@ void angularDistS3_newSample(const char* outfile,
       hThetaS1pi->Scale(1. / (double)nSpills);
       hThetaS1proNoS2->Scale(1. / (double)nSpills);
       hThetaS1piNoS2->Scale(1. / (double)nSpills);
+      hMSq->Scale(1./(double)nSpills);
+      hMSqZoom->Scale(1./(double)nSpills);
 
       hThetaS1pi->Scale(1, "width");
       hThetaS1pro->Scale(1, "width");
@@ -769,7 +831,9 @@ void angularDistS3_newSample(const char* outfile,
       hMomS1->Scale(1. / (double)nSpills);
       hMomTpc->Scale(1. / (double)nSpills);
       hKE->Scale(1. / (double)nSpills);
+      hKEAll->Scale(1. / (double)nSpills);
       hutof1dS1S2->Scale(1. / (double)nSpills);
+      hS2Tof->Scale(1. / (double)nSpills);
       hutof1dS1->Scale(1. / (double)nSpills);
       hutof1dS1NoS2->Scale(1. / (double)nSpills);
 
@@ -784,6 +848,8 @@ void angularDistS3_newSample(const char* outfile,
       cout<<iPi<<" +- "<<ePi<<endl;
       cout<<iPro<<" +- "<<ePro<<endl;
       cout<<iKE<<" +- "<<eKE<<endl;
+
+      hKEAll->SetLineColor(getColourFromBlock(nBlocks));
 
       if (nBlocks==0) {
 	hThetaS1S2pro->SetLineColor(kBlack);
@@ -807,6 +873,7 @@ void angularDistS3_newSample(const char* outfile,
 	hKE->SetLineColor(kBlack);
 	hutof1dS1S2->SetLineColor(kBlack);
 	hutof1dS1->SetLineColor(kBlack);
+	hS2Tof->SetLineColor(kBlack);
 	hutof1dS1NoS2->SetLineColor(kBlack);
       
 	legThetaS1pro->AddEntry(hThetaS1pro, 
@@ -847,6 +914,7 @@ void angularDistS3_newSample(const char* outfile,
 	hMomTpc->SetLineColor(kRed);
 	hutof1dS1S2->SetLineColor(kRed);
 	hutof1dS1->SetLineColor(kRed);
+	hS2Tof->SetLineColor(kRed);
 	hutof1dS1NoS2->SetLineColor(kRed);
       
 	legThetaS1pro->AddEntry(hThetaS1pro, 
@@ -886,6 +954,7 @@ void angularDistS3_newSample(const char* outfile,
 	hKE->SetLineColor(kBlue);
 	hutof1dS1S2->SetLineColor(kBlue);
 	hutof1dS1->SetLineColor(kBlue);
+	hS2Tof->SetLineColor(kBlue);
 	hutof1dS1NoS2->SetLineColor(kBlue);
 	legThetaS1pro->AddEntry(hThetaS1pro, 
 				Form("2 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
@@ -925,6 +994,7 @@ void angularDistS3_newSample(const char* outfile,
 	hMomTpc->SetLineColor(kCyan+1);
 	hutof1dS1S2->SetLineColor(kCyan+1);
 	hutof1dS1->SetLineColor(kCyan+1);
+	hS2Tof->SetLineColor(kCyan+1);
 	hutof1dS1NoS2->SetLineColor(kCyan+1);
 	legThetaS1pro->AddEntry(hThetaS1pro, 
 				Form("3 blocks - %d #pm %d per spill", (int)iPro, (int)ePro), "le"); 
@@ -964,6 +1034,7 @@ void angularDistS3_newSample(const char* outfile,
 	hKE->SetLineColor(kOrange+1);
 	hutof1dS1S2->SetLineColor(kOrange+1);
 	hutof1dS1->SetLineColor(kOrange+1);
+	hS2Tof->SetLineColor(kOrange+1);
 	legThetaS1pro->AddEntry(hThetaS1pro, 
 				Form("4 blocks - %.3g #pm %.2g per spill", iPro, ePro), "le"); 
 	legThetaS1pi->AddEntry(hThetaS1pi, 
@@ -986,6 +1057,9 @@ void angularDistS3_newSample(const char* outfile,
       hThetaS1ratio->Write();
       hThetaS1ratioNoS2->Write();
       hPhiS1ratio->Write();
+
+      hMSq->Write();
+      hMSqZoom->Write();
 
       hutof1dS1->Fit(sPi, "R");
       hutof1dS1->Fit(sPro1, "R");
@@ -1033,8 +1107,10 @@ void angularDistS3_newSample(const char* outfile,
       hMomS1->Write();
       hMomTpc->Write();
       hKE->Write();
+      hKEAll->Write();
 
       hutof1dS1S2->Write();
+      hS2Tof->Write();
       hutof1dS1->Write();
       hutof1dS1NoS2->Write();
 
@@ -1063,6 +1139,7 @@ void angularDistS3_newSample(const char* outfile,
       hsMomS1->Add(hMomS1);
       hsMomTpc->Add(hMomTpc);
       hsKE->Add(hKE);
+      hsKEAll->Add(hKEAll);
 
       h2dAngPiS1->Scale(1. / (double)nSpills);
       h2dAngProS1->Scale(1. / (double)nSpills);
@@ -1117,6 +1194,7 @@ void angularDistS3_newSample(const char* outfile,
   hsMomS1->Write();
   hsMomTpc->Write();
   hsKE->Write();
+  hsKEAll->Write();
 
   legThetaS1pro->Write("legThetaS1pro");
   legThetaS1pi->Write("legThetaS1pi");
